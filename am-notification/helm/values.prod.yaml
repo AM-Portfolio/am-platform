@@ -22,16 +22,6 @@ vault:
     novu:
       path: "secret/data/prod/services/am-novu"
 
-ingress:
-  enabled: true
-  className: "traefik"
-  hosts:
-    - host: am.asrax.in
-      paths:
-        - path: /api/notifications
-          pathType: Prefix
-        - path: /api/webhooks/novu
-          pathType: Prefix
 
 env:
   APP_ENV: production

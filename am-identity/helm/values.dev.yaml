@@ -18,26 +18,18 @@ hostAliases:
 vault:
   enabled: true
   secretPaths:
-    keycloak:
+    identity:
       path: "apps/data/dev/services/am-identity"
-    auth:
-      path: "apps/data/dev/services/am-auth"
 
 ingress:
-  enabled: true
-  className: "traefik"
   annotations:
-    kubernetes.io/ingress.class: "traefik"
-    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
     traefik.ingress.kubernetes.io/router.middlewares: >-
       am-apps-dev-dev-global-cors@kubernetescrd,
       am-apps-dev-dev-strip-prefix@kubernetescrd
   hosts:
     - host: am-dev.asrax.in
       paths:
-        - path: /api/auth
-          pathType: Prefix
-        - path: /api/users
+        - path: /identity
           pathType: Prefix
 
 env:

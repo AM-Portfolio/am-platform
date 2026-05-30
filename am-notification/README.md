@@ -21,3 +21,5 @@ npm run notification:dev        # http://localhost:8111
 
 - `GET /health/live`
 - `GET /health/ready` — Mongo + Novu API
+
+<!-- dummy trigger commit -->

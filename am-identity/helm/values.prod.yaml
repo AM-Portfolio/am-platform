@@ -13,21 +13,9 @@ resources:
 vault:
   enabled: true
   secretPaths:
-    keycloak:
+    identity:
       path: "secret/data/prod/services/am-identity"
-    auth:
-      path: "secret/data/prod/services/am-auth"
 
-ingress:
-  enabled: true
-  className: "traefik"
-  hosts:
-    - host: am.asrax.in
-      paths:
-        - path: /api/auth
-          pathType: Prefix
-        - path: /api/users
-          pathType: Prefix
 
 env:
   APP_ENV: production

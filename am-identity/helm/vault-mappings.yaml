@@ -1,6 +1,6 @@
 vault:
   secretPaths:
-    keycloak:
+    identity:
       mappings:
         KEYCLOAK_URL: "KEYCLOAK_URL"
         KEYCLOAK_ADMIN_USER: "KEYCLOAK_ADMIN_USER"
@@ -15,6 +15,4 @@ vault:
         AM_IDENTITY_CLIENT_ID: "AM_IDENTITY_CLIENT_ID"
         AM_IDENTITY_CLIENT_SECRET: "AM_IDENTITY_CLIENT_SECRET"
         ALLOWED_GOOGLE_REDIRECT_URIS: "ALLOWED_GOOGLE_REDIRECT_URIS"
-    auth:
-      mappings:
         JWT_SECRET: "JWT_SECRET"

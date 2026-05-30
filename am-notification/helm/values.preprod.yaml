@@ -7,8 +7,8 @@ resources:
     cpu: 500m
     memory: 512Mi
   requests:
-    cpu: 250m
-    memory: 256Mi
+    cpu: 1m
+    memory: 64Mi
 
 vault:
   enabled: true
@@ -22,8 +22,7 @@ vault:
     novu:
       path: "apps/data/preprod/services/am-novu"
 
-ingress:
-  enabled: false
+
 
 env:
   APP_ENV: preprod

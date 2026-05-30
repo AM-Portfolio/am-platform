@@ -28,20 +28,16 @@ vault:
       path: "apps/data/dev/services/am-lago"
 
 ingress:
-  enabled: true
-  className: "traefik"
   annotations:
-    kubernetes.io/ingress.class: "traefik"
-    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
     traefik.ingress.kubernetes.io/router.middlewares: >-
       am-apps-dev-dev-global-cors@kubernetescrd,
       am-apps-dev-dev-strip-prefix@kubernetescrd
   hosts:
     - host: am-dev.asrax.in
       paths:
-        - path: /api/subscriptions
+        - path: /subscriptions
           pathType: Prefix
-        - path: /api/webhooks/provider
+        - path: /webhooks/provider
           pathType: Prefix
 
 env:

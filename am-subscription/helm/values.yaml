@@ -17,6 +17,8 @@ image:
 replicaCount: 1
 language: python
 port: 8080
+service:
+  port: 8080
 entrypoint: "exec uvicorn am_subscription.main:app --host 0.0.0.0 --port 8080"
 
 security:
@@ -55,4 +57,18 @@ resources:
     memory: 256Mi
 
 ingress:
-  enabled: false
+  enabled: true
+  className: "traefik"
+  annotations:
+    kubernetes.io/ingress.class: "traefik"
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.middlewares: >-
+      am-apps-preprod-global-cors@kubernetescrd,
+      am-apps-preprod-strip-prefix-apps@kubernetescrd
+  hosts:
+    - host: am.asrax.in
+      paths:
+        - path: /subscriptions
+          pathType: Prefix
+        - path: /webhooks/provider
+          pathType: Prefix

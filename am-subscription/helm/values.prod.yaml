@@ -20,16 +20,6 @@ vault:
     lago:
       path: "secret/data/prod/services/am-lago"
 
-ingress:
-  enabled: true
-  className: "traefik"
-  hosts:
-    - host: am.asrax.in
-      paths:
-        - path: /api/subscriptions
-          pathType: Prefix
-        - path: /api/webhooks/provider
-          pathType: Prefix
 
 env:
   APP_ENV: production

@@ -7,19 +7,15 @@ resources:
     cpu: 500m
     memory: 512Mi
   requests:
-    cpu: 250m
-    memory: 256Mi
+    cpu: 1m
+    memory: 64Mi
 
 vault:
   enabled: true
   secretPaths:
-    keycloak:
+    identity:
       path: "apps/data/preprod/services/am-identity"
-    auth:
-      path: "apps/data/preprod/services/am-auth"
 
-ingress:
-  enabled: false
 
 env:
   APP_ENV: preprod
