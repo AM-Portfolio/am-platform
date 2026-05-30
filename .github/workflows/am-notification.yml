@@ -9,6 +9,7 @@ on:
       - "requirements.txt"
       - "requirements-dev.txt"
       - ".dockerignore"
+      - "docker/**"
   pull_request:
     branches: ["main", "develop", "test/**", "feature/**", "hotfix/**", "fix/**"]
     paths:
@@ -17,6 +18,7 @@ on:
       - "requirements.txt"
       - "requirements-dev.txt"
       - ".dockerignore"
+      - "docker/**"
   workflow_dispatch:
 
 jobs:

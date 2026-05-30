@@ -34,6 +34,18 @@ docker build -f am-notification/Dockerfile -t am-notification:local .
 
 External routes use the `/api` gateway prefix (see `docs/critical_high_gap_resolution.md`). Traefik strip-prefix middleware removes `/api` before traffic hits the service, which exposes routes at `/auth`, `/subscriptions`, `/notifications`, etc.
 
+## Universal chart (`config` stub)
+
+Platform Python services do **not** use market-data features (`config.batchSearch`, `config.scheduler`). The shared [`universal-chart`](https://github.com/AM-Portfolio/am-pipelines/tree/main/helm/universal-chart) includes optional env templates for those blocks.
+
+Each service `helm/values.yaml` includes:
+
+```yaml
+config: {}
+```
+
+This prevents Helm nil-pointer errors on deploy when `config` is omitted. am-pipelines templates also guard with `with .Values.config` (merge `am-pipelines` to `main` before deploy).
+
 ## Vault
 
 Seed secrets under `apps/data/<env>/services/am-identity`, `am-subscription`, and `am-notification` before first deploy. Infra paths (`postgres`, `mongodb`, `kafka`) reuse existing cluster secrets.
