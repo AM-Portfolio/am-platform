@@ -28,6 +28,8 @@ docker build -f am-subscription/Dockerfile -t am-subscription:local .
 docker build -f am-notification/Dockerfile -t am-notification:local .
 ```
 
+**CI note:** Service images use public `python:3.12-slim` (not `ghcr.io/am-portfolio/am-python-base`). am-parser in am-market can pull the org base image because that repo has `GHCR_TOKEN` / package access; am-platform avoids the cross-repo 403 by inlining the same runtime (`gcc`, `curl`). Reference: `docker/python-base.Dockerfile`.
+
 ## Ingress (dev / prod)
 
 External routes use the `/api` gateway prefix (see `docs/critical_high_gap_resolution.md`). Traefik strip-prefix middleware removes `/api` before traffic hits the service, which exposes routes at `/auth`, `/subscriptions`, `/notifications`, etc.

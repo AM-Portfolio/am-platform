@@ -1,6 +1,16 @@
 # AM Subscription — build context: am-platform root (build_context: ..)
-ARG BASE_REGISTRY=""
-FROM ${BASE_REGISTRY}am-python-base:latest
+# Public Python base (see docker/python-base.Dockerfile). Avoids GHCR 403 on am-python-base.
+FROM python:3.12-slim
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -16,7 +26,6 @@ COPY am-subscription/ am-subscription/
 ENV PYTHONPATH=/app/libraries/am-platform-common:/app/libraries/am-platform-security:/app/am-subscription
 ENV APP_ENV=production
 ENV TZ=Asia/Kolkata
-
 ENV APP_PORT=8080
 
 EXPOSE 8080
