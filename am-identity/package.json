@@ -1,0 +1,16 @@
+{
+  "name": "@am-platform/identity",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AM Identity service (Keycloak-backed auth)",
+  "scripts": {
+    "dev": "node ../automation/scripts/run-with-logs.js python ../automation/scripts/run_service.py identity dev",
+    "start": "npm run dev",
+    "dev:prod": "node ../automation/scripts/run-with-logs.js python ../automation/scripts/run_service.py identity dev:prod",
+    "test": "node ../automation/scripts/run-with-logs.js echo No am-identity tests yet",
+    "lint": "node ../automation/scripts/run-with-logs.js python -m ruff check am_identity && python -m black --check am_identity",
+    "lint:fix": "node ../automation/scripts/run-with-logs.js python -m ruff check am_identity --fix",
+    "format": "node ../automation/scripts/run-with-logs.js python -m black am_identity",
+    "compile": "node ../automation/scripts/run-with-logs.js python -m compileall am_identity"
+  }
+}

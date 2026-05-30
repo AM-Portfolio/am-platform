@@ -1,0 +1,13 @@
+{
+  "name": "@am-platform/security",
+  "version": "1.0.0",
+  "private": true,
+  "description": "JWT validation and FastAPI auth dependencies",
+  "scripts": {
+    "test": "node ../../automation/scripts/run-with-logs.js python -m pytest tests -q",
+    "lint": "node ../../automation/scripts/run-with-logs.js python -m ruff check am_platform_security tests && python -m black --check am_platform_security tests",
+    "lint:fix": "node ../../automation/scripts/run-with-logs.js python -m ruff check am_platform_security tests --fix",
+    "format": "node ../../automation/scripts/run-with-logs.js python -m black am_platform_security tests",
+    "compile": "node ../../automation/scripts/run-with-logs.js python -m compileall am_platform_security"
+  }
+}

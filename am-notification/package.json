@@ -1,0 +1,15 @@
+{
+  "name": "@am-platform/notification",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AM Notification service (Kafka consumer, Novu adapter, inbox API)",
+  "scripts": {
+    "dev": "node ../automation/scripts/run-with-logs.js python ../automation/scripts/run_service.py notification dev",
+    "start": "npm run dev",
+    "dev:prod": "node ../automation/scripts/run-with-logs.js python ../automation/scripts/run_service.py notification dev:prod",
+    "lint": "node ../automation/scripts/run-with-logs.js python -m ruff check am_notification && python -m black --check am_notification",
+    "lint:fix": "node ../automation/scripts/run-with-logs.js python -m ruff check am_notification --fix",
+    "format": "node ../automation/scripts/run-with-logs.js python -m black am_notification",
+    "compile": "node ../automation/scripts/run-with-logs.js python -m compileall am_notification"
+  }
+}

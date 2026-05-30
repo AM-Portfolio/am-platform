@@ -1,0 +1,23 @@
+[project]
+name = "am-platform-security"
+version = "0.1.0"
+description = "Shared FastAPI authentication and authorization dependencies for AM Platform"
+authors = [{ name = "Antigravity Agent", email = "agent@google.com" }]
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.100.0",
+    "httpx>=0.24.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "PyJWT>=2.8.0",
+    "cryptography>=42.0.0",
+]
+
+[tool.poetry]
+packages = [
+    { include = "am_platform_security" }
+]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

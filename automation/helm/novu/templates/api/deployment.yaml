@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "novu.api.fullname" . }}
+  labels:
+    app: {{ include "novu.name" . }}
+    component: api
+spec:
+  replicas: {{ .Values.api.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "novu.name" . }}
+      component: api
+  template:
+    metadata:
+      labels:
+        app: {{ include "novu.name" . }}
+        component: api
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: api
+          image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.api.image.pullPolicy }}
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: {{ include "novu.fullname" . }}-config
+            - secretRef:
+                name: {{ include "novu.fullname" . }}-secret
+          env:
+            - name: DISABLE_USER_REGISTRATION
+              value: "{{ .Values.global.env.disableUserRegistration }}"
+            - name: FRONT_BASE_URL
+              value: "{{ .Values.global.env.frontBaseUrl }}"
+            {{- if .Values.externalDataStores.enabled }}
+            - name: MONGO_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "novu.fullname" . }}-external-data
+                  key: MONGO_URL
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "novu.fullname" . }}-external-data
+                  key: REDIS_PASSWORD
+            {{- else }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ include "redis.fullname" . }}"
+                  key: redis-password
+            - name: MONGO_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "mongodb.fullname" . }}-svcbind-root
+                  key: uri
+            {{- end }}
+          resources:
+            {{- toYaml .Values.api.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /v1/health-check
+              port: 3000
+            initialDelaySeconds: {{ .Values.api.livenessProbe.initialDelaySeconds | default 30 }}
+            periodSeconds: {{ .Values.api.livenessProbe.periodSeconds | default 10 }}
+            timeoutSeconds: {{ .Values.api.livenessProbe.timeoutSeconds | default 5 }}
+            failureThreshold: {{ .Values.api.livenessProbe.failureThreshold | default 3 }}
+          readinessProbe:
+            httpGet:
+              path: /v1/health-check
+              port: 3000
+            initialDelaySeconds: {{ .Values.api.readinessProbe.initialDelaySeconds | default 5 }}
+            periodSeconds: {{ .Values.api.readinessProbe.periodSeconds | default 10 }}
+            timeoutSeconds: {{ .Values.api.readinessProbe.timeoutSeconds | default 5 }}
+            failureThreshold: {{ .Values.api.readinessProbe.failureThreshold | default 3 }}
+      restartPolicy: Always

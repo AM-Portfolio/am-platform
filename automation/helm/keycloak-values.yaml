@@ -1,0 +1,51 @@
+production: false
+httpRelativePath: "/auth/"
+proxyHeaders: "xforwarded"
+
+extraEnvVars:
+  - name: KC_HOSTNAME
+    value: "auth.munish.org"
+
+global:
+  security:
+    allowInsecureImages: true
+
+# Use Bitnami Legacy Registry on Docker Hub
+image:
+  registry: "docker.io"
+  repository: "bitnamilegacy/keycloak"
+  tag: "26.3.3-debian-12-r0"
+
+# Allocate resources: 1GB RAM and 1 CPU Core limit
+resources:
+  limits:
+    cpu: "1000m"
+    memory: "1024Mi"
+  requests:
+    cpu: "500m"
+    memory: "1024Mi"
+
+# Disable internal PostgreSQL installation
+postgresql:
+  enabled: false
+
+# Configure external PostgreSQL (infra namespace)
+externalDatabase:
+  host: "postgresql.infra.svc.cluster.local"
+  port: 5432
+  user: "postgres"
+  database: "portfolio"
+  schema: "public"
+  password: "gCsRw12O2WobTGlCjrxRzZrK"
+
+# Configure Ingress
+ingress:
+  enabled: true
+  ingressClassName: "traefik"
+  hostname: "auth.munish.org"
+  path: "/"
+  extraHosts:
+    - name: "auth.asrax.in"
+      path: "/"
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure

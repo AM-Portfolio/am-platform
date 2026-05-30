@@ -1,0 +1,13 @@
+{
+  "name": "@am-platform/common",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Shared DTOs, logging, and HTTP utilities",
+  "scripts": {
+    "test": "node ../../automation/scripts/run-with-logs.js python -m pytest tests -q",
+    "lint": "node ../../automation/scripts/run-with-logs.js python -m ruff check am_platform_common tests && python -m black --check am_platform_common tests",
+    "lint:fix": "node ../../automation/scripts/run-with-logs.js python -m ruff check am_platform_common tests --fix",
+    "format": "node ../../automation/scripts/run-with-logs.js python -m black am_platform_common tests",
+    "compile": "node ../../automation/scripts/run-with-logs.js python -m compileall am_platform_common"
+  }
+}

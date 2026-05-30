@@ -1,0 +1,30 @@
+# Preprod Environment — am-notification
+environment: preprod
+replicaCount: 1
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+vault:
+  enabled: true
+  secretPaths:
+    mongodb:
+      path: "apps/data/preprod/infra/mongodb"
+    kafka:
+      path: "apps/data/preprod/infra/kafka"
+    notification:
+      path: "apps/data/preprod/services/am-notification"
+    novu:
+      path: "apps/data/preprod/services/am-novu"
+
+ingress:
+  enabled: false
+
+env:
+  APP_ENV: preprod
+  LOG_LEVEL: INFO

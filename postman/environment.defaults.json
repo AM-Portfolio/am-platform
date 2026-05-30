@@ -1,0 +1,103 @@
+{
+  "ordered_keys": [
+    "platform_env",
+    "identity_base_url",
+    "subscription_base_url",
+    "notification_base_url",
+    "base_url",
+    "keycloak_url",
+    "keycloak_realm",
+    "identity_client_id",
+    "identity_client_secret",
+    "portfolio_client_id",
+    "portfolio_client_secret",
+    "gateway_client_id",
+    "gateway_client_secret",
+    "notification_client_id",
+    "notification_client_secret",
+    "test_email",
+    "test_password",
+    "google_redirect_uri",
+    "google_auth_code",
+    "google_state",
+    "google_auth_url",
+    "access_token",
+    "refresh_token",
+    "service_access_token",
+    "user_sub",
+    "subscription_id",
+    "plan_code",
+    "upgrade_plan_code",
+    "idempotency_key",
+    "notification_id",
+    "last_request_name",
+    "last_request_url",
+    "last_response_status"
+  ],
+  "profiles": {
+    "local": {
+      "id": "am-platform-local-env",
+      "name": "AM Platform — Local",
+      "values": {
+        "platform_env": "local",
+        "identity_base_url": "http://localhost:8113",
+        "subscription_base_url": "http://localhost:8110",
+        "notification_base_url": "http://localhost:8111",
+        "base_url": "http://localhost:8113",
+        "keycloak_url": "http://auth.munish.org/auth",
+        "google_redirect_uri": "http://localhost:9000/callback"
+      }
+    },
+    "preprod": {
+      "id": "am-platform-preprod-env",
+      "name": "AM Platform — Preprod",
+      "values": {
+        "platform_env": "preprod",
+        "identity_base_url": "https://am-dev.asrax.in/api",
+        "subscription_base_url": "https://am-dev.asrax.in/api",
+        "notification_base_url": "https://am-dev.asrax.in/api",
+        "base_url": "https://am-dev.asrax.in/api",
+        "keycloak_url": "https://auth.munish.org/auth",
+        "google_redirect_uri": "https://am-dev.asrax.in/callback"
+      }
+    }
+  },
+  "shared_defaults": {
+    "keycloak_realm": "am-realm",
+    "identity_client_id": "am-identity-service",
+    "identity_client_secret": "",
+    "portfolio_client_id": "am-portfolio-service",
+    "portfolio_client_secret": "",
+    "gateway_client_id": "am-gateway-client",
+    "gateway_client_secret": "",
+    "notification_client_id": "am-notification-service",
+    "notification_client_secret": "",
+    "test_email": "test.user@example.com",
+    "test_password": "TestPass123!",
+    "google_auth_code": "",
+    "google_state": "",
+    "google_auth_url": "",
+    "access_token": "",
+    "refresh_token": "",
+    "service_access_token": "",
+    "user_sub": "",
+    "subscription_id": "",
+    "plan_code": "am_free",
+    "upgrade_plan_code": "am_pro",
+    "idempotency_key": "",
+    "notification_id": "",
+    "last_request_name": "",
+    "last_request_url": "",
+    "last_response_status": ""
+  },
+  "secret_keys": [
+    "identity_client_secret",
+    "portfolio_client_secret",
+    "gateway_client_secret",
+    "notification_client_secret",
+    "test_password",
+    "access_token",
+    "refresh_token",
+    "service_access_token"
+  ]
+}

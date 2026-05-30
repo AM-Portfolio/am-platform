@@ -1,0 +1,97 @@
+# Public ingress for Lago admin UI and API (Traefik — TLS typically at Cloudflare).
+# API routes on the same host as the UI so login works with only lago.munish.org DNS.
+# Optional lago-api.* hosts remain as fallback when that DNS record resolves.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: lago-public
+  namespace: billing
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+spec:
+  ingressClassName: traefik
+  rules:
+    # munish.org — UI + API on one host
+    - host: lago.munish.org
+      http:
+        paths:
+          - path: /graphql
+            pathType: Prefix
+            backend:
+              service:
+                name: lago-api-svc
+                port:
+                  number: 3000
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: lago-api-svc
+                port:
+                  number: 3000
+          - path: /health
+            pathType: Exact
+            backend:
+              service:
+                name: lago-api-svc
+                port:
+                  number: 3000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: lago-front-svc
+                port:
+                  number: 80
+    - host: lago-api.munish.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: lago-api-svc
+                port:
+                  number: 3000
+    # asrax.in — UI + API on one host
+    - host: lago.asrax.in
+      http:
+        paths:
+          - path: /graphql
+            pathType: Prefix
+            backend:
+              service:
+                name: lago-api-svc
+                port:
+                  number: 3000
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: lago-api-svc
+                port:
+                  number: 3000
+          - path: /health
+            pathType: Exact
+            backend:
+              service:
+                name: lago-api-svc
+                port:
+                  number: 3000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: lago-front-svc
+                port:
+                  number: 80
+    - host: lago-api.asrax.in
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: lago-api-svc
+                port:
+                  number: 3000

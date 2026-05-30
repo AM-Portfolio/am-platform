@@ -1,0 +1,369 @@
+{
+  "info": {
+    "_postman_id": "am-identity-collection-v1",
+    "name": "AM Identity Service",
+    "description": "Organized API collection for **am-identity** (port 8113).\n\n## Quick start\n1. Import `AM-Identity.local.postman_environment.json`\n2. Run **Health → Health Check**\n3. Run **Auth → Login** (or Google SSO flow)\n4. `access_token` / `refresh_token` are saved automatically\n5. Run **Users → Get My Profile**\n\n## Folders\n| Folder | Purpose |\n|--------|----------|\n| 00 Health | Liveness |\n| 01 Auth — Registration | Sign up |\n| 02 Auth — Login & Session | Password login, refresh, logout |\n| 03 Auth — Google SSO | URL + callback (manual browser step for `code`) |\n| 04 Users | Bearer-protected profile/settings |\n| 05 Internal | Service-account only |\n| 99 Keycloak Helpers | Direct token calls for setup/debug |\n\n## Gateway (future)\nPublic routes via Traefik: `/api/auth/*`, `/api/users/*`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.environment.get('base_url')) {",
+          "    pm.environment.set('base_url', 'http://localhost:8113');",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+          "if (!ok) return;",
+          "try {",
+          "  const body = pm.response.json();",
+          "  if (body.access_token) {",
+          "    pm.environment.set('access_token', body.access_token);",
+          "    pm.collectionVariables.set('access_token', body.access_token);",
+          "  }",
+          "  if (body.refresh_token) {",
+          "    pm.environment.set('refresh_token', body.refresh_token);",
+          "    pm.collectionVariables.set('refresh_token', body.refresh_token);",
+          "  }",
+          "  if (body.state) {",
+          "    pm.environment.set('google_state', body.state);",
+          "  }",
+          "  if (body.auth_url) {",
+          "    pm.environment.set('google_auth_url', body.auth_url);",
+          "  }",
+          "  if (body.sub) {",
+          "    pm.environment.set('user_sub', body.sub);",
+          "  }",
+          "} catch (e) {}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8113" },
+    { "key": "keycloak_url", "value": "http://auth.munish.org/auth" },
+    { "key": "keycloak_realm", "value": "am-realm" },
+    { "key": "access_token", "value": "" },
+    { "key": "refresh_token", "value": "" },
+    { "key": "google_state", "value": "" },
+    { "key": "google_auth_url", "value": "" },
+    { "key": "google_redirect_uri", "value": "http://localhost:9000/callback" },
+    { "key": "user_sub", "value": "" },
+    { "key": "test_email", "value": "test.user@example.com" },
+    { "key": "test_password", "value": "TestPass123!" }
+  ],
+  "item": [
+    {
+      "name": "00 Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/health",
+            "description": "Service liveness. Expect `{\"status\":\"ok\",\"service\":\"am-identity\"}`."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "01 Auth — Registration",
+      "item": [
+        {
+          "name": "Register User",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{test_email}}\",\n  \"password\": \"{{test_password}}\",\n  \"first_name\": \"Test\",\n  \"last_name\": \"User\"\n}"
+            },
+            "url": "{{base_url}}/auth/register",
+            "description": "Creates a user in Keycloak (admin API). Use a unique email per run."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02 Auth — Login & Session",
+      "item": [
+        {
+          "name": "Login (Password)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{test_email}}\",\n  \"password\": \"{{test_password}}\"\n}"
+            },
+            "url": "{{base_url}}/auth/login",
+            "description": "Password grant via am-identity-service client. Saves `access_token` and `refresh_token`."
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            },
+            "url": "{{base_url}}/auth/refresh",
+            "description": "Exchange refresh token for new access token."
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            },
+            "url": "{{base_url}}/auth/logout",
+            "description": "Revokes refresh token session. Returns 204."
+          },
+          "response": []
+        },
+        {
+          "name": "Login OTP (Not Implemented)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{test_email}}\",\n  \"otp\": \"123456\"\n}"
+            },
+            "url": "{{base_url}}/auth/login/otp",
+            "description": "Scaffolded — currently returns 501 until OTP flow is implemented."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03 Auth — Google SSO",
+      "description": "**Flow:**\n1. Run **Get Google Auth URL** → copy `auth_url` from response\n2. Open URL in browser, sign in with Google\n3. After redirect, copy `code` and `state` from callback query string\n4. Set `google_auth_code` env var (or edit callback body)\n5. Run **Google Callback** → tokens saved automatically",
+      "item": [
+        {
+          "name": "Get Google Auth URL",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  if (b.auth_url) console.log('Open in browser:\\n' + b.auth_url);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"redirect_uri\": \"{{google_redirect_uri}}\"\n}"
+            },
+            "url": "{{base_url}}/auth/google/url",
+            "description": "Returns Keycloak auth URL with `kc_idp_hint=google` and anti-replay `state`."
+          },
+          "response": []
+        },
+        {
+          "name": "Google Callback",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"{{google_auth_code}}\",\n  \"state\": \"{{google_state}}\",\n  \"redirect_uri\": \"{{google_redirect_uri}}\"\n}"
+            },
+            "url": "{{base_url}}/auth/google/callback",
+            "description": "Exchange authorization code for AM tokens. `redirect_uri` must match the one used in step 1."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "04 Users (Bearer Required)",
+      "item": [
+        {
+          "name": "Get My Profile",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/users/me",
+            "description": "Returns profile from Keycloak userinfo + JWT roles."
+          },
+          "response": []
+        },
+        {
+          "name": "Update My Settings",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }]
+            },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"settings\": {\n    \"theme\": \"dark\",\n    \"notifications\": true,\n    \"language\": \"en\"\n  }\n}"
+            },
+            "url": "{{base_url}}/users/me/settings",
+            "description": "Patches user attributes in Keycloak (settings stored as user attribute)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "05 Internal (Service Token Required)",
+      "description": "Requires a **service account** JWT (role: `service`).\nRun **99 Keycloak Helpers → Client Credentials (am-identity-service)** first and use that token as `access_token`, or set `service_access_token` in environment.",
+      "item": [
+        {
+          "name": "Issue Service Token",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{service_access_token}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"audience\": null\n}"
+            },
+            "url": "{{base_url}}/internal/auth/service-token",
+            "description": "Issues a machine token for downstream service calls."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Internal User By ID",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{service_access_token}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/internal/users/{{user_sub}}",
+            "description": "Internal lookup stub. Set `user_sub` from login/profile response."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "99 Keycloak Helpers (Setup / Debug)",
+      "description": "Direct Keycloak calls — useful when testing tokens without am-identity.",
+      "item": [
+        {
+          "name": "OIDC Discovery",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{keycloak_url}}/realms/{{keycloak_realm}}/.well-known/openid-configuration",
+            "description": "OpenID configuration document."
+          },
+          "response": []
+        },
+        {
+          "name": "Client Credentials (am-identity-service)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  if (b.access_token) {",
+                  "    pm.environment.set('service_access_token', b.access_token);",
+                  "    pm.environment.set('access_token', b.access_token);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "grant_type", "value": "client_credentials" },
+                { "key": "client_id", "value": "{{identity_client_id}}" },
+                { "key": "client_secret", "value": "{{identity_client_secret}}" }
+              ]
+            },
+            "url": "{{keycloak_url}}/realms/{{keycloak_realm}}/protocol/openid-connect/token",
+            "description": "Machine token for internal endpoints. Set `identity_client_id` and `identity_client_secret` in environment."
+          },
+          "response": []
+        },
+        {
+          "name": "Password Login (Keycloak Direct — am-web-client)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  if (b.access_token) pm.environment.set('access_token', b.access_token);",
+                  "  if (b.refresh_token) pm.environment.set('refresh_token', b.refresh_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "grant_type", "value": "password" },
+                { "key": "client_id", "value": "am-web-client" },
+                { "key": "username", "value": "{{test_email}}" },
+                { "key": "password", "value": "{{test_password}}" }
+              ]
+            },
+            "url": "{{keycloak_url}}/realms/{{keycloak_realm}}/protocol/openid-connect/token",
+            "description": "Direct Keycloak password grant (public client). May be disabled depending on realm policy."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

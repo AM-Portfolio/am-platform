@@ -1,0 +1,16 @@
+{
+  "name": "@am-platform/subscription",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AM Subscription service (plans, entitlements, metering)",
+  "scripts": {
+    "dev": "node ../automation/scripts/run-with-logs.js python ../automation/scripts/run_service.py subscription dev",
+    "start": "npm run dev",
+    "dev:prod": "node ../automation/scripts/run-with-logs.js python ../automation/scripts/run_service.py subscription dev:prod",
+    "test": "node ../automation/scripts/run-with-logs.js python ../automation/scripts/run_subscription_tests.py",
+    "lint": "node ../automation/scripts/run-with-logs.js python -m ruff check am_subscription && python -m black --check am_subscription",
+    "lint:fix": "node ../automation/scripts/run-with-logs.js python -m ruff check am_subscription --fix",
+    "format": "node ../automation/scripts/run-with-logs.js python -m black am_subscription",
+    "compile": "node ../automation/scripts/run-with-logs.js python -m compileall am_subscription"
+  }
+}

@@ -1,0 +1,11 @@
+[project]
+name = "am-platform"
+version = "0.1.0"
+description = "AM Platform Monorepo Services"
+authors = [{ name = "Antigravity Agent", email = "agent@google.com" }]
+requires-python = ">=3.11"
+dependencies = []
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

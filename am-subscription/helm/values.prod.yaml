@@ -1,0 +1,36 @@
+# Production Environment — am-subscription
+environment: prod
+replicaCount: 2
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 768Mi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+vault:
+  enabled: true
+  secretPaths:
+    postgres:
+      path: "secret/data/prod/infra/postgres"
+    subscription:
+      path: "secret/data/prod/services/am-subscription"
+    lago:
+      path: "secret/data/prod/services/am-lago"
+
+ingress:
+  enabled: true
+  className: "traefik"
+  hosts:
+    - host: am.asrax.in
+      paths:
+        - path: /api/subscriptions
+          pathType: Prefix
+        - path: /api/webhooks/provider
+          pathType: Prefix
+
+env:
+  APP_ENV: production
+  LOG_LEVEL: INFO

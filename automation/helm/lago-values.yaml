@@ -1,0 +1,148 @@
+# Lago billing — external PostgreSQL (subscription DB) and Redis (infra namespace).
+# Secrets (databaseUrl, redisUrl) are injected by deploy-lago.ps1 from .env / .secrets.env.
+# Resource requests are tuned for the current VPS cluster (raise when nodes are scaled).
+
+version: "1.33.4"
+
+# Public URLs (browser + Lago config). Override via LAGO_API_URL / LAGO_FRONT_URL in deploy-lago.ps1.
+apiUrl: "https://lago.munish.org"
+frontUrl: "https://lago.munish.org"
+
+postgresql:
+  enabled: false
+
+redis:
+  enabled: false
+
+global:
+  segment:
+    enabled: false
+  signup:
+    enabled: false
+  pdf:
+    enabled: true
+  ingress:
+    enabled: false
+
+api:
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 90
+  readinessProbe:
+    enabled: true
+    initialDelaySeconds: 90
+  resources:
+    requests:
+      cpu: "10m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+
+worker:
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 90
+  resources:
+    requests:
+      cpu: "10m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+
+billingWorker:
+  enabled: true
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 90
+  resources:
+    requests:
+      cpu: "10m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+
+eventsWorker:
+  enabled: true
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 90
+  resources:
+    requests:
+      cpu: "10m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+
+paymentWorker:
+  enabled: true
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 90
+  resources:
+    requests:
+      cpu: "10m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+
+webhookWorker:
+  enabled: true
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 90
+  resources:
+    requests:
+      cpu: "10m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+
+pdf:
+  resources:
+    requests:
+      cpu: "10m"
+      memory: "128Mi"
+    limits:
+      cpu: "200m"
+      memory: "512Mi"
+
+pdfWorker:
+  enabled: true
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 90
+  resources:
+    requests:
+      cpu: "10m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+
+front:
+  resources:
+    requests:
+      cpu: "10m"
+      memory: "128Mi"
+    limits:
+      cpu: "200m"
+      memory: "512Mi"
+
+clockWorker:
+  enabled: true
+  livenessProbe:
+    enabled: true
+    initialDelaySeconds: 90
+  resources:
+    requests:
+      cpu: "10m"
+      memory: "128Mi"
+    limits:
+      cpu: "200m"
+      memory: "512Mi"

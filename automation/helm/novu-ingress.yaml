@@ -1,0 +1,71 @@
+# Public ingress for Novu dashboard and API (Traefik — TLS typically at Cloudflare).
+# API (/v1) and WebSocket (/socket.io) on the same host as the UI so the browser
+# never calls internal cluster DNS names (novu-api:3000, novu-ws:3002).
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: novu-public
+  namespace: notification
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: novu.munish.org
+      http:
+        paths:
+          - path: /v1
+            pathType: Prefix
+            backend:
+              service:
+                name: novu-api
+                port:
+                  number: 3000
+          - path: /socket.io
+            pathType: Prefix
+            backend:
+              service:
+                name: novu-ws
+                port:
+                  number: 3002
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: novu-web
+                port:
+                  number: 4200
+    - host: novu-api.munish.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: novu-api
+                port:
+                  number: 3000
+    - host: novu.asrax.in
+      http:
+        paths:
+          - path: /v1
+            pathType: Prefix
+            backend:
+              service:
+                name: novu-api
+                port:
+                  number: 3000
+          - path: /socket.io
+            pathType: Prefix
+            backend:
+              service:
+                name: novu-ws
+                port:
+                  number: 3002
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: novu-web
+                port:
+                  number: 4200

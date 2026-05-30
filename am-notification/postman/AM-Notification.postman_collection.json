@@ -1,0 +1,147 @@
+{
+  "info": {
+    "_postman_id": "am-notification-collection-v1",
+    "name": "AM Notification Service",
+    "description": "Organized API collection for **am-notification** (port 8111).\n\n## Quick start\n1. Import `AM-Notification.local.postman_environment.json`\n2. Set `notification_client_secret` from `.secrets.env` (`AM_NOTIFICATION_CLIENT_SECRET`)\n3. Run **00 Health → Ready Check**\n4. Run **99 Keycloak → Client Credentials (am-notification-service)**\n5. Run **03 Internal → Send Notification**\n6. For user inbox routes: login via Identity collection first\n\n## Folders\n| Folder | Purpose |\n|--------|----------|\n| 00 Health | Liveness + readiness |\n| 01 Inbox | User JWT — list, unread, mark read |\n| 02 Preferences | User notification preferences |\n| 03 Internal | Service token — synchronous send |\n| 99 Keycloak Helpers | Machine tokens |",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8111" },
+    { "key": "access_token", "value": "" },
+    { "key": "service_access_token", "value": "" },
+    { "key": "user_sub", "value": "test-user-1" }
+  ],
+  "item": [
+    {
+      "name": "00 Health",
+      "item": [
+        {
+          "name": "Live Check",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/health/live"
+          }
+        },
+        {
+          "name": "Ready Check",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/health/ready"
+          }
+        }
+      ]
+    },
+    {
+      "name": "01 Inbox",
+      "item": [
+        {
+          "name": "List My Notifications",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": "{{base_url}}/notifications/me?page=0&page_size=20"
+          }
+        },
+        {
+          "name": "Unread Count",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": "{{base_url}}/notifications/me/unread-count"
+          }
+        },
+        {
+          "name": "Mark All Read",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": "{{base_url}}/notifications/read-all"
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 Preferences",
+      "item": [
+        {
+          "name": "Get Preferences",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": "{{base_url}}/notifications/preferences"
+          }
+        },
+        {
+          "name": "Update Preferences",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"channels\": {\"email\": true, \"in_app\": true},\n  \"categories\": {\"security\": true, \"subscription\": true}\n}"
+            },
+            "url": "{{base_url}}/notifications/preferences"
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 Internal",
+      "item": [
+        {
+          "name": "Send Notification",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{service_access_token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"workflow_key\": \"identity.login_new_device\",\n  \"recipient_user_id\": \"{{user_sub}}\",\n  \"payload\": {\n    \"device\": \"Chrome on Windows\",\n    \"ip_address\": \"203.0.113.10\"\n  },\n  \"critical\": true,\n  \"category\": \"security\"\n}"
+            },
+            "url": "{{base_url}}/notifications/internal/send"
+          }
+        }
+      ]
+    },
+    {
+      "name": "99 Keycloak Helpers",
+      "item": [
+        {
+          "name": "Client Credentials (am-notification-service)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  if (b.access_token) pm.environment.set('service_access_token', b.access_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "grant_type", "value": "client_credentials" },
+                { "key": "client_id", "value": "{{notification_client_id}}" },
+                { "key": "client_secret", "value": "{{notification_client_secret}}" }
+              ]
+            },
+            "url": "{{keycloak_url}}/realms/{{keycloak_realm}}/protocol/openid-connect/token"
+          }
+        }
+      ]
+    }
+  ]
+}

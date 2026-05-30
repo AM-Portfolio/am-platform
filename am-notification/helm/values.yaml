@@ -1,0 +1,60 @@
+# Base Helm values for am-notification
+global:
+  image:
+    registry: ghcr.io/am-portfolio
+    pullPolicy: Always
+    imagePullSecrets:
+      - name: regcred
+  vault:
+    enabled: true
+    role: "am-backend-role"
+    authPath: "auth/kubernetes"
+    serviceAccountName: "am-backend-sa"
+
+image:
+  repository: am-notification
+
+replicaCount: 1
+language: python
+port: 8080
+entrypoint: "exec uvicorn am_notification.main:app --host 0.0.0.0 --port 8080"
+
+security:
+  automountServiceAccountToken: true
+
+env:
+  APP_ENV: production
+  APP_NAME: am-notification
+  APP_PORT: "8080"
+  LOG_FORMAT: json
+  LOG_LEVEL: INFO
+  TZ: Asia/Kolkata
+  NOTIFICATION_PROVIDER: novu
+  NOVU_APPLICATION_IDENTIFIER: am-platform
+  KAFKA_ENABLED: "true"
+  KAFKA_NOTIFICATION_GROUP_ID: am-notification-consumer
+  KAFKA_NOTIFICATION_TOPICS: am.identity.events.v1,am.subscription.events.v1,am.usage.events.v1,am.notification.commands.v1
+  KAFKA_NOTIFICATION_EVENTS_TOPIC: am.notification.events.v1
+  KAFKA_NOTIFICATION_DLQ_TOPIC: am.notification.commands.dlq.v1
+
+probes:
+  port: 8080
+  startup:
+    path: /health/live
+    failureThreshold: 30
+    periodSeconds: 10
+  liveness:
+    path: /health/live
+  readiness:
+    path: /health/ready
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+ingress:
+  enabled: false

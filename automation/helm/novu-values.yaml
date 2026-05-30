@@ -1,0 +1,83 @@
+# Novu — external Mongo/Redis on shared infra (saves VPS CPU vs bundled subcharts).
+# Connection strings injected by deploy-novu.ps1.
+
+externalDataStores:
+  enabled: true
+  mongoUrl: ""
+  redisHost: redis.infra.svc.cluster.local
+  redisPort: "6379"
+  redisPassword: ""
+
+mongodb:
+  enabled: false
+
+redis:
+  enabled: false
+
+ingress:
+  enabled: false
+
+global:
+  env:
+    nodeEnv: production
+    disableUserRegistration: true
+    apiRootUrl: "https://novu-api.munish.org"
+    frontBaseUrl: "https://novu.munish.org"
+    # Browser WebSocket base URL (socket.io proxied on same host via novu-ingress.yaml)
+    wsRootUrl: "https://novu.munish.org"
+    mongodb:
+      maxPoolSize: 100
+      minPoolSize: 10
+    secret:
+      jwtSecret: "change-me-via-deploy-script"
+      storageKey: "change-me-32-char-encryption-key!!"
+
+api:
+  replicaCount: 1
+  livenessProbe:
+    initialDelaySeconds: 120
+    periodSeconds: 15
+    timeoutSeconds: 10
+    failureThreshold: 6
+  readinessProbe:
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 10
+    failureThreshold: 6
+  resources:
+    requests:
+      cpu: "1m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+worker:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: "1m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+web:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: "1m"
+      memory: "64Mi"
+    limits:
+      cpu: "250m"
+      memory: "256Mi"
+
+ws:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: "1m"
+      memory: "64Mi"
+    limits:
+      cpu: "250m"
+      memory: "256Mi"

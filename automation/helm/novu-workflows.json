@@ -1,0 +1,87 @@
+[
+  {
+    "workflow_key": "identity.login_new_device",
+    "name": "Login New Device",
+    "steps": [
+      {
+        "type": "in_app",
+        "template": "New login from {{device}} at {{ip_address}}"
+      },
+      {
+        "type": "email",
+        "subject": "New sign-in to your AM account",
+        "template": "We detected a new sign-in from {{device}} ({{ip_address}})."
+      }
+    ]
+  },
+  {
+    "workflow_key": "identity.password_changed",
+    "name": "Password Changed",
+    "steps": [
+      {
+        "type": "in_app",
+        "template": "Your password was changed successfully."
+      },
+      {
+        "type": "email",
+        "subject": "Your AM password was changed",
+        "template": "Your password was changed. If this was not you, contact support immediately."
+      }
+    ]
+  },
+  {
+    "workflow_key": "subscription.created",
+    "name": "Subscription Created",
+    "steps": [
+      {
+        "type": "in_app",
+        "template": "Welcome to {{plan_name}}!"
+      },
+      {
+        "type": "email",
+        "subject": "Your {{plan_name}} plan is active",
+        "template": "Your {{plan_name}} subscription is now active."
+      }
+    ]
+  },
+  {
+    "workflow_key": "subscription.suspended",
+    "name": "Subscription Suspended",
+    "steps": [
+      {
+        "type": "in_app",
+        "template": "Your subscription has been suspended. Reason: {{reason}}"
+      },
+      {
+        "type": "email",
+        "subject": "AM subscription suspended",
+        "template": "Your subscription has been suspended. Reason: {{reason}}"
+      }
+    ]
+  },
+  {
+    "workflow_key": "subscription.renewed",
+    "name": "Subscription Renewed",
+    "steps": [
+      {
+        "type": "in_app",
+        "template": "Your {{plan_name}} subscription has been renewed."
+      }
+    ]
+  },
+  {
+    "workflow_key": "usage.quota_exceeded",
+    "name": "Usage Quota Exceeded",
+    "steps": [
+      {
+        "type": "in_app",
+        "template": "You have exceeded your {{metric}} quota."
+      },
+      {
+        "type": "email",
+        "subject": "AM usage quota exceeded",
+        "template": "You have exceeded your {{metric}} quota on plan {{plan_name}}."
+      }
+    ]
+  }
+]

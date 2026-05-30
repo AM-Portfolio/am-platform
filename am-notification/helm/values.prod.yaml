@@ -1,0 +1,38 @@
+# Production Environment — am-notification
+environment: prod
+replicaCount: 2
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 768Mi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+vault:
+  enabled: true
+  secretPaths:
+    mongodb:
+      path: "secret/data/prod/infra/mongodb"
+    kafka:
+      path: "secret/data/prod/infra/kafka"
+    notification:
+      path: "secret/data/prod/services/am-notification"
+    novu:
+      path: "secret/data/prod/services/am-novu"
+
+ingress:
+  enabled: true
+  className: "traefik"
+  hosts:
+    - host: am.asrax.in
+      paths:
+        - path: /api/notifications
+          pathType: Prefix
+        - path: /api/webhooks/novu
+          pathType: Prefix
+
+env:
+  APP_ENV: production
+  LOG_LEVEL: INFO

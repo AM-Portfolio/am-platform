@@ -1,0 +1,575 @@
+{
+  "info": {
+    "_postman_id": "am-subscription-collection-v1",
+    "name": "AM Subscription Service",
+    "description": "Organized API collection for **am-subscription** (port 8110).\n\n## Quick start\n1. Import `AM-Subscription.local.postman_environment.json`\n2. Run **00 Health → Health Check**\n3. Run **99 Keycloak Helpers → Password Login** (or login via AM Identity collection)\n4. Run **02 Subscriptions → Get My Subscription**\n5. For internal routes: **Client Credentials (am-portfolio-service)** then **03 Internal**\n\n## Folders\n| Folder | Purpose |\n|--------|----------|\n| 00 Health | Liveness |\n| 01 Plans | Public plan catalog (Free / Pro / Premium) |\n| 02 Subscriptions | User JWT — create, me, upgrade, pause, cancel |\n| 03 Internal | Service token — entitlements, check, meter, bootstrap |\n| 04 Webhooks | Lago provider webhook simulation |\n| 99 Keycloak Helpers | Tokens for user + service-account flows |\n\n## Gateway (future)\nPublic routes via Traefik: `/api/subscriptions/*`",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.environment.get('base_url')) {",
+          "    pm.environment.set('base_url', 'http://localhost:8110');",
+          "}",
+          "if (!pm.environment.get('idempotency_key')) {",
+          "    pm.environment.set('idempotency_key', pm.variables.replaceIn('{{$guid}}'));",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const ok = pm.response.code >= 200 && pm.response.code < 300;",
+          "if (!ok) return;",
+          "try {",
+          "  const body = pm.response.json();",
+          "  if (body.access_token) {",
+          "    pm.environment.set('access_token', body.access_token);",
+          "    pm.collectionVariables.set('access_token', body.access_token);",
+          "  }",
+          "  if (body.data) {",
+          "    const d = body.data;",
+          "    if (d.id) {",
+          "      pm.environment.set('subscription_id', d.id);",
+          "      pm.collectionVariables.set('subscription_id', d.id);",
+          "    }",
+          "    if (d.user_id) {",
+          "      pm.environment.set('user_sub', d.user_id);",
+          "      pm.collectionVariables.set('user_sub', d.user_id);",
+          "    }",
+          "    if (Array.isArray(d) && d.length && d[0].code) {",
+          "      pm.environment.set('plan_code', d[0].code);",
+          "    }",
+          "  }",
+          "} catch (e) {}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8110" },
+    { "key": "keycloak_url", "value": "http://auth.munish.org/auth" },
+    { "key": "keycloak_realm", "value": "am-realm" },
+    { "key": "access_token", "value": "" },
+    { "key": "service_access_token", "value": "" },
+    { "key": "user_sub", "value": "" },
+    { "key": "subscription_id", "value": "" },
+    { "key": "plan_code", "value": "am_free" },
+    { "key": "upgrade_plan_code", "value": "am_pro" },
+    { "key": "idempotency_key", "value": "" },
+    { "key": "test_email", "value": "test.user@example.com" },
+    { "key": "test_password", "value": "TestPass123!" }
+  ],
+  "item": [
+    {
+      "name": "00 Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/health",
+            "description": "Service liveness. Expect `{\"status\":\"ok\",\"service\":\"am-subscription\"}`."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "01 Plans",
+      "description": "Public plan catalog — no auth required.",
+      "item": [
+        {
+          "name": "List All Plans",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/subscriptions/plans",
+              "host": ["{{base_url}}"],
+              "path": ["subscriptions", "plans"]
+            },
+            "description": "Returns Free, Pro, Premium tiers from `lago-plans.json`."
+          },
+          "response": []
+        },
+        {
+          "name": "List Monthly Plans",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/subscriptions/plans?interval=monthly",
+              "host": ["{{base_url}}"],
+              "path": ["subscriptions", "plans"],
+              "query": [{ "key": "interval", "value": "monthly" }]
+            },
+            "description": "Filter plans by billing interval."
+          },
+          "response": []
+        },
+        {
+          "name": "List Annual Plans",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/subscriptions/plans?interval=yearly",
+              "host": ["{{base_url}}"],
+              "path": ["subscriptions", "plans"],
+              "query": [{ "key": "interval", "value": "yearly" }]
+            },
+            "description": "Annual variants: am_pro_annual, am_premium_annual."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "02 Subscriptions (Bearer Required)",
+      "description": "User-facing subscription lifecycle. Run **99 Keycloak Helpers → Password Login** first to set `access_token`.",
+      "item": [
+        {
+          "name": "Create Subscription",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"plan_code\": \"{{plan_code}}\",\n  \"billing_interval\": \"monthly\",\n  \"tenant_id\": null\n}"
+            },
+            "url": "{{base_url}}/subscriptions",
+            "description": "Create or return existing subscription. Defaults to `am_free` if plan_code omitted. Saves `subscription_id`."
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Subscription",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/subscriptions/me",
+            "description": "Current plan, limits, entitlements, and usage snapshot. Auto-creates free tier if missing."
+          },
+          "response": []
+        },
+        {
+          "name": "Upgrade to Pro",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }]
+            },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"plan_code\": \"{{upgrade_plan_code}}\",\n  \"billing_interval\": \"monthly\",\n  \"reason\": \"user_upgrade_from_postman\"\n}"
+            },
+            "url": "{{base_url}}/subscriptions/{{subscription_id}}/upgrade",
+            "description": "Change plan (e.g. am_free → am_pro). Requires `subscription_id` from Get My Subscription."
+          },
+          "response": []
+        },
+        {
+          "name": "Pause Subscription",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }]
+            },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"user_paused_from_postman\"\n}"
+            },
+            "url": "{{base_url}}/subscriptions/{{subscription_id}}/pause",
+            "description": "Transition active → paused."
+          },
+          "response": []
+        },
+        {
+          "name": "Resume Subscription",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }]
+            },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"user_resumed_from_postman\"\n}"
+            },
+            "url": "{{base_url}}/subscriptions/{{subscription_id}}/resume",
+            "description": "Transition paused → active."
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Subscription",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }]
+            },
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"user_cancelled_from_postman\"\n}"
+            },
+            "url": "{{base_url}}/subscriptions/{{subscription_id}}/cancel",
+            "description": "Cancel subscription and sync with Lago."
+          },
+          "response": []
+        },
+        {
+          "name": "Usage History",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/subscriptions/usage/history",
+            "description": "Metered usage records for the authenticated user."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03 Internal (Service Token Required)",
+      "description": "For **am-gateway** and **am-portfolio-service**. Run **Client Credentials (am-portfolio-service)** first. Set `user_sub` to the Keycloak user id under test.",
+      "item": [
+        {
+          "name": "Bootstrap User Subscription",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{service_access_token}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/subscriptions/internal/bootstrap/{{user_sub}}?plan_code={{plan_code}}",
+              "host": ["{{base_url}}"],
+              "path": ["subscriptions", "internal", "bootstrap", "{{user_sub}}"],
+              "query": [{ "key": "plan_code", "value": "{{plan_code}}" }]
+            },
+            "description": "Ensure user has a subscription (defaults to free). Used by backend services on first login."
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Entitlements",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{service_access_token}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/subscriptions/internal/entitlements/{{user_sub}}",
+            "description": "Full entitlement snapshot for gateway caching (60s TTL)."
+          },
+          "response": []
+        },
+        {
+          "name": "Check Entitlement — Document Parse",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set('idempotency_key', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{service_access_token}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_sub}}\",\n  \"tenant_id\": null,\n  \"feature\": \"document_parsing\",\n  \"action\": \"document.parse\",\n  \"quantity\": 1,\n  \"idempotency_key\": \"{{idempotency_key}}\"\n}"
+            },
+            "url": "{{base_url}}/subscriptions/internal/check",
+            "description": "Gateway pre-flight check before document parse. Returns 429 if quota exceeded."
+          },
+          "response": []
+        },
+        {
+          "name": "Check Entitlement — Live Market Data",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set('idempotency_key', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{service_access_token}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_sub}}\",\n  \"tenant_id\": null,\n  \"feature\": \"live_market_data\",\n  \"action\": \"stream.open\",\n  \"quantity\": 1,\n  \"idempotency_key\": \"{{idempotency_key}}\"\n}"
+            },
+            "url": "{{base_url}}/subscriptions/internal/check",
+            "description": "Feature-flag check (Pro/Premium only)."
+          },
+          "response": []
+        },
+        {
+          "name": "Record Meter — Document Parse",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set('idempotency_key', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{service_access_token}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_sub}}\",\n  \"metric_code\": \"document_parses\",\n  \"quantity\": 1,\n  \"idempotency_key\": \"{{idempotency_key}}\",\n  \"properties\": null\n}"
+            },
+            "url": "{{base_url}}/subscriptions/internal/meter",
+            "description": "Idempotent usage record — buffers locally and syncs to Lago."
+          },
+          "response": []
+        },
+        {
+          "name": "Record Meter — API Call",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.set('idempotency_key', pm.variables.replaceIn('{{$guid}}'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{service_access_token}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{user_sub}}\",\n  \"metric_code\": \"api_calls\",\n  \"quantity\": 1,\n  \"idempotency_key\": \"{{idempotency_key}}\",\n  \"properties\": null\n}"
+            },
+            "url": "{{base_url}}/subscriptions/internal/meter",
+            "description": "Gateway metering endpoint."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "04 Webhooks",
+      "description": "Simulate Lago billing webhooks (no auth in dev).",
+      "item": [
+        {
+          "name": "Provider Webhook — Subscription Started",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Lago-Signature", "value": "test-signature", "disabled": true }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"webhook_type\": \"subscription.started\",\n  \"webhook_id\": \"wh-{{$guid}}\",\n  \"customer\": {\n    \"external_id\": \"am-user-{{user_sub}}\"\n  },\n  \"subscription\": {\n    \"external_customer_id\": \"am-user-{{user_sub}}\",\n    \"plan_code\": \"{{plan_code}}\"\n  }\n}"
+            },
+            "url": "{{base_url}}/webhooks/provider",
+            "description": "Maps to `am.subscription.created.v1` platform event."
+          },
+          "response": []
+        },
+        {
+          "name": "Provider Webhook — Payment Failure",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"webhook_type\": \"invoice.payment_failure\",\n  \"webhook_id\": \"wh-{{$guid}}\",\n  \"customer\": {\n    \"external_id\": \"am-user-{{user_sub}}\"\n  }\n}"
+            },
+            "url": "{{base_url}}/webhooks/provider",
+            "description": "Maps to `am.subscription.suspended.v1` platform event."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "99 Keycloak Helpers (Setup / Debug)",
+      "description": "Obtain JWTs for user and service-account flows.",
+      "item": [
+        {
+          "name": "OIDC Discovery",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{keycloak_url}}/realms/{{keycloak_realm}}/.well-known/openid-configuration",
+            "description": "OpenID configuration document."
+          },
+          "response": []
+        },
+        {
+          "name": "Password Login (am-web-client)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  if (b.access_token) {",
+                  "    pm.environment.set('access_token', b.access_token);",
+                  "    try {",
+                  "      const payload = JSON.parse(atob(b.access_token.split('.')[1]));",
+                  "      if (payload.sub) pm.environment.set('user_sub', payload.sub);",
+                  "    } catch (e) {}",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "grant_type", "value": "password" },
+                { "key": "client_id", "value": "am-web-client" },
+                { "key": "username", "value": "{{test_email}}" },
+                { "key": "password", "value": "{{test_password}}" }
+              ]
+            },
+            "url": "{{keycloak_url}}/realms/{{keycloak_realm}}/protocol/openid-connect/token",
+            "description": "User JWT for subscription routes. Saves `access_token` and `user_sub`."
+          },
+          "response": []
+        },
+        {
+          "name": "Client Credentials (am-portfolio-service)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  if (b.access_token) {",
+                  "    pm.environment.set('service_access_token', b.access_token);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "grant_type", "value": "client_credentials" },
+                { "key": "client_id", "value": "{{portfolio_client_id}}" },
+                { "key": "client_secret", "value": "{{portfolio_client_secret}}" }
+              ]
+            },
+            "url": "{{keycloak_url}}/realms/{{keycloak_realm}}/protocol/openid-connect/token",
+            "description": "Machine token for internal subscription routes (am-portfolio backend)."
+          },
+          "response": []
+        },
+        {
+          "name": "Client Credentials (am-gateway-client)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const b = pm.response.json();",
+                  "  if (b.access_token) {",
+                  "    pm.environment.set('service_access_token', b.access_token);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "grant_type", "value": "client_credentials" },
+                { "key": "client_id", "value": "{{gateway_client_id}}" },
+                { "key": "client_secret", "value": "{{gateway_client_secret}}" }
+              ]
+            },
+            "url": "{{keycloak_url}}/realms/{{keycloak_realm}}/protocol/openid-connect/token",
+            "description": "Machine token for API gateway entitlement checks."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

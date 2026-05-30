@@ -1,0 +1,45 @@
+# Dev Environment — am-identity
+environment: dev
+replicaCount: 1
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+hostAliases:
+  - ip: "203.174.22.129"
+    hostnames:
+      - "auth.munish.org"
+
+vault:
+  enabled: true
+  secretPaths:
+    keycloak:
+      path: "apps/data/dev/services/am-identity"
+    auth:
+      path: "apps/data/dev/services/am-auth"
+
+ingress:
+  enabled: true
+  className: "traefik"
+  annotations:
+    kubernetes.io/ingress.class: "traefik"
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.middlewares: >-
+      am-apps-dev-dev-global-cors@kubernetescrd,
+      am-apps-dev-dev-strip-prefix@kubernetescrd
+  hosts:
+    - host: am-dev.asrax.in
+      paths:
+        - path: /api/auth
+          pathType: Prefix
+        - path: /api/users
+          pathType: Prefix
+
+env:
+  APP_ENV: dev
+  LOG_LEVEL: DEBUG

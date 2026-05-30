@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.5
+    container_name: am-keycloak
+    command: start-dev
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - KC_DB=postgres
+      - KC_DB_URL=jdbc:postgresql://host.docker.internal:5432/portfolio
+      - KC_DB_USERNAME=postgres
+      - KC_DB_PASSWORD=password123
+      - KC_HEALTH_ENABLED=true
+      - KC_METRICS_ENABLED=true
+      - KC_HTTP_RELATIVE_PATH=/auth
+    ports:
+      - "8180:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080 && echo -e \"GET /auth/health/live HTTP/1.1\\r\\nHost: localhost\\r\\n\\r\" >&3 && grep -q \"UP\" <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

@@ -1,0 +1,49 @@
+# Dev Environment — am-subscription
+environment: dev
+replicaCount: 1
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+hostAliases:
+  - ip: "203.174.22.129"
+    hostnames:
+      - "postgres.asrax.in"
+      - "lago.asrax.in"
+      - "lago-api.asrax.in"
+
+vault:
+  enabled: true
+  secretPaths:
+    postgres:
+      path: "apps/data/dev/infra/postgres"
+    subscription:
+      path: "apps/data/dev/services/am-subscription"
+    lago:
+      path: "apps/data/dev/services/am-lago"
+
+ingress:
+  enabled: true
+  className: "traefik"
+  annotations:
+    kubernetes.io/ingress.class: "traefik"
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.middlewares: >-
+      am-apps-dev-dev-global-cors@kubernetescrd,
+      am-apps-dev-dev-strip-prefix@kubernetescrd
+  hosts:
+    - host: am-dev.asrax.in
+      paths:
+        - path: /api/subscriptions
+          pathType: Prefix
+        - path: /api/webhooks/provider
+          pathType: Prefix
+
+env:
+  APP_ENV: dev
+  LOG_LEVEL: DEBUG

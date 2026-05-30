@@ -1,0 +1,52 @@
+# Dev Environment — am-notification
+environment: dev
+replicaCount: 1
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+hostAliases:
+  - ip: "203.174.22.129"
+    hostnames:
+      - "mongodb.asrax.in"
+      - "kafka.asrax.in"
+      - "novu-api.asrax.in"
+
+vault:
+  enabled: true
+  secretPaths:
+    mongodb:
+      path: "apps/data/dev/infra/mongodb"
+    kafka:
+      path: "apps/data/dev/infra/kafka"
+    notification:
+      path: "apps/data/dev/services/am-notification"
+    novu:
+      path: "apps/data/dev/services/am-novu"
+
+ingress:
+  enabled: true
+  className: "traefik"
+  annotations:
+    kubernetes.io/ingress.class: "traefik"
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.middlewares: >-
+      am-apps-dev-dev-global-cors@kubernetescrd,
+      am-apps-dev-dev-strip-prefix@kubernetescrd
+  hosts:
+    - host: am-dev.asrax.in
+      paths:
+        - path: /api/notifications
+          pathType: Prefix
+        - path: /api/webhooks/novu
+          pathType: Prefix
+
+env:
+  APP_ENV: dev
+  LOG_LEVEL: DEBUG
+  KAFKA_ENABLED: "false"

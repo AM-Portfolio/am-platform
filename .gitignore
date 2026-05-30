@@ -1,0 +1,65 @@
+# ============================================================
+# CREDENTIALS — NEVER COMMIT THESE
+# ============================================================
+.secrets.env
+*.secrets.env
+secrets/
+**/.secrets/
+
+# ============================================================
+# TERRAFORM STATE — contains plaintext secrets after apply
+# ============================================================
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfplan
+automation/terraform/**/.terraform/
+automation/terraform/.terraform/
+automation/terraform/.terraform.lock.hcl
+automation/.bin/
+
+# ============================================================
+# ENVIRONMENT FILES — real values only in .env.example (safe)
+# ============================================================
+.env
+.env.local
+.env.*.local
+!.env.example
+automation/helm/lago-admin.generated.yaml
+automation/helm/*-admin.generated.yaml
+**/kubeconfig*
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+
+# ============================================================
+# PYTHON
+# ============================================================
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+.pytest_cache/
+
+# ============================================================
+# NODE / NPM
+# ============================================================
+node_modules/
+
+# ============================================================
+# RUNTIME LOGS (npm run-with-logs output)
+# ============================================================
+logs/*
+!logs/README.md
+
+# ============================================================
+# OS / IDE
+# ============================================================
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
