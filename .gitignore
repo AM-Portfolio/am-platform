@@ -3,8 +3,17 @@
 # ============================================================
 .secrets.env
 *.secrets.env
+.secrets.*.env
 secrets/
 **/.secrets/
+
+# Postman environments (contain credentials)
+postman/AM-Platform.dev.postman_environment.json
+postman/AM-Platform.preprod.postman_environment.json
+postman/AM-Platform.prod.postman_environment.json
+
+# Terraform generated outputs (contain tokens and client secrets)
+automation/terraform/keycloak/*_outputs.json
 
 # ============================================================
 # TERRAFORM STATE — contains plaintext secrets after apply
@@ -16,6 +25,16 @@ automation/terraform/**/.terraform/
 automation/terraform/.terraform/
 automation/terraform/.terraform.lock.hcl
 automation/.bin/
+
+# ============================================================
+# TERRAFORM SECRETS — per-environment var files (contain creds)
+# ============================================================
+automation/terraform/keycloak/terraform.dev.tfvars
+automation/terraform/keycloak/terraform.preprod.tfvars
+automation/terraform/keycloak/terraform.prod.tfvars
+automation/terraform/keycloak/generated.auto.tfvars.json
+automation/terraform/**/generated.auto.tfvars.json
+
 
 # ============================================================
 # ENVIRONMENT FILES — real values only in .env.example (safe)

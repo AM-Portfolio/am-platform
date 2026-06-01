@@ -22,7 +22,7 @@ provider "keycloak" {
 resource "keycloak_realm" "am_realm" {
   realm        = var.realm_name
   enabled      = true
-  display_name = "AM Ecosystem Realm"
+  display_name = "AM Ecosystem — ${upper(var.environment)}"
 
   # Password & Login Policy
   reset_password_allowed         = true
@@ -30,7 +30,7 @@ resource "keycloak_realm" "am_realm" {
   registration_email_as_username = true
   login_with_email_allowed       = true
   duplicate_emails_allowed       = false
-  verify_email                   = false # Enable in production
+  verify_email                   = var.verify_email # true in prod only
 
   # Session TTLs (recommended baseline)
   sso_session_idle_timeout = "30m"
@@ -112,18 +112,18 @@ resource "keycloak_openid_client" "am_web_client" {
   direct_access_grants_enabled = false
   service_accounts_enabled     = false
 
-  valid_redirect_uris = [
+  # Driven by var.valid_redirect_uris from per-env tfvars
+  valid_redirect_uris = length(var.valid_redirect_uris) > 0 ? var.valid_redirect_uris : [
     "http://localhost:9000/*",
     "https://am.munish.org/*",
     "https://am.asrax.in/*",
-    "https://am-dev.asrax.in/*",
   ]
 
-  web_origins = [
+  # Driven by var.web_origins from per-env tfvars
+  web_origins = length(var.web_origins) > 0 ? var.web_origins : [
     "http://localhost:9000",
     "https://am.munish.org",
     "https://am.asrax.in",
-    "https://am-dev.asrax.in",
   ]
 
   login_theme = ""

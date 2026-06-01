@@ -23,6 +23,188 @@ entrypoint: "exec uvicorn am_subscription.main:app --host 0.0.0.0 --port 8080"
 
 security:
   automountServiceAccountToken: true
+configMap:
+  enabled: true
+  mountPath: /app/automation/helm
+  data:
+    lago-plans.json: |
+      {
+        "currency": "INR",
+        "billable_metrics": [
+          {
+            "code": "document_parses",
+            "name": "AI Document Parses",
+            "description": "Number of AI document parse operations per billing period",
+            "aggregation_type": "count_agg"
+          },
+          {
+            "code": "portfolios",
+            "name": "Portfolios",
+            "description": "Active portfolio count (max during period)",
+            "aggregation_type": "max_agg",
+            "field_name": "active_count"
+          },
+          {
+            "code": "ai_portfolio_summaries",
+            "name": "AI Portfolio Summaries",
+            "description": "Basic AI portfolio summary generations per period",
+            "aggregation_type": "count_agg"
+          },
+          {
+            "code": "api_calls",
+            "name": "API Calls",
+            "description": "Gateway and service API calls for metering",
+            "aggregation_type": "count_agg"
+          }
+        ],
+        "plans": [
+          {
+            "code": "am_free",
+            "name": "Free",
+            "interval": "monthly",
+            "description": "Perfect for getting started with basic tracking.",
+            "amount_inr": 0,
+            "features": [
+              "1 Portfolio tracking",
+              "End-of-day market data",
+              "Basic security search & charting",
+              "Standard trade journal",
+              "Up to 5 AI Document Parses/mo",
+              "Basic AI Portfolio Summary (1/mo)"
+            ],
+            "limits": {
+              "document_parses": 5,
+              "portfolios": 1,
+              "ai_portfolio_summaries": 1,
+              "api_calls": 1000
+            },
+            "entitlements": {
+              "live_market_data": false,
+              "realtime_indices": false,
+              "tradingview_charts": false,
+              "basket_trading": false
+            }
+          },
+          {
+            "code": "am_pro",
+            "name": "Pro",
+            "interval": "monthly",
+            "description": "Advanced tools for active investors and traders.",
+            "amount_inr": 999,
+            "features": [
+              "Up to 5 Portfolios",
+              "Real-time indices tracking",
+              "Interactive TradingView charts",
+              "Interactive sector heatmaps",
+              "Calendar-based trade analytics",
+              "Win/Loss ratio tracking",
+              "Up to 50 AI Document Parses/mo",
+              "Auto Trade Categorization",
+              "AI Portfolio Insights & Health Check",
+              "AI Trade Performance Analytics"
+            ],
+            "limits": {
+              "document_parses": 50,
+              "portfolios": 5,
+              "ai_portfolio_summaries": 20,
+              "api_calls": 50000
+            },
+            "entitlements": {
+              "live_market_data": true,
+              "realtime_indices": true,
+              "tradingview_charts": true,
+              "basket_trading": false
+            }
+          },
+          {
+            "code": "am_pro_annual",
+            "name": "Pro (Annual)",
+            "interval": "yearly",
+            "description": "Pro plan billed annually (₹799/mo effective).",
+            "amount_inr": 9588,
+            "features": [
+              "Up to 5 Portfolios",
+              "Real-time indices tracking",
+              "Interactive TradingView charts",
+              "Up to 50 AI Document Parses/mo",
+              "AI Portfolio Insights & Health Check"
+            ],
+            "limits": {
+              "document_parses": 50,
+              "portfolios": 5,
+              "ai_portfolio_summaries": 20,
+              "api_calls": 50000
+            },
+            "entitlements": {
+              "live_market_data": true,
+              "realtime_indices": true,
+              "tradingview_charts": true,
+              "basket_trading": false
+            }
+          },
+          {
+            "code": "am_premium",
+            "name": "Premium",
+            "interval": "monthly",
+            "description": "The ultimate suite for professionals and active traders.",
+            "amount_inr": 1999,
+            "features": [
+              "Basket creation & management",
+              "One-click basket execution",
+              "Advanced trade management",
+              "Up to 20 Portfolios & Analytics",
+              "ETF Explorer & key metrics",
+              "Up to 200 AI Document Parses/mo",
+              "Custom AI Trading Bots",
+              "Predictive Market Analytics",
+              "AI Portfolio Rebalancing Advice",
+              "AI Market Sentiment Analysis",
+              "AI Trade Setup Coach"
+            ],
+            "limits": {
+              "document_parses": 200,
+              "portfolios": 20,
+              "ai_portfolio_summaries": 100,
+              "api_calls": 250000
+            },
+            "entitlements": {
+              "live_market_data": true,
+              "realtime_indices": true,
+              "tradingview_charts": true,
+              "basket_trading": true,
+              "custom_ai_bots": true,
+              "predictive_analytics": true
+            }
+          },
+          {
+            "code": "am_premium_annual",
+            "name": "Premium (Annual)",
+            "interval": "yearly",
+            "description": "Premium plan billed annually (₹1599/mo effective).",
+            "amount_inr": 19188,
+            "features": [
+              "Up to 20 Portfolios & Analytics",
+              "Up to 200 AI Document Parses/mo",
+              "Custom AI Trading Bots",
+              "Predictive Market Analytics"
+            ],
+            "limits": {
+              "document_parses": 200,
+              "portfolios": 20,
+              "ai_portfolio_summaries": 100,
+              "api_calls": 250000
+            },
+            "entitlements": {
+              "live_market_data": true,
+              "realtime_indices": true,
+              "tradingview_charts": true,
+              "basket_trading": true,
+              "custom_ai_bots": true,
+              "predictive_analytics": true
+            }
+          }
+        ]
+      }
 
 # Empty stub — universal-chart batchSearch/scheduler templates require config to exist
 config: {}
@@ -36,6 +218,8 @@ env:
   TZ: Asia/Kolkata
   AM_SUBSCRIPTION_POSTGRES_SSL: "false"
   DEFAULT_PLAN_CODE: am_free
+  OIDC_ISSUER: "http://auth.munish.org/auth/realms/am-realm"
+  OIDC_JWKS_URL: "http://auth.munish.org/auth/realms/am-realm/protocol/openid-connect/certs"
 
 probes:
   port: 8080

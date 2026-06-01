@@ -218,15 +218,21 @@ def write_json(path: Path, data: dict) -> None:
 def main() -> None:
     collection_path = ROOT / "AM-Platform.postman_collection.json"
     local_path = ROOT / "AM-Platform.local.postman_environment.json"
+    dev_path = ROOT / "AM-Platform.dev.postman_environment.json"
     preprod_path = ROOT / "AM-Platform.preprod.postman_environment.json"
+    prod_path = ROOT / "AM-Platform.prod.postman_environment.json"
 
     write_json(collection_path, build_collection())
     write_json(local_path, build_environment("local"))
+    write_json(dev_path, build_environment("dev"))
     write_json(preprod_path, build_environment("preprod"))
+    write_json(prod_path, build_environment("prod"))
 
     print(f"Wrote {collection_path.name}")
     print(f"Wrote {local_path.name}")
+    print(f"Wrote {dev_path.name}")
     print(f"Wrote {preprod_path.name}")
+    print(f"Wrote {prod_path.name}")
     print(f"Scripts: {SCRIPTS.name}/collection-prerequest.js, collection-test.js")
     print(f"Modules: {', '.join(m['folder'] for m in MODULES)}")
 

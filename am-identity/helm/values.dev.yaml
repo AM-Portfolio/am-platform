@@ -10,10 +10,6 @@ resources:
     cpu: 100m
     memory: 256Mi
 
-hostAliases:
-  - ip: "203.174.22.129"
-    hostnames:
-      - "auth.munish.org"
 
 vault:
   enabled: true

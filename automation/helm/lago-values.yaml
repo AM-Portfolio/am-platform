@@ -27,81 +27,81 @@ global:
 api:
   livenessProbe:
     enabled: true
-    initialDelaySeconds: 90
+    initialDelaySeconds: 180
   readinessProbe:
     enabled: true
-    initialDelaySeconds: 90
+    initialDelaySeconds: 180
   resources:
     requests:
-      cpu: "10m"
-      memory: "256Mi"
+      cpu: "200m"
+      memory: "512Mi"
     limits:
-      cpu: "500m"
-      memory: "1Gi"
+      cpu: "1000m"
+      memory: "4Gi"
 
 worker:
   livenessProbe:
     enabled: true
-    initialDelaySeconds: 90
+    initialDelaySeconds: 240
   resources:
     requests:
-      cpu: "10m"
-      memory: "256Mi"
+      cpu: "100m"
+      memory: "512Mi"
     limits:
-      cpu: "500m"
-      memory: "1Gi"
+      cpu: "1000m"
+      memory: "2Gi"
 
 billingWorker:
   enabled: true
   livenessProbe:
     enabled: true
-    initialDelaySeconds: 90
+    initialDelaySeconds: 240
   resources:
     requests:
-      cpu: "10m"
-      memory: "256Mi"
+      cpu: "100m"
+      memory: "512Mi"
     limits:
-      cpu: "500m"
-      memory: "1Gi"
+      cpu: "1000m"
+      memory: "2Gi"
 
 eventsWorker:
   enabled: true
   livenessProbe:
     enabled: true
-    initialDelaySeconds: 90
+    initialDelaySeconds: 240
   resources:
     requests:
-      cpu: "10m"
-      memory: "256Mi"
+      cpu: "100m"
+      memory: "512Mi"
     limits:
-      cpu: "500m"
-      memory: "1Gi"
+      cpu: "1000m"
+      memory: "2Gi"
 
 paymentWorker:
   enabled: true
   livenessProbe:
     enabled: true
-    initialDelaySeconds: 90
+    initialDelaySeconds: 240
   resources:
     requests:
-      cpu: "10m"
-      memory: "256Mi"
+      cpu: "100m"
+      memory: "512Mi"
     limits:
-      cpu: "500m"
-      memory: "1Gi"
+      cpu: "1000m"
+      memory: "2Gi"
 
 webhookWorker:
   enabled: true
   livenessProbe:
     enabled: true
-    initialDelaySeconds: 90
+    initialDelaySeconds: 240
   resources:
     requests:
-      cpu: "10m"
-      memory: "256Mi"
+      cpu: "100m"
+      memory: "512Mi"
     limits:
-      cpu: "500m"
-      memory: "1Gi"
+      cpu: "1000m"
+      memory: "2Gi"
 
 pdf:
   resources:
@@ -116,14 +116,14 @@ pdfWorker:
   enabled: true
   livenessProbe:
     enabled: true
-    initialDelaySeconds: 90
+    initialDelaySeconds: 240
   resources:
     requests:
-      cpu: "10m"
-      memory: "256Mi"
+      cpu: "100m"
+      memory: "512Mi"
     limits:
-      cpu: "500m"
-      memory: "1Gi"
+      cpu: "1000m"
+      memory: "2Gi"
 
 front:
   resources:
@@ -138,11 +138,11 @@ clockWorker:
   enabled: true
   livenessProbe:
     enabled: true
-    initialDelaySeconds: 90
+    initialDelaySeconds: 240
   resources:
     requests:
-      cpu: "10m"
-      memory: "128Mi"
+      cpu: "100m"
+      memory: "256Mi"
     limits:
-      cpu: "200m"
-      memory: "512Mi"
+      cpu: "500m"
+      memory: "1Gi"

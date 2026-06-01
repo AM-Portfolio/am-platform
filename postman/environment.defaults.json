@@ -48,17 +48,43 @@
         "google_redirect_uri": "http://localhost:9000/callback"
       }
     },
+    "dev": {
+      "id": "am-platform-dev-env",
+      "name": "AM Platform — Dev",
+      "values": {
+        "platform_env": "dev",
+        "identity_base_url": "https://am-dev.asrax.in/identity",
+        "subscription_base_url": "https://am-dev.asrax.in/subscriptions",
+        "notification_base_url": "https://am-dev.asrax.in/notifications",
+        "base_url": "https://am-dev.asrax.in/identity",
+        "keycloak_url": "https://auth.munish.org/auth",
+        "google_redirect_uri": "https://am-dev.asrax.in/callback"
+      }
+    },
     "preprod": {
       "id": "am-platform-preprod-env",
       "name": "AM Platform — Preprod",
       "values": {
         "platform_env": "preprod",
-        "identity_base_url": "https://am-dev.asrax.in/api",
-        "subscription_base_url": "https://am-dev.asrax.in/api",
-        "notification_base_url": "https://am-dev.asrax.in/api",
-        "base_url": "https://am-dev.asrax.in/api",
+        "identity_base_url": "https://am.asrax.in/identity",
+        "subscription_base_url": "https://am.asrax.in/subscriptions",
+        "notification_base_url": "https://am.asrax.in/notifications",
+        "base_url": "https://am.asrax.in/identity",
         "keycloak_url": "https://auth.munish.org/auth",
-        "google_redirect_uri": "https://am-dev.asrax.in/callback"
+        "google_redirect_uri": "https://am.asrax.in/callback"
+      }
+    },
+    "prod": {
+      "id": "am-platform-prod-env",
+      "name": "AM Platform — Prod",
+      "values": {
+        "platform_env": "prod",
+        "identity_base_url": "https://am.asrax.in/identity",
+        "subscription_base_url": "https://am.asrax.in/subscriptions",
+        "notification_base_url": "https://am.asrax.in/notifications",
+        "base_url": "https://am.asrax.in/identity",
+        "keycloak_url": "https://auth.munish.org/auth",
+        "google_redirect_uri": "https://am.asrax.in/callback"
       }
     }
   },

@@ -168,7 +168,7 @@ $escapedOrg = $lagoOrgName -replace '"', '\"'
 job:
   migrate:
     extraEnv:
-      LAGO_CREATE_ORG: "true"
+      LAGO_CREATE_ORG: "false"
       LAGO_ORG_USER_EMAIL: "$escapedEmail"
       LAGO_ORG_USER_PASSWORD: "$escapedPassword"
       LAGO_ORG_NAME: "$escapedOrg"
@@ -186,6 +186,7 @@ helm upgrade --install lago lago/lago `
   --namespace billing `
   --create-namespace `
   --kubeconfig $kubeconfigPath `
+  --no-hooks `
   -f $valuesPath `
   -f $adminValuesPath `
   --set global.databaseUrl=$databaseUrl `
