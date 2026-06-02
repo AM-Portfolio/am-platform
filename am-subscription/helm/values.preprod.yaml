@@ -24,3 +24,11 @@ vault:
 env:
   APP_ENV: preprod
   LOG_LEVEL: INFO
+
+ingress:
+  hosts:
+    - host: am.asrax.in
+      paths:
+        - path: /webhooks/provider
+          pathType: Prefix
+
