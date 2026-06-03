@@ -27,3 +27,5 @@ vault:
 env:
   APP_ENV: preprod
   LOG_LEVEL: INFO
+  OIDC_ISSUER: "http://auth.munish.org/auth/realms/am-preprod-realm"
+  OIDC_JWKS_URL: "http://auth.munish.org/auth/realms/am-preprod-realm/protocol/openid-connect/certs"
