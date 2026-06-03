@@ -25,3 +25,7 @@ vault:
       mappings:
         NOVU_API_URL: "NOVU_API_URL"
         NOVU_API_KEY: "NOVU_API_KEY"
+    identity-oidc:
+      mappings:
+        OIDC_JWKS_URL: "OIDC_JWKS_URL"
+        OIDC_ISSUER: "OIDC_ISSUER"

@@ -24,3 +24,7 @@ vault:
       mappings:
         LAGO_API_URL: "LAGO_API_URL"
         LAGO_ORG_API_KEY: "LAGO_ORG_API_KEY"
+    identity-oidc:
+      mappings:
+        OIDC_JWKS_URL: "OIDC_JWKS_URL"
+        OIDC_ISSUER: "OIDC_ISSUER"
