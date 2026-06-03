@@ -29,6 +29,7 @@ class IdentitySettings(BaseSettings):
     )
 
     service_token_ttl: int = Field(default=300, alias="SERVICE_TOKEN_TTL")
+    ssl_verify: bool = Field(default=True, alias="SSL_VERIFY")
 
     model_config = SettingsConfigDict(
         env_file=".env",

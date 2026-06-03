@@ -70,7 +70,7 @@ class KeycloakIdentityProvider(IIdentityProvider):
         )
 
     async def _request_token(self, data: dict[str, str]) -> dict[str, Any]:
-        async with httpx.AsyncClient(timeout=self._session_timeout) as client:
+        async with httpx.AsyncClient(timeout=self._session_timeout, verify=self.settings.ssl_verify) as client:
             response = await client.post(self.settings.oidc_token_url, data=data)
         if response.status_code >= 400:
             body = response.text
@@ -91,7 +91,7 @@ class KeycloakIdentityProvider(IIdentityProvider):
         return response.json()
 
     async def _get_admin_access_token(self) -> str:
-        async with httpx.AsyncClient(timeout=self._session_timeout) as client:
+        async with httpx.AsyncClient(timeout=self._session_timeout, verify=self.settings.ssl_verify) as client:
             response = await client.post(
                 self._admin_token_url,
                 data={
@@ -124,7 +124,7 @@ class KeycloakIdentityProvider(IIdentityProvider):
             "lastName": payload.last_name,
             "credentials": [{"type": "password", "value": payload.password, "temporary": False}],
         }
-        async with httpx.AsyncClient(timeout=self._session_timeout) as client:
+        async with httpx.AsyncClient(timeout=self._session_timeout, verify=self.settings.ssl_verify) as client:
             response = await client.post(
                 self._admin_users_url,
                 json=req,
@@ -168,7 +168,7 @@ class KeycloakIdentityProvider(IIdentityProvider):
 
     async def revoke_token(self, refresh_token: str) -> None:
         logout_url = f"{self._openid_base}/logout"
-        async with httpx.AsyncClient(timeout=self._session_timeout) as client:
+        async with httpx.AsyncClient(timeout=self._session_timeout, verify=self.settings.ssl_verify) as client:
             response = await client.post(
                 logout_url,
                 data={
@@ -186,7 +186,7 @@ class KeycloakIdentityProvider(IIdentityProvider):
     async def get_current_user_info(self, access_token: str) -> dict[str, Any]:
         url = f"{self._openid_base}/userinfo"
         headers = {**self._http_headers, "Authorization": f"Bearer {access_token}"}
-        async with httpx.AsyncClient(timeout=self._session_timeout) as client:
+        async with httpx.AsyncClient(timeout=self._session_timeout, verify=self.settings.ssl_verify) as client:
             response = await client.get(url, headers=headers)
         if response.status_code >= 400:
             raise HTTPException(
@@ -207,7 +207,7 @@ class KeycloakIdentityProvider(IIdentityProvider):
             return
         admin_token = await self._get_admin_access_token()
         headers = {**self._http_headers, "Authorization": f"Bearer {admin_token}"}
-        async with httpx.AsyncClient(timeout=self._session_timeout) as client:
+        async with httpx.AsyncClient(timeout=self._session_timeout, verify=self.settings.ssl_verify) as client:
             response = await client.get(self._user_profile_url, headers=headers)
         if response.status_code >= 400:
             raise HTTPException(
@@ -226,7 +226,7 @@ class KeycloakIdentityProvider(IIdentityProvider):
                     "permissions": {"view": ["admin", "user"], "edit": ["admin", "user"]},
                 }
             )
-            async with httpx.AsyncClient(timeout=self._session_timeout) as client:
+            async with httpx.AsyncClient(timeout=self._session_timeout, verify=self.settings.ssl_verify) as client:
                 put_response = await client.put(
                     self._user_profile_url,
                     json=profile,
@@ -243,7 +243,7 @@ class KeycloakIdentityProvider(IIdentityProvider):
         await self._ensure_settings_profile_attribute()
         admin_token = await self._get_admin_access_token()
         user_url = f"{self._admin_users_url}/{user_id}"
-        async with httpx.AsyncClient(timeout=self._session_timeout) as client:
+        async with httpx.AsyncClient(timeout=self._session_timeout, verify=self.settings.ssl_verify) as client:
             response = await client.get(
                 user_url,
                 headers={"Authorization": f"Bearer {admin_token}"},
@@ -259,7 +259,7 @@ class KeycloakIdentityProvider(IIdentityProvider):
         await self._ensure_settings_profile_attribute()
         admin_token = await self._get_admin_access_token()
         user_url = f"{self._admin_users_url}/{user_id}"
-        async with httpx.AsyncClient(timeout=self._session_timeout) as client:
+        async with httpx.AsyncClient(timeout=self._session_timeout, verify=self.settings.ssl_verify) as client:
             get_response = await client.get(user_url, headers={"Authorization": f"Bearer {admin_token}"})
             if get_response.status_code >= 400:
                 raise HTTPException(
