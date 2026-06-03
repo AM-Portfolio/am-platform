@@ -21,6 +21,10 @@ vault:
       path: "secret/data/prod/services/am-notification"
     novu:
       path: "secret/data/prod/services/am-novu"
+    identity-oidc:
+      path: "secret/data/prod/services/am-identity"
+    service-oauth:
+      path: "secret/data/prod/services/am-notification"
 
 
 env:

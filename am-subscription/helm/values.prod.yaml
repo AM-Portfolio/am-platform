@@ -19,6 +19,10 @@ vault:
       path: "secret/data/prod/services/am-subscription"
     lago:
       path: "secret/data/prod/services/am-lago"
+    identity-oidc:
+      path: "secret/data/prod/services/am-identity"
+    service-oauth:
+      path: "secret/data/prod/services/am-subscription"
 
 
 env:

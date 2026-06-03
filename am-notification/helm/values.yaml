@@ -38,8 +38,6 @@ env:
   KAFKA_NOTIFICATION_TOPICS: am.identity.events.v1,am.subscription.events.v1,am.usage.events.v1,am.notification.commands.v1
   KAFKA_NOTIFICATION_EVENTS_TOPIC: am.notification.events.v1
   KAFKA_NOTIFICATION_DLQ_TOPIC: am.notification.commands.dlq.v1
-  OIDC_ISSUER: "http://auth.munish.org/auth/realms/am-realm"
-  OIDC_JWKS_URL: "http://auth.munish.org/auth/realms/am-realm/protocol/openid-connect/certs"
 
 probes:
   port: 8080

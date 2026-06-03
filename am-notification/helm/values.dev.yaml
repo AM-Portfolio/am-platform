@@ -28,6 +28,10 @@ vault:
       path: "apps/data/dev/services/am-notification"
     novu:
       path: "apps/data/dev/services/am-novu"
+    identity-oidc:
+      path: "apps/data/dev/services/am-identity"
+    service-oauth:
+      path: "apps/data/dev/services/am-notification"
 
 ingress:
   annotations:

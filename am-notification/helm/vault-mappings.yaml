@@ -29,3 +29,7 @@ vault:
       mappings:
         OIDC_JWKS_URL: "OIDC_JWKS_URL"
         OIDC_ISSUER: "OIDC_ISSUER"
+    service-oauth:
+      mappings:
+        OAUTH2_CLIENT_ID: "AM_NOTIFICATION_CLIENT_ID"
+        OAUTH2_CLIENT_SECRET: "AM_NOTIFICATION_CLIENT_SECRET"

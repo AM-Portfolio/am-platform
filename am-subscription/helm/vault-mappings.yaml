@@ -28,3 +28,7 @@ vault:
       mappings:
         OIDC_JWKS_URL: "OIDC_JWKS_URL"
         OIDC_ISSUER: "OIDC_ISSUER"
+    service-oauth:
+      mappings:
+        OAUTH2_CLIENT_ID: "AM_SUBSCRIPTION_CLIENT_ID"
+        OAUTH2_CLIENT_SECRET: "AM_SUBSCRIPTION_CLIENT_SECRET"

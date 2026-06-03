@@ -21,6 +21,8 @@ vault:
       path: "apps/data/preprod/services/am-lago"
     identity-oidc:
       path: "apps/data/preprod/services/am-identity"
+    service-oauth:
+      path: "apps/data/preprod/services/am-subscription"
 
 
 env:

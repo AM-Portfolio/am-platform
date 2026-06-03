@@ -26,6 +26,10 @@ vault:
       path: "apps/data/dev/services/am-subscription"
     lago:
       path: "apps/data/dev/services/am-lago"
+    identity-oidc:
+      path: "apps/data/dev/services/am-identity"
+    service-oauth:
+      path: "apps/data/dev/services/am-subscription"
 
 ingress:
   annotations:

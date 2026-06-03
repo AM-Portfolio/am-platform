@@ -218,8 +218,6 @@ env:
   TZ: Asia/Kolkata
   AM_SUBSCRIPTION_POSTGRES_SSL: "false"
   DEFAULT_PLAN_CODE: am_free
-  OIDC_ISSUER: "http://auth.munish.org/auth/realms/am-realm"
-  OIDC_JWKS_URL: "http://auth.munish.org/auth/realms/am-realm/protocol/openid-connect/certs"
 
 probes:
   port: 8080

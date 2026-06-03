@@ -23,6 +23,8 @@ vault:
       path: "apps/data/preprod/services/am-novu"
     identity-oidc:
       path: "apps/data/preprod/services/am-identity"
+    service-oauth:
+      path: "apps/data/preprod/services/am-notification"
 
 
 
