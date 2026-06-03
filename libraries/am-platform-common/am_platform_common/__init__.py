@@ -23,6 +23,7 @@ from am_platform_common.models import (
 )
 from am_platform_common.middleware import LoggingMiddleware
 from am_platform_common.http_client import create_async_client, create_sync_client
+from am_platform_common.setup import install_common
 
 __all__ = [
     # Logging
@@ -52,4 +53,7 @@ __all__ = [
     "LoggingMiddleware",
     "create_async_client",
     "create_sync_client",
+    
+    # Setup
+    "install_common",
 ]

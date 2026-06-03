@@ -51,7 +51,7 @@ class TokenValidator:
             lifespan=300,
         )
 
-    def validate(
+    async def validate(
         self,
         token: str,
         *,
@@ -59,7 +59,9 @@ class TokenValidator:
         require_service_token: bool = False,
     ) -> AuthContext:
         try:
-            signing_key = self._jwk_client.get_signing_key_from_jwt(token).key
+            from starlette.concurrency import run_in_threadpool
+            jwk = await run_in_threadpool(self._jwk_client.get_signing_key_from_jwt, token)
+            signing_key = jwk.key
             decode_kwargs: dict[str, Any] = {
                 "algorithms": ["RS256"],
                 "options": {

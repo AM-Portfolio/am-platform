@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from functools import lru_cache
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from am_platform_security.config import SecuritySettings, get_security_settings
@@ -32,12 +32,22 @@ def require_auth_context(
     expected_audience: str | None = None,
     require_service_token: bool = False,
 ):
-    def dependency(
+    async def dependency(
+        request: Request,
         credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
         validator: TokenValidator = Depends(get_token_validator),
     ) -> AuthContext:
+        context = getattr(request.state, "auth_context", None)
+        if context is not None:
+            if require_service_token and context.token_type != "service":
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Service token required",
+                )
+            return context
+
         token = _extract_bearer_token(credentials)
-        return validator.validate(
+        return await validator.validate(
             token,
             expected_audience=expected_audience,
             require_service_token=require_service_token,

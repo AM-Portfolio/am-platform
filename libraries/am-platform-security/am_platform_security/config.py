@@ -13,6 +13,9 @@ class SecuritySettings(BaseSettings):
     oidc_issuer: str = Field(..., alias="OIDC_ISSUER")
     oidc_jwks_url: str = Field(..., alias="OIDC_JWKS_URL")
     service_role_name: str = Field(default="service", alias="SERVICE_ROLE_NAME")
+    enabled: bool = Field(default=True, alias="SECURITY_ENABLED")
+    public_paths: list[str] = Field(default_factory=list, alias="SECURITY_PUBLIC_PATHS")
+    local_mock_enabled: bool = Field(default=False, alias="SECURITY_LOCAL_MOCK_ENABLED")
 
     model_config = SettingsConfigDict(
         env_file=(str(PLATFORM_ROOT / ".env"), str(PLATFORM_ROOT / ".secrets.env")),
