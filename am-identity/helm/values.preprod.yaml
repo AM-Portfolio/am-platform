@@ -20,3 +20,4 @@ vault:
 env:
   APP_ENV: preprod
   LOG_LEVEL: INFO
+  IDENTITY_VERIFY_SSL: "false"

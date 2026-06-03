@@ -18,7 +18,9 @@ class IdentitySettings(BaseSettings):
     oidc_issuer: str = Field(..., alias="OIDC_ISSUER")
     oidc_jwks_url: str = Field(..., alias="OIDC_JWKS_URL")
 
-    identity_client_id: str = Field(default="am-identity-service", alias="AM_IDENTITY_CLIENT_ID")
+    identity_client_id: str = Field(
+        default="am-identity-service", alias="AM_IDENTITY_CLIENT_ID"
+    )
     identity_client_secret: str = Field(..., alias="AM_IDENTITY_CLIENT_SECRET")
     web_client_id: str = Field(default="am-web-client", alias="AM_WEB_CLIENT_ID")
     google_idp_alias: str = Field(default="google", alias="GOOGLE_IDP_ALIAS")
@@ -29,6 +31,8 @@ class IdentitySettings(BaseSettings):
     )
 
     service_token_ttl: int = Field(default=300, alias="SERVICE_TOKEN_TTL")
+
+    verify_ssl: bool = Field(default=True, alias="IDENTITY_VERIFY_SSL")
 
     model_config = SettingsConfigDict(
         env_file=".env",
