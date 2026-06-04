@@ -6,6 +6,7 @@ from am_identity.schemas.auth import (
     GoogleAuthURLRequest,
     GoogleAuthURLResponse,
     GoogleCallbackRequest,
+    GoogleTokenRequest,
     LoginRequest,
     LogoutRequest,
     OTPLoginRequest,
@@ -55,6 +56,14 @@ async def google_callback(
     provider: IIdentityProvider = Depends(get_identity_provider),
 ):
     return await provider.authenticate_google(payload.code, payload.state, payload.redirect_uri)
+
+
+@router.post("/google/token", response_model=TokenResponse)
+async def google_token(
+    payload: GoogleTokenRequest,
+    provider: IIdentityProvider = Depends(get_identity_provider),
+):
+    return await provider.authenticate_google_token(payload.id_token)
 
 
 @router.post("/refresh", response_model=TokenResponse)

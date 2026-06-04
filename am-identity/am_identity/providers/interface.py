@@ -50,3 +50,7 @@ class IIdentityProvider(ABC):
     @abstractmethod
     async def authenticate_google(self, code: str, state: str, redirect_uri: str) -> dict[str, Any]:
         raise NotImplementedError
+
+    @abstractmethod
+    async def authenticate_google_token(self, id_token: str) -> dict[str, Any]:
+        raise NotImplementedError

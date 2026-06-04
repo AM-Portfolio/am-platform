@@ -42,6 +42,10 @@ class GoogleCallbackRequest(BaseModel):
     redirect_uri: str
 
 
+class GoogleTokenRequest(BaseModel):
+    id_token: str
+
+
 class TokenResponse(BaseModel):
     access_token: str
     expires_in: int

@@ -386,3 +386,15 @@ class KeycloakIdentityProvider(IIdentityProvider):
             "redirect_uri": redirect_uri,
         }
         return await self._request_token(token_data)
+
+    async def authenticate_google_token(self, id_token: str) -> dict[str, Any]:
+        token_data = {
+            "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+            "client_id": self.settings.identity_client_id,
+            "client_secret": self.settings.identity_client_secret,
+            "subject_token": id_token,
+            "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
+            "subject_issuer": self.settings.google_idp_alias,
+            "scope": _OIDC_USER_SCOPES,
+        }
+        return await self._request_token(token_data)

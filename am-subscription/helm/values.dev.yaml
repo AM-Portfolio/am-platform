@@ -42,7 +42,6 @@ ingress:
         - path: /subscriptions
           pathType: Prefix
         - path: /webhooks/provider
-          pathType: Prefix
 
 env:
   APP_ENV: dev
