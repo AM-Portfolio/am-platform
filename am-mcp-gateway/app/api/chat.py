@@ -40,7 +40,7 @@ class ChatResponse(BaseModel):
 @router.post("/chat")
 async def chat_stream(
     request: ChatRequest,
-    auth_context: AuthContext = Depends(require_auth_context(expected_audience=settings.AM_MCP_CLIENT_ID))
+    auth_context: AuthContext = Depends(require_auth_context())
 ):
     """
     Main SSE streaming chat endpoint.
@@ -160,7 +160,7 @@ async def chat_stream(
 @router.post("/chat/sync", response_model=ChatResponse)
 async def chat_sync(
     request: ChatRequest,
-    auth_context: AuthContext = Depends(require_auth_context(expected_audience=settings.AM_MCP_CLIENT_ID))
+    auth_context: AuthContext = Depends(require_auth_context())
 ):
     """
     Synchronous chat endpoint (returns full JSON immediately).
