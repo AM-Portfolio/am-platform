@@ -6,8 +6,8 @@
   "scripts": {
     "dev": "node ../automation/scripts/run-with-logs.js python ../automation/scripts/run_service.py mcp-gateway dev",
     "start": "npm run dev",
-    "dev:preprod": "node ../automation/scripts/run-with-logs.js python ../automation/scripts/run_service.py mcp-gateway dev:preprod",
-    "dev:prod": "node ../automation/scripts/run-with-logs.js python ../automation/scripts/run_service.py mcp-gateway dev:prod",
+    "preprod": "node ../automation/scripts/run-with-logs.js python ../automation/scripts/run_service.py mcp-gateway preprod",
+    "prod": "node ../automation/scripts/run-with-logs.js python ../automation/scripts/run_service.py mcp-gateway prod",
     "lint": "node ../automation/scripts/run-with-logs.js python -m black --check app tests",
     "format": "node ../automation/scripts/run-with-logs.js python -m black app tests",
     "test": "node ../automation/scripts/run-with-logs.js pytest tests/",

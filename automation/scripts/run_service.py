@@ -54,12 +54,12 @@ def run_mcp_gateway(*, reload: bool) -> int:
 
 def main() -> None:
     if len(sys.argv) < 2:
-        print("Usage: run_service.py <identity|subscription|notification|mcp-gateway> <dev|dev:preprod|dev:prod>")
+        print("Usage: run_service.py <identity|subscription|notification|mcp-gateway> <dev|preprod|prod>")
         sys.exit(1)
 
     service = sys.argv[1]
     mode = sys.argv[2] if len(sys.argv) > 2 else "dev"
-    reload = mode.startswith("dev")
+    reload = "dev" in mode or mode == "preprod"
 
     import os
     if "preprod" in mode:
