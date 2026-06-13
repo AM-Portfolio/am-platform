@@ -27,7 +27,7 @@ resource "keycloak_realm" "am_realm" {
   # Session TTLs (recommended baseline)
   sso_session_idle_timeout = "30m"
   sso_session_max_lifespan = "10h"
-  access_token_lifespan    = "5m"
+  access_token_lifespan    = "24h"
 
   # Password policy: min length + mixed case + digits
   password_policy = "length(8) and lowerCase(1) and upperCase(1) and digits(1)"

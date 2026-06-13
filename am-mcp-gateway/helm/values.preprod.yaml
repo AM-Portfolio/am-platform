@@ -1,0 +1,27 @@
+# Preprod Environment overrides for am-mcp-gateway
+environment: preprod
+replicaCount: 1
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+vault:
+  enabled: true
+  secretPaths:
+    redis:
+      path: "apps/data/preprod/infra/redis"
+    llm-api-keys:
+      path: "apps/data/preprod/services/am-mcp-gateway"
+    identity-oidc:
+      path: "apps/data/preprod/services/am-identity"
+    observability:
+      path: "apps/data/preprod/services/am-mcp-gateway"
+
+env:
+  APP_ENV: preprod
+  LOG_LEVEL: INFO

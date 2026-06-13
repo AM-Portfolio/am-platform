@@ -1,0 +1,43 @@
+# LiteLLM Helm Values
+replicaCount: 1
+service:
+  type: ClusterIP
+  port: 4000
+
+proxyConfigMap:
+  create: false
+  name: "litellm-config"
+  key: "litellm_config.yaml"
+
+db:
+  useExisting: true
+  deployStandalone: false
+  endpoint: "postgresql.infra.svc.cluster.local"
+  database: "litellm"
+  secret:
+    name: "litellm-secrets"
+    usernameKey: "username"
+    passwordKey: "password"
+
+masterkeySecretName: "litellm-secrets"
+masterkeySecretKey: "masterkey"
+
+postgresql:
+  enabled: false
+
+ingress:
+  enabled: true
+  className: "traefik"
+  annotations:
+    kubernetes.io/ingress.class: "traefik"
+    traefik.ingress.kubernetes.io/router.entrypoints: "web,websecure"
+  hosts:
+    - host: litellm.munish.org
+      paths:
+        - path: /
+          pathType: Prefix
+    - host: litellm.asrax.in
+      paths:
+        - path: /
+          pathType: Prefix
+

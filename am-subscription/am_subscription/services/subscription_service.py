@@ -386,3 +386,133 @@ class SubscriptionService:
                 metadata_json=metadata,
             )
         )
+
+    async def process_billing_webhook(
+        self,
+        webhook_type: str,
+        user_id: str,
+        plan_code: str | None,
+        provider_sub_id: str | None,
+        correlation_id: str,
+    ) -> None:
+        logger.info(
+            "process_billing_webhook",
+            extra={
+                "webhook_type": webhook_type,
+                "user_id": user_id,
+                "plan_code": plan_code,
+                "provider_sub_id": provider_sub_id,
+                "correlation_id": correlation_id,
+            },
+        )
+        existing = await self.get_by_user(user_id)
+
+        if webhook_type == "subscription.started":
+            if not plan_code:
+                logger.error("plan_code is missing for subscription.started", extra={"user_id": user_id})
+                return
+
+            plan = self._catalog.get_plan(plan_code)
+
+            if existing:
+                previous_state = existing.state.value
+                previous_plan = existing.plan_code
+
+                # Direct update bypassing the state machine, as billing provider is source of truth
+                existing.state = SubscriptionState.active
+                existing.plan_code = plan.code
+                existing.billing_interval = plan.interval
+                if provider_sub_id:
+                    existing.provider_subscription_id = provider_sub_id
+                existing.updated_at = datetime.now(timezone.utc)
+
+                await self._append_audit(
+                    existing.id,
+                    actor="billing_provider",
+                    previous_state=previous_state,
+                    next_state=existing.state.value,
+                    reason="webhook_subscription_started",
+                    correlation_id=correlation_id,
+                    metadata={"previous_plan": previous_plan, "new_plan": plan.code},
+                )
+            else:
+                # Create a new subscription
+                subscription = Subscription(
+                    user_id=user_id,
+                    plan_code=plan.code,
+                    state=SubscriptionState.active,
+                    provider="lago",
+                    provider_subscription_id=provider_sub_id,
+                    billing_interval=plan.interval,
+                )
+                self._session.add(subscription)
+                await self._session.flush()
+
+                await self._append_audit(
+                    subscription.id,
+                    actor="billing_provider",
+                    previous_state=None,
+                    next_state=subscription.state.value,
+                    reason="webhook_subscription_created",
+                    correlation_id=correlation_id,
+                    metadata={"plan_code": plan.code},
+                )
+
+            # Ensure ProviderMap exists
+            result_map = await self._session.execute(
+                select(ProviderMap).where(ProviderMap.user_id == user_id)
+            )
+            existing_map = result_map.scalar_one_or_none()
+            if not existing_map:
+                external_customer_id = f"am-user-{user_id}"
+                provider_map = ProviderMap(
+                    user_id=user_id,
+                    provider="lago",
+                    external_customer_id=external_customer_id,
+                )
+                self._session.add(provider_map)
+
+            await self._session.commit()
+
+        elif webhook_type == "subscription.terminated":
+            if existing:
+                previous_state = existing.state.value
+                existing.state = SubscriptionState.cancelled
+                existing.updated_at = datetime.now(timezone.utc)
+
+                await self._append_audit(
+                    existing.id,
+                    actor="billing_provider",
+                    previous_state=previous_state,
+                    next_state=existing.state.value,
+                    reason="webhook_subscription_terminated",
+                    correlation_id=correlation_id,
+                )
+                await self._session.commit()
+            else:
+                logger.warning(
+                    "subscription.terminated received but no existing subscription found",
+                    extra={"user_id": user_id},
+                )
+
+        elif webhook_type == "invoice.payment_failure":
+            if existing:
+                previous_state = existing.state.value
+                existing.state = SubscriptionState.suspended
+                existing.updated_at = datetime.now(timezone.utc)
+
+                await self._append_audit(
+                    existing.id,
+                    actor="billing_provider",
+                    previous_state=previous_state,
+                    next_state=existing.state.value,
+                    reason="webhook_payment_failure",
+                    correlation_id=correlation_id,
+                )
+                await self._session.commit()
+            else:
+                logger.warning(
+                    "invoice.payment_failure received but no existing subscription found",
+                    extra={"user_id": user_id},
+                )
+

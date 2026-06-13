@@ -1,0 +1,117 @@
+replicaCount: 1
+
+global:
+  security:
+    allowInsecureImages: true
+
+postgresql:
+  deploy: false
+  auth:
+    password: "langfuse_dummy_pass"
+
+# Redis/Valkey - queue + cache. 1Gi is more than enough for preprod
+redis:
+  deploy: true
+  image:
+    repository: bitnamilegacy/valkey
+  auth:
+    password: "langfuse_redis_pass_2026"
+  primary:
+    persistence:
+      size: 1Gi
+    resources:
+      requests:
+        memory: 64Mi
+        cpu: 50m
+      limits:
+        memory: 256Mi
+        cpu: 200m
+
+langfuse:
+  salt:
+    value: "9f172a49341aeb6705c982c70d32db8d97e3a30b2b7050f587cb006e8b96b547"
+  nextauth:
+    url: "https://langfuse.munish.org"
+    # Secret set dynamically by terraform set_sensitive
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 100m
+    limits:
+      memory: 512Mi
+      cpu: 500m
+  ingress:
+    enabled: true
+    className: "traefik"
+    annotations:
+      kubernetes.io/ingress.class: "traefik"
+      traefik.ingress.kubernetes.io/router.entrypoints: "web,websecure"
+    hosts:
+      - host: langfuse.munish.org
+        paths:
+          - path: /
+            pathType: Prefix
+      - host: langfuse.asrax.in
+        paths:
+          - path: /
+            pathType: Prefix
+
+worker:
+  resources:
+    requests:
+      memory: 128Mi
+      cpu: 100m
+    limits:
+      memory: 512Mi
+      cpu: 500m
+
+
+
+# ClickHouse - reduced to 1 shard/replica for preprod (no HA needed)
+clickhouse:
+  deploy: true
+  image:
+    repository: bitnamilegacy/clickhouse
+  shards: 1
+  replicaCount: 1
+  persistence:
+    size: 2Gi
+  resources:
+    requests:
+      memory: 256Mi
+      cpu: 100m
+    limits:
+      memory: 1Gi
+      cpu: 500m
+  zookeeper:
+    image:
+      repository: bitnamilegacy/zookeeper
+    replicaCount: 1          # 1 node is enough for single ClickHouse
+    persistence:
+      size: 1Gi
+    resources:
+      requests:
+        memory: 128Mi
+        cpu: 50m
+      limits:
+        memory: 256Mi
+        cpu: 200m
+  auth:
+    password: "langfuse_clickhouse_pass_2026"
+
+# MinIO (S3) - reduced to 2Gi, preprod won't store large exports
+s3:
+  deploy: true
+  image:
+    repository: bitnamilegacy/minio
+  persistence:
+    size: 2Gi
+  resources:
+    requests:
+      memory: 64Mi
+      cpu: 50m
+    limits:
+      memory: 256Mi
+      cpu: 200m
+  auth:
+    rootPassword: "langfuse_minio_pass_2026"

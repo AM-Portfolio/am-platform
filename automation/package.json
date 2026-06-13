@@ -8,6 +8,7 @@
     "lago:deploy": "node scripts/run-with-logs.js powershell.exe -ExecutionPolicy Bypass -File helm/deploy-lago.ps1",
     "lago:plans": "node scripts/run-with-logs.js python scripts/provision_lago_plans.py",
     "novu:deploy": "node scripts/run-with-logs.js powershell.exe -ExecutionPolicy Bypass -File helm/deploy-novu.ps1",
+    "mcp-gateway:deploy": "node scripts/run-with-logs.js powershell.exe -ExecutionPolicy Bypass -File helm/deploy-mcp-gateway.ps1",
     "compose:up": "node scripts/run-with-logs.js docker compose -f ../docker-compose.yml up -d",
     "compose:down": "node scripts/run-with-logs.js docker compose -f ../docker-compose.yml down",
     "compose:logs": "node scripts/run-with-logs.js docker compose -f ../docker-compose.yml logs -f keycloak",
@@ -22,6 +23,12 @@
     "tf:notification:init": "node scripts/run-with-logs.js python scripts/run_terraform.py notification init",
     "tf:notification:plan": "node scripts/run-with-logs.js python scripts/run_terraform.py notification plan",
     "tf:notification:apply": "node scripts/run-with-logs.js python scripts/run_terraform.py notification apply",
-    "tf:notification:output": "node scripts/run-with-logs.js python scripts/run_terraform.py notification output"
+    "tf:notification:output": "node scripts/run-with-logs.js python scripts/run_terraform.py notification output",
+    "tf:ai-gateway:init": "node scripts/run-with-logs.js python scripts/run_terraform.py ai-gateway init",
+    "tf:ai-gateway:plan": "node scripts/run-with-logs.js python scripts/run_terraform.py ai-gateway plan",
+    "tf:ai-gateway:apply": "node scripts/run-with-logs.js python scripts/run_terraform.py ai-gateway apply",
+    "tf:ai-gateway:output": "node scripts/run-with-logs.js python scripts/run_terraform.py ai-gateway output",
+    "infra:vault:sync:preprod": "node scripts/run-with-logs.js powershell.exe -ExecutionPolicy Bypass -File scripts/vault-sync.ps1 -Env preprod -VaultAddr http://localhost:8200",
+    "infra:vault:sync:dev": "node scripts/run-with-logs.js powershell.exe -ExecutionPolicy Bypass -File scripts/vault-sync.ps1 -Env dev -VaultAddr http://localhost:8200"
   }
 }
