@@ -54,12 +54,18 @@ def run_mcp_gateway(*, reload: bool) -> int:
 
 def main() -> None:
     if len(sys.argv) < 2:
-        print("Usage: run_service.py <identity|subscription|notification|mcp-gateway> <dev|dev:prod>")
+        print("Usage: run_service.py <identity|subscription|notification|mcp-gateway> <dev|dev:preprod|dev:prod>")
         sys.exit(1)
 
     service = sys.argv[1]
     mode = sys.argv[2] if len(sys.argv) > 2 else "dev"
-    reload = mode == "dev"
+    reload = mode.startswith("dev")
+
+    import os
+    if "preprod" in mode:
+        os.environ["APP_ENV"] = "preprod"
+    elif "prod" in mode:
+        os.environ["APP_ENV"] = "prod"
 
     if service == "identity":
         sys.exit(run_identity(reload=reload))

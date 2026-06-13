@@ -63,7 +63,18 @@ def python_exe() -> str:
 
 def load_env_files() -> dict[str, str]:
     merged: dict[str, str] = {}
-    for name in (".env", ".secrets.env"):
+    env_name = os.getenv("APP_ENV", "dev")
+    
+    # Choose secrets file based on APP_ENV
+    secrets_file = ".secrets.env"
+    if env_name == "preprod":
+        secrets_file = ".secrets.preprod.env"
+    elif env_name == "prod":
+        secrets_file = ".secrets.prod.env"
+    elif env_name == "dev" and (PLATFORM_ROOT / ".secrets.dev.env").is_file():
+        secrets_file = ".secrets.dev.env"
+        
+    for name in (".env", secrets_file):
         path = PLATFORM_ROOT / name
         if not path.is_file():
             continue
