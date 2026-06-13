@@ -14,13 +14,13 @@ vault:
   enabled: true
   secretPaths:
     redis:
-      path: "apps/data/production/infra/redis"
+      path: "apps/data/prod/infra/redis"
     llm-api-keys:
-      path: "apps/data/production/services/am-mcp-gateway"
+      path: "apps/data/prod/services/am-mcp-gateway"
     identity-oidc:
-      path: "apps/data/production/services/am-identity"
+      path: "apps/data/prod/services/am-identity"
     observability:
-      path: "apps/data/production/services/am-mcp-gateway"
+      path: "apps/data/prod/services/am-mcp-gateway"
 
 env:
   APP_ENV: production

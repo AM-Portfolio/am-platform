@@ -36,7 +36,7 @@ env:
   TZ: Asia/Kolkata
   LLM_PROVIDER: litellm
   LLM_FALLBACK_CHAIN: litellm
-  LLM_MODEL: together_ai/meta-llama/Llama-3-8b-chat-hf        # LiteLLM format: provider/model
+  LLM_MODEL: deepseek-chat        # Available in cluster LiteLLM proxy
   LLM_TEMPERATURE: "0.2"
   LLM_MAX_TOKENS: "4096"
   LLM_TIMEOUT_SECONDS: "60"

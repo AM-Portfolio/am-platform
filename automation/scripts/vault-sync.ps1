@@ -138,6 +138,8 @@ Write-VaultSecret $path @{
     GOOGLE_CLIENT_ID          = $secrets["GOOGLE_CLIENT_ID"]
     GOOGLE_CLIENT_SECRET      = $secrets["GOOGLE_CLIENT_SECRET"]
     ALLOWED_GOOGLE_REDIRECT_URIS = $secrets["ALLOWED_GOOGLE_REDIRECT_URIS"]
+    AM_MCP_CLIENT_ID          = $secrets["AM_MCP_CLIENT_ID"]
+    AM_MCP_CLIENT_SECRET      = $secrets["AM_MCP_CLIENT_SECRET"]
 }
 Test-VaultSecret $path
 
