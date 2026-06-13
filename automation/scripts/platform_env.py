@@ -34,7 +34,7 @@ MCP_GATEWAY_LIB_PATHS = [
 
 def notification_env() -> dict[str, str]:
     env = os.environ.copy()
-    env.update(load_env_files())
+    env.update(load_env_files(PLATFORM_ROOT / "am-notification"))
     env["PYTHONPATH"] = os.pathsep.join(str(p) for p in NOTIFICATION_LIB_PATHS)
     env["APP_NAME"] = "am-notification"
     env["APP_PORT"] = "8111"
@@ -61,11 +61,31 @@ def python_exe() -> str:
     return sys.executable
 
 
-def load_env_files() -> dict[str, str]:
+def load_file_vars(path: Path) -> dict[str, str]:
+    if not path.is_file():
+        return {}
+    vars: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        vars[key.strip()] = value.strip()
+    return vars
+
+
+def load_env_files(module_dir: Path | None = None) -> dict[str, str]:
     merged: dict[str, str] = {}
     env_name = os.getenv("APP_ENV", "dev")
     
-    # Choose secrets file based on APP_ENV
+    # 1. Load root .env
+    merged.update(load_file_vars(PLATFORM_ROOT / ".env"))
+    
+    # 2. Load module-specific .env
+    if module_dir:
+        merged.update(load_file_vars(module_dir / ".env"))
+        
+    # 3. Load secrets based on environment name
     secrets_file = ".secrets.env"
     if env_name == "preprod":
         secrets_file = ".secrets.preprod.env"
@@ -74,22 +94,18 @@ def load_env_files() -> dict[str, str]:
     elif env_name == "dev" and (PLATFORM_ROOT / ".secrets.dev.env").is_file():
         secrets_file = ".secrets.dev.env"
         
-    for name in (".env", secrets_file):
-        path = PLATFORM_ROOT / name
-        if not path.is_file():
-            continue
-        for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            merged[key.strip()] = value.strip()
+    merged.update(load_file_vars(PLATFORM_ROOT / secrets_file))
+    
+    # 4. Load module-specific environment-specific secrets (e.g. .env.preprod)
+    if module_dir:
+        merged.update(load_file_vars(module_dir / f".env.{env_name}"))
+        
     return merged
 
 
 def identity_env() -> dict[str, str]:
     env = os.environ.copy()
-    env.update(load_env_files())
+    env.update(load_env_files(PLATFORM_ROOT / "am-identity"))
     env["PYTHONPATH"] = os.pathsep.join(str(p) for p in IDENTITY_LIB_PATHS)
     env["APP_NAME"] = "am-identity"
     env["APP_PORT"] = "8113"
@@ -98,7 +114,7 @@ def identity_env() -> dict[str, str]:
 
 def subscription_env() -> dict[str, str]:
     env = os.environ.copy()
-    env.update(load_env_files())
+    env.update(load_env_files(PLATFORM_ROOT / "am-subscription"))
     env["PYTHONPATH"] = os.pathsep.join(str(p) for p in SUBSCRIPTION_LIB_PATHS)
     env["APP_NAME"] = "am-subscription"
     env["APP_PORT"] = "8110"
@@ -112,7 +128,7 @@ def subscription_env() -> dict[str, str]:
 
 def mcp_gateway_env() -> dict[str, str]:
     env = os.environ.copy()
-    env.update(load_env_files())
+    env.update(load_env_files(PLATFORM_ROOT / "am-mcp-gateway"))
     env["PYTHONPATH"] = os.pathsep.join(str(p) for p in MCP_GATEWAY_LIB_PATHS)
     env["APP_NAME"] = "am-mcp-gateway"
     env["APP_PORT"] = "8120"
