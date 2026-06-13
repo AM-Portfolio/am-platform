@@ -5,7 +5,7 @@ from __future__ import annotations
 import subprocess
 import sys
 
-from platform_env import PLATFORM_ROOT, identity_env, notification_env, subscription_env
+from platform_env import PLATFORM_ROOT, identity_env, notification_env, subscription_env, mcp_gateway_env
 from uvicorn_runner import build_uvicorn_args
 
 
@@ -43,9 +43,18 @@ def run_notification(*, reload: bool) -> int:
     )
 
 
+def run_mcp_gateway(*, reload: bool) -> int:
+    return run_uvicorn(
+        "app.main:app",
+        reload=reload,
+        env=mcp_gateway_env(),
+        cwd_name="am-mcp-gateway",
+    )
+
+
 def main() -> None:
     if len(sys.argv) < 2:
-        print("Usage: run_service.py <identity|subscription|notification> <dev|dev:prod>")
+        print("Usage: run_service.py <identity|subscription|notification|mcp-gateway> <dev|dev:prod>")
         sys.exit(1)
 
     service = sys.argv[1]
@@ -58,9 +67,12 @@ def main() -> None:
         sys.exit(run_subscription(reload=reload))
     if service == "notification":
         sys.exit(run_notification(reload=reload))
+    if service == "mcp-gateway":
+        sys.exit(run_mcp_gateway(reload=reload))
 
     print(f"Unknown service: {service}")
     sys.exit(1)
+
 
 
 if __name__ == "__main__":

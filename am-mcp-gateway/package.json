@@ -1,0 +1,15 @@
+{
+  "name": "@am-platform/mcp-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AM MCP Gateway service (FastAPI routing, Observability, Session management)",
+  "scripts": {
+    "dev": "node ../automation/scripts/run-with-logs.js python ../automation/scripts/run_service.py mcp-gateway dev",
+    "start": "npm run dev",
+    "dev:prod": "node ../automation/scripts/run-with-logs.js python ../automation/scripts/run_service.py mcp-gateway dev:prod",
+    "lint": "node ../automation/scripts/run-with-logs.js python -m black --check app tests",
+    "format": "node ../automation/scripts/run-with-logs.js python -m black app tests",
+    "test": "node ../automation/scripts/run-with-logs.js pytest tests/",
+    "compile": "node ../automation/scripts/run-with-logs.js python -m compileall app"
+  }
+}

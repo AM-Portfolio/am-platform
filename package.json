@@ -8,6 +8,7 @@
     "am-identity",
     "am-subscription",
     "am-notification",
+    "am-mcp-gateway",
     "libraries/am-platform-common",
     "libraries/am-platform-security"
   ],
@@ -43,6 +44,12 @@
     "notification:start": "npm run notification:dev",
     "notification:lint": "npm run lint -w @am-platform/notification",
     "notification:compile": "npm run compile -w @am-platform/notification",
+
+    "mcp-gateway:dev": "npm run dev -w @am-platform/mcp-gateway",
+    "mcp-gateway:start": "npm run mcp-gateway:dev",
+    "mcp-gateway:lint": "npm run lint -w @am-platform/mcp-gateway",
+    "mcp-gateway:compile": "npm run compile -w @am-platform/mcp-gateway",
+    "mcp-gateway:test": "npm run test -w @am-platform/mcp-gateway",
 
     "common:test": "npm run test -w @am-platform/common",
     "common:lint": "npm run lint -w @am-platform/common",
@@ -87,6 +94,8 @@
     "dev:notification": "npm run notification:dev",
     "dev:subscription": "npm run subscription:dev",
     "dev:identity": "npm run identity:dev",
+    "run:mcp-gateway": "npm run mcp-gateway:dev",
+    "dev:mcp-gateway": "npm run mcp-gateway:dev",
     "test:common": "npm run common:test",
     "test:security": "npm run security:test",
     "lint:fix": "node automation/scripts/run-with-logs.js npm run lint:fix --workspaces --if-present",

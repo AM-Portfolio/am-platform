@@ -27,6 +27,10 @@ NOTIFICATION_LIB_PATHS = [
     PLATFORM_ROOT / "am-notification",
 ]
 
+MCP_GATEWAY_LIB_PATHS = [
+    PLATFORM_ROOT / "am-mcp-gateway",
+]
+
 
 def notification_env() -> dict[str, str]:
     env = os.environ.copy()
@@ -93,3 +97,13 @@ def subscription_env() -> dict[str, str]:
         env["AM_SUBSCRIPTION_POSTGRES_HOST"] = "postgres.asrax.in"
         env.setdefault("AM_SUBSCRIPTION_POSTGRES_PORT", "8891")
     return env
+
+
+def mcp_gateway_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env.update(load_env_files())
+    env["PYTHONPATH"] = os.pathsep.join(str(p) for p in MCP_GATEWAY_LIB_PATHS)
+    env["APP_NAME"] = "am-mcp-gateway"
+    env["APP_PORT"] = "8120"
+    return env
+
