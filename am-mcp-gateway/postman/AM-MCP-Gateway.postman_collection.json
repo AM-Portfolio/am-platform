@@ -1,0 +1,105 @@
+{
+  "info": {
+    "_postman_id": "am-mcp-gateway-collection-v1",
+    "name": "AM MCP Gateway Service",
+    "description": "API collection for **am-mcp-gateway** (port 8120).\n\n## Quick start\n1. Run **Health → Health Check**\n2. Get an `access_token` from Identity login or client credentials grant.\n3. Run **Chat → Chat Sync** or **Chat → Chat Stream**.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "if (!pm.environment.get('base_url')) {",
+          "    pm.environment.set('base_url', 'http://localhost:8120');",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8120" },
+    { "key": "access_token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "00 Health",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/health",
+            "description": "Liveness check for the gateway."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "01 Chat",
+      "item": [
+        {
+          "name": "Chat Sync",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"What is 2+2?\",\n  \"model\": \"together_ai/meta-llama/Llama-3-8b-chat-hf\",\n  \"temperature\": 0.2,\n  \"stream\": false\n}"
+            },
+            "url": "{{base_url}}/api/v1/chat/sync",
+            "description": "Sends a synchronous chat request to the LLM via LiteLLM."
+          },
+          "response": []
+        },
+        {
+          "name": "Chat Stream",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"message\": \"Explain quantum computing in one sentence.\",\n  \"model\": \"together_ai/meta-llama/Llama-3-8b-chat-hf\",\n  \"temperature\": 0.2,\n  \"stream\": true\n}"
+            },
+            "url": "{{base_url}}/api/v1/chat",
+            "description": "Sends a streaming chat request to the LLM via LiteLLM (returns Server-Sent Events)."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

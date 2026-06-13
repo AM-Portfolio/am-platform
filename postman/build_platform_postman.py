@@ -36,6 +36,14 @@ MODULES = (
         "collection": PLATFORM / "am-notification" / "postman" / "AM-Notification.postman_collection.json",
         "environment": PLATFORM / "am-notification" / "postman" / "AM-Notification.local.postman_environment.json",
     },
+    {
+        "folder": "MCP Gateway",
+        "slug": "mcp_gateway",
+        "base_var": "mcp_gateway_base_url",
+        "default_port": "8120",
+        "collection": PLATFORM / "am-mcp-gateway" / "postman" / "AM-MCP-Gateway.postman_collection.json",
+        "environment": PLATFORM / "am-mcp-gateway" / "postman" / "AM-MCP-Gateway.local.postman_environment.json",
+    },
 )
 
 
@@ -201,7 +209,8 @@ def build_collection() -> dict:
                 "|--------|--------|\n"
                 "| Identity | am-identity |\n"
                 "| Subscription | am-subscription |\n"
-                "| Notification | am-notification |"
+                "| Notification | am-notification |\n"
+                "| MCP Gateway | am-mcp-gateway |"
             ),
             "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
         },

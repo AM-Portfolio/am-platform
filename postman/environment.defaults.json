@@ -4,11 +4,14 @@
     "identity_base_url",
     "subscription_base_url",
     "notification_base_url",
+    "mcp_gateway_base_url",
     "base_url",
     "keycloak_url",
     "keycloak_realm",
     "identity_client_id",
     "identity_client_secret",
+    "mcp_client_id",
+    "mcp_client_secret",
     "portfolio_client_id",
     "portfolio_client_secret",
     "gateway_client_id",
@@ -43,6 +46,7 @@
         "identity_base_url": "http://localhost:8113",
         "subscription_base_url": "http://localhost:8110",
         "notification_base_url": "http://localhost:8111",
+        "mcp_gateway_base_url": "http://localhost:8120",
         "base_url": "http://localhost:8113",
         "keycloak_url": "http://auth.munish.org/auth",
         "google_redirect_uri": "http://localhost:9000/callback"
@@ -56,6 +60,7 @@
         "identity_base_url": "https://am-dev.asrax.in/identity",
         "subscription_base_url": "https://am-dev.asrax.in/subscriptions",
         "notification_base_url": "https://am-dev.asrax.in/notifications",
+        "mcp_gateway_base_url": "https://am-dev.asrax.in/mcp",
         "base_url": "https://am-dev.asrax.in/identity",
         "keycloak_url": "https://auth.munish.org/auth",
         "google_redirect_uri": "https://am-dev.asrax.in/callback"
@@ -69,6 +74,7 @@
         "identity_base_url": "https://am.asrax.in/identity",
         "subscription_base_url": "https://am.asrax.in/subscriptions",
         "notification_base_url": "https://am.asrax.in/notifications",
+        "mcp_gateway_base_url": "https://am.asrax.in/mcp",
         "base_url": "https://am.asrax.in/identity",
         "keycloak_url": "https://auth.munish.org/auth",
         "google_redirect_uri": "https://am.asrax.in/callback"
@@ -82,6 +88,7 @@
         "identity_base_url": "https://am.asrax.in/identity",
         "subscription_base_url": "https://am.asrax.in/subscriptions",
         "notification_base_url": "https://am.asrax.in/notifications",
+        "mcp_gateway_base_url": "https://am.asrax.in/mcp",
         "base_url": "https://am.asrax.in/identity",
         "keycloak_url": "https://auth.munish.org/auth",
         "google_redirect_uri": "https://am.asrax.in/callback"
@@ -92,6 +99,8 @@
     "keycloak_realm": "am-realm",
     "identity_client_id": "am-identity-service",
     "identity_client_secret": "",
+    "mcp_client_id": "am-mcp-service",
+    "mcp_client_secret": "",
     "portfolio_client_id": "am-portfolio-service",
     "portfolio_client_secret": "",
     "gateway_client_id": "am-gateway-client",
@@ -118,6 +127,7 @@
   },
   "secret_keys": [
     "identity_client_secret",
+    "mcp_client_secret",
     "portfolio_client_secret",
     "gateway_client_secret",
     "notification_client_secret",
