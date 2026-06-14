@@ -1,0 +1,40 @@
+# Dev Environment overrides for am-mcp-gateway
+environment: dev
+replicaCount: 1
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+vault:
+  enabled: true
+  secretPaths:
+    redis:
+      path: "apps/data/dev/infra/redis"
+    llm-api-keys:
+      path: "apps/data/dev/services/am-mcp-gateway"
+    identity-oidc:
+      path: "apps/data/dev/services/am-identity"
+    observability:
+      path: "apps/data/dev/services/am-mcp-gateway"
+
+ingress:
+  annotations:
+    kubernetes.io/ingress.class: "traefik"
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.middlewares: >-
+      am-apps-dev-dev-global-cors@kubernetescrd,
+      am-apps-dev-dev-strip-prefix@kubernetescrd
+  hosts:
+    - host: am-dev.asrax.in
+      paths:
+        - path: /mcp
+          pathType: Prefix
+
+env:
+  APP_ENV: dev
+  LOG_LEVEL: DEBUG

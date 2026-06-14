@@ -51,12 +51,13 @@ terraform init -reconfigure
 
 # ── 2. Workspace ─────────────────────────────────────────────────────────────
 $existing = terraform workspace list 2>&1
-if ($existing -notmatch "\b$Env\b") {
-    Write-Host "`n>> Creating workspace: $Env" -ForegroundColor Yellow
-    terraform workspace new $Env
-} else {
+$existingClean = $existing | ForEach-Object { $_.Replace("*", "").Trim() }
+if ($Env -in $existingClean) {
     Write-Host "`n>> Selecting workspace: $Env" -ForegroundColor Yellow
     terraform workspace select $Env
+} else {
+    Write-Host "`n>> Creating workspace: $Env" -ForegroundColor Yellow
+    terraform workspace new $Env
 }
 
 # ── 3. Plan / Apply / Destroy ────────────────────────────────────────────────
@@ -74,7 +75,7 @@ if ($Destroy) {
 } else {
     Write-Host "`n>> terraform apply (env=$Env)" -ForegroundColor Green
     terraform apply -var-file="$VarFile" -auto-approve
-    Write-Host "`n[Keycloak Deploy] Done — workspace '$Env' applied successfully." -ForegroundColor Green
+    Write-Host "`n[Keycloak Deploy] Done - workspace '$Env' applied successfully." -ForegroundColor Green
 
     # ── 4. Emit OIDC issuer URL for quick sanity-check ────────────────────────
     $RealmName = (terraform output -raw realm_name 2>$null)

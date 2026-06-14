@@ -1,0 +1,12 @@
+# Qdrant Helm Values
+replicaCount: 1
+
+service:
+  type: ClusterIP
+  port: 6333
+
+persistence:
+  enabled: true
+  size: 5Gi
+  accessModes:
+    - ReadWriteOnce

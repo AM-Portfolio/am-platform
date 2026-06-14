@@ -1,0 +1,21 @@
+vault:
+  secretPaths:
+    redis:
+      template: |
+        export REDIS_URL="redis://:{{ .Data.data.password }}@{{ .Data.data.host }}:{{ .Data.data.port }}/4"
+    llm-api-keys:
+      mappings:
+        DEEPSEEK_API_KEY: "DEEPSEEK_API_KEY"
+        GOOGLE_API_KEY: "GOOGLE_API_KEY"
+        OPENAI_API_KEY: "OPENAI_API_KEY"
+        TOGETHER_API_KEY: "TOGETHER_API_KEY"
+    identity-oidc:
+      mappings:
+        OIDC_JWKS_URL: "OIDC_JWKS_URL"
+        OIDC_ISSUER: "OIDC_ISSUER"
+        AM_MCP_CLIENT_SECRET: "AM_MCP_CLIENT_SECRET"
+    observability:
+      mappings:
+        LANGFUSE_PUBLIC_KEY: "LANGFUSE_PUBLIC_KEY"
+        LANGFUSE_SECRET_KEY: "LANGFUSE_SECRET_KEY"
+        LITELLM_MASTER_KEY: "LITELLM_MASTER_KEY"

@@ -12,6 +12,8 @@
 - `plan_subscription.md` - subscription, entitlements, and usage plan.
 - `plan_notification.md` - notification routing and inbox plan.
 - `plan_payments.md` - future payment abstraction and billing plan, outside the main 10/10 platform score.
+- **`ui-agent-ai-testing/`** - UI test agent, hybrid design review (Qdrant + LLM), weekly release runbook. Start at [`ui-agent-ai-testing/README.md`](ui-agent-ai-testing/README.md).
+- `AM_UI_TEST_AGENT_DESIGN.md` - redirect stub; content moved to `ui-agent-ai-testing/`.
 
 ## Current Status
 

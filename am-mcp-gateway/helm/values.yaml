@@ -1,0 +1,102 @@
+global:
+  image:
+    registry: ghcr.io/am-portfolio
+    pullPolicy: Always
+    imagePullSecrets:
+      - name: regcred
+  vault:
+    enabled: true
+    role: "am-backend-role"
+    authPath: "auth/kubernetes"
+    serviceAccountName: "am-backend-sa"
+
+image:
+  repository: am-mcp-gateway
+
+replicaCount: 1
+language: python
+port: 8120
+
+service:
+  port: 8120
+
+entrypoint: "exec uvicorn app.main:app --host 0.0.0.0 --port 8120"
+
+security:
+  automountServiceAccountToken: true
+
+config: {}
+
+env:
+  APP_ENV: production
+  APP_NAME: am-mcp-gateway
+  APP_PORT: "8120"
+  LOG_FORMAT: json
+  LOG_LEVEL: INFO
+  TZ: Asia/Kolkata
+  LLM_PROVIDER: litellm
+  LLM_FALLBACK_CHAIN: litellm
+  LLM_MODEL: together_ai/meta-llama/Meta-Llama-3-8B-Instruct-Lite
+  LLM_TEMPERATURE: "0.2"
+  LLM_MAX_TOKENS: "4096"
+  LLM_TIMEOUT_SECONDS: "60"
+  LLM_STREAM: "true"
+  LLM_CB_FAILURE_THRESHOLD: "5"
+  LLM_CB_RECOVERY_TIMEOUT_SECONDS: "30"
+  LITELLM_BASE_URL: "http://litellm.am-ai.svc.cluster.local:4000"
+  CACHE_ENABLED: "true"
+  CACHE_BACKEND: redis
+  CACHE_TTL_SECONDS: "300"
+  MCP_SERVER_URL: "http://am-fin-agent.am-apps-preprod.svc.cluster.local:8100"
+  MCP_SERVER_TIMEOUT_SECONDS: "20"
+  MCP_SERVER_ENABLED: "true"
+  LANGFUSE_ENABLED: "true"
+  LANGFUSE_HOST: "http://langfuse.am-ai.svc.cluster.local:3000"  # internal cluster URL (faster)
+  LANGFUSE_FLUSH_INTERVAL_SECONDS: "5"
+  MLFLOW_ENABLED: "true"
+  MLFLOW_TRACKING_URI: "http://mlflow.am-ai.svc.cluster.local:5000"
+  MLFLOW_EXPERIMENT_NAME: am-mcp-gateway
+  MLFLOW_ASYNC: "true"
+  RATE_LIMIT_ENABLED: "true"
+  RATE_LIMIT_REQUESTS_PER_MINUTE: "60"
+  RATE_LIMIT_BURST: "10"
+  SESSION_BACKEND: redis
+  SESSION_TTL_SECONDS: "3600"
+  UI_TEST_AGENT_BASE_URL: "http://am-ui-test-agent.am-apps-preprod.svc.cluster.local:8130"
+  UI_TEST_MANIFEST_PATH: "/config/testing/manifest.json"
+  MCP_GATEWAY_PUBLIC_URL: "http://am-mcp-gateway.am-apps-preprod.svc.cluster.local:8120"
+  LITELLM_MCP_SERVER_ALIAS: "am_mcp_gateway"
+
+probes:
+  port: 8120
+  startup:
+    path: /health
+    failureThreshold: 30
+    periodSeconds: 10
+  liveness:
+    path: /health
+  readiness:
+    path: /health
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+ingress:
+  enabled: true
+  className: "traefik"
+  annotations:
+    kubernetes.io/ingress.class: "traefik"
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.middlewares: >-
+      am-apps-preprod-global-cors@kubernetescrd,
+      am-apps-preprod-strip-prefix-apps@kubernetescrd
+  hosts:
+    - host: am.asrax.in
+      paths:
+        - path: /mcp
+          pathType: Prefix

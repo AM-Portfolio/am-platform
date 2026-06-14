@@ -1,0 +1,25 @@
+# MLflow Helm Values
+replicaCount: 1
+
+ingress:
+  enabled: true
+  ingressClassName: "traefik"
+  annotations:
+    kubernetes.io/ingress.class: "traefik"
+    traefik.ingress.kubernetes.io/router.entrypoints: "web,websecure"
+  hosts:
+    - host: mlflow.munish.org
+      paths:
+        - path: /
+          pathType: Prefix
+    - host: mlflow.asrax.in
+      paths:
+        - path: /
+          pathType: Prefix
+
+# Enable standard PostgreSQL database dependency subchart for reliable experiment state persistence
+postgresql:
+  enabled: true
+  auth:
+    database: mlflow
+    username: mlflow

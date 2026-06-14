@@ -136,6 +136,104 @@ def _export_terraform_vars(target_folder: str) -> None:
         kubeconfig_abs = os.path.abspath(os.path.join(PLATFORM_ROOT, "..", "VPS", "kubeconfig.vps"))
         tf_vars["kubeconfig_path"] = kubeconfig_abs
 
+    elif target_folder == "ai-gateway":
+        updated = False
+        
+        litellm_key = merged.get("LITELLM_MASTER_KEY")
+        if not litellm_key or litellm_key.startswith("<"):
+            litellm_key = "sk-" + secrets.token_hex(24)
+            print("Generated new LITELLM_MASTER_KEY and appending to .secrets.env")
+            try:
+                with open(secrets_path, "a", encoding="utf-8") as f:
+                    f.write(f"\n# Auto-generated LiteLLM master key\nLITELLM_MASTER_KEY={litellm_key}\n")
+                merged["LITELLM_MASTER_KEY"] = litellm_key
+                updated = True
+            except Exception as e:
+                print(f"Warning: Could not append LITELLM_MASTER_KEY: {e}")
+
+        langfuse_pub = merged.get("LANGFUSE_PUBLIC_KEY")
+        if not langfuse_pub or langfuse_pub.startswith("<"):
+            langfuse_pub = "pk-lf-" + secrets.token_hex(16)
+            print("Generated new LANGFUSE_PUBLIC_KEY and appending to .secrets.env")
+            try:
+                with open(secrets_path, "a", encoding="utf-8") as f:
+                    f.write(f"\n# Auto-generated Langfuse public key\nLANGFUSE_PUBLIC_KEY={langfuse_pub}\n")
+                merged["LANGFUSE_PUBLIC_KEY"] = langfuse_pub
+                updated = True
+            except Exception as e:
+                print(f"Warning: Could not append LANGFUSE_PUBLIC_KEY: {e}")
+
+        langfuse_sec = merged.get("LANGFUSE_SECRET_KEY")
+        if not langfuse_sec or langfuse_sec.startswith("<"):
+            langfuse_sec = "sk-lf-" + secrets.token_hex(16)
+            print("Generated new LANGFUSE_SECRET_KEY and appending to .secrets.env")
+            try:
+                with open(secrets_path, "a", encoding="utf-8") as f:
+                    f.write(f"\n# Auto-generated Langfuse secret key\nLANGFUSE_SECRET_KEY={langfuse_sec}\n")
+                merged["LANGFUSE_SECRET_KEY"] = langfuse_sec
+                updated = True
+            except Exception as e:
+                print(f"Warning: Could not append LANGFUSE_SECRET_KEY: {e}")
+
+        langfuse_auth = merged.get("LANGFUSE_NEXTAUTH_SECRET")
+        if not langfuse_auth or langfuse_auth.startswith("<"):
+            langfuse_auth = secrets.token_hex(32)
+            print("Generated new LANGFUSE_NEXTAUTH_SECRET and appending to .secrets.env")
+            try:
+                with open(secrets_path, "a", encoding="utf-8") as f:
+                    f.write(f"\n# Auto-generated Langfuse NextAuth secret\nLANGFUSE_NEXTAUTH_SECRET={langfuse_auth}\n")
+                merged["LANGFUSE_NEXTAUTH_SECRET"] = langfuse_auth
+                updated = True
+            except Exception as e:
+                print(f"Warning: Could not append LANGFUSE_NEXTAUTH_SECRET: {e}")
+
+        langfuse_db = merged.get("LANGFUSE_DB_PASSWORD")
+        if not langfuse_db or langfuse_db.startswith("<"):
+            langfuse_db = secrets.token_hex(16)
+            print("Generated new LANGFUSE_DB_PASSWORD and appending to .secrets.env")
+            try:
+                with open(secrets_path, "a", encoding="utf-8") as f:
+                    f.write(f"\n# Auto-generated Langfuse database password\nLANGFUSE_DB_PASSWORD={langfuse_db}\n")
+                merged["LANGFUSE_DB_PASSWORD"] = langfuse_db
+                updated = True
+            except Exception as e:
+                print(f"Warning: Could not append LANGFUSE_DB_PASSWORD: {e}")
+
+        litellm_db = merged.get("LITELLM_DB_PASSWORD")
+        if not litellm_db or litellm_db.startswith("<"):
+            litellm_db = secrets.token_hex(16)
+            print("Generated new LITELLM_DB_PASSWORD and appending to .secrets.env")
+            try:
+                with open(secrets_path, "a", encoding="utf-8") as f:
+                    f.write(f"\n# Auto-generated LiteLLM database password\nLITELLM_DB_PASSWORD={litellm_db}\n")
+                merged["LITELLM_DB_PASSWORD"] = litellm_db
+                updated = True
+            except Exception as e:
+                print(f"Warning: Could not append LITELLM_DB_PASSWORD: {e}")
+
+        if updated:
+            merged = {**_load_env_file(env_path), **_load_env_file(secrets_path)}
+
+        mapping = {
+            "LITELLM_MASTER_KEY": "litellm_master_key",
+            "DEEPSEEK_API_KEY": "deepseek_api_key",
+            "GOOGLE_API_KEY": "google_api_key",
+            "LANGFUSE_PUBLIC_KEY": "langfuse_public_key",
+            "LANGFUSE_SECRET_KEY": "langfuse_secret_key",
+            "LANGFUSE_NEXTAUTH_SECRET": "langfuse_nextauth_secret",
+            "LANGFUSE_HOST": "langfuse_host",
+            "LANGFUSE_DB_PASSWORD": "langfuse_db_password",
+            "LITELLM_DB_PASSWORD": "litellm_db_password",
+            "TOGETHER_API_KEY": "together_api_key"
+        }
+        for env_key, tf_key in mapping.items():
+            val = merged.get(env_key)
+            if val and not val.startswith("<"):
+                tf_vars[tf_key] = val
+
+        kubeconfig_abs = os.path.abspath(os.path.join(PLATFORM_ROOT, "..", "VPS", "kubeconfig.vps"))
+        tf_vars["kubeconfig_path"] = kubeconfig_abs
+
     target_tf_dir = os.path.join(PLATFORM_ROOT, "automation", "terraform", target_folder)
     vars_path = os.path.join(target_tf_dir, "generated.auto.tfvars.json")
     
@@ -192,14 +290,14 @@ def run(cmd: list[str], target_tf_dir: str):
 
 def main():
     if len(sys.argv) < 3:
-        print("Usage: python run_terraform.py [keycloak|billing|notification] [init|plan|apply|output]")
+        print("Usage: python run_terraform.py [keycloak|billing|notification|ai-gateway] [init|plan|apply|output]")
         sys.exit(1)
 
     folder = sys.argv[1].lower()
     action = sys.argv[2].lower()
 
-    if folder not in ("keycloak", "billing", "notification"):
-        print(f"ERROR: Invalid folder '{folder}'. Must be 'keycloak', 'billing', or 'notification'.")
+    if folder not in ("keycloak", "billing", "notification", "ai-gateway"):
+        print("Usage: python run_terraform.py [keycloak|billing|notification|ai-gateway] [init|plan|apply|output]")
         sys.exit(1)
 
     target_tf_dir = os.path.join(PLATFORM_ROOT, "automation", "terraform", folder)

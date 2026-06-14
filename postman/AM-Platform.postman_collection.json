@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "am-platform-collection-v1",
     "name": "AM Platform",
-    "description": "Unified Postman collection for **am-platform** thin-layer services.\n\n## Environments\n| File | Use when |\n|------|----------|\n| `AM-Platform.local.postman_environment.json` | `npm run platform:dev` (localhost) |\n| `AM-Platform.preprod.postman_environment.json` | Gateway at `am-dev.asrax.in/api` |\n\n## Auto-capture (collection scripts)\n**Pre-request:** fresh `idempotency_key` for meter/check POSTs; `X-Request-Id` header.\n\n**Post-response:** saves `access_token`, `refresh_token`, `service_access_token`, `user_sub`, `subscription_id`, `plan_code`, `notification_id`, Google SSO vars.\n\n## Modules\n| Folder | Service |\n|--------|--------|\n| Identity | am-identity |\n| Subscription | am-subscription |\n| Notification | am-notification |",
+    "description": "Unified Postman collection for **am-platform** thin-layer services.\n\n## Environments\n| File | Use when |\n|------|----------|\n| `AM-Platform.local.postman_environment.json` | `npm run platform:dev` (localhost) |\n| `AM-Platform.preprod.postman_environment.json` | Gateway at `am-dev.asrax.in/api` |\n\n## Auto-capture (collection scripts)\n**Pre-request:** fresh `idempotency_key` for meter/check POSTs; `X-Request-Id` header.\n\n**Post-response:** saves `access_token`, `refresh_token`, `service_access_token`, `user_sub`, `subscription_id`, `plan_code`, `notification_id`, Google SSO vars.\n\n## Modules\n| Folder | Service |\n|--------|--------|\n| Identity | am-identity |\n| Subscription | am-subscription |\n| Notification | am-notification |\n| MCP Gateway | am-mcp-gateway |",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
@@ -214,6 +214,10 @@
     {
       "key": "keycloak_url",
       "value": "http://auth.munish.org/auth"
+    },
+    {
+      "key": "mcp_gateway_base_url",
+      "value": "http://localhost:8120"
     },
     {
       "key": "notification_base_url",
@@ -1571,6 +1575,90 @@
                 },
                 "url": "{{keycloak_url}}/realms/{{keycloak_realm}}/protocol/openid-connect/token"
               }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "MCP Gateway",
+      "description": "API collection for **am-mcp-gateway** (port 8120).\n\n## Quick start\n1. Run **Health → Health Check**\n2. Get an `access_token` from Identity login or client credentials grant.\n3. Run **Chat → Chat Sync** or **Chat → Chat Stream**.",
+      "item": [
+        {
+          "name": "00 Health",
+          "item": [
+            {
+              "name": "Health Check",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{mcp_gateway_base_url}}/health",
+                "description": "Liveness check for the gateway."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "01 Chat",
+          "item": [
+            {
+              "name": "Chat Sync",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"message\": \"What is 2+2?\",\n  \"model\": \"together_ai/meta-llama/Llama-3-8b-chat-hf\",\n  \"temperature\": 0.2,\n  \"stream\": false\n}"
+                },
+                "url": "{{mcp_gateway_base_url}}/api/v1/chat/sync",
+                "description": "Sends a synchronous chat request to the LLM via LiteLLM."
+              },
+              "response": []
+            },
+            {
+              "name": "Chat Stream",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"message\": \"Explain quantum computing in one sentence.\",\n  \"model\": \"together_ai/meta-llama/Llama-3-8b-chat-hf\",\n  \"temperature\": 0.2,\n  \"stream\": true\n}"
+                },
+                "url": "{{mcp_gateway_base_url}}/api/v1/chat",
+                "description": "Sends a streaming chat request to the LLM via LiteLLM (returns Server-Sent Events)."
+              },
+              "response": []
             }
           ]
         }
