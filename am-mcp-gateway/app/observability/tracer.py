@@ -168,8 +168,8 @@ class ObservabilityTracer:
         except Exception as e:
             logger.error(f"Langfuse trace logging failed: {e}")
 
-    async def _send_to_mlflow(self, data: Dict[str, Any]):
-        """Log metrics and params to MLflow as a run."""
+    def _send_to_mlflow_sync(self, data: Dict[str, Any]) -> None:
+        """Log metrics and params to MLflow as a run (blocking — run via thread pool)."""
         if not self._mlflow_initialized and self.mlflow_enabled:
             try:
                 import mlflow
@@ -221,6 +221,9 @@ class ObservabilityTracer:
         except Exception as e:
             logger.error(f"MLflow tracking failed: {e}")
 
+    async def _send_to_mlflow(self, data: Dict[str, Any]) -> None:
+        await asyncio.to_thread(self._send_to_mlflow_sync, data)
+
     async def worker(self):
         """Background worker loop to process tracing tasks."""
         logger.info("Starting ObservabilityTracer background worker...")
@@ -228,19 +231,22 @@ class ObservabilityTracer:
             try:
                 data = await observability_queue.get()
 
-                tasks = []
+                # Langfuse first — must not be blocked by sync MLflow I/O on the event loop.
                 if self.langfuse_enabled:
-                    tasks.append(self._send_to_langfuse(data))
-                if self.mlflow_enabled:
-                    tasks.append(self._send_to_mlflow(data))
-
-                if tasks:
                     try:
-                        await asyncio.wait_for(asyncio.gather(*tasks), timeout=5.0)
+                        await asyncio.wait_for(self._send_to_langfuse(data), timeout=15.0)
                     except asyncio.TimeoutError:
-                        logger.warning("Observability logging timed out. Skipping chunk.")
+                        logger.warning("Langfuse logging timed out.")
                     except Exception as e:
-                        logger.error(f"Error executing observability task: {e}")
+                        logger.error(f"Langfuse logging failed: {e}")
+
+                if self.mlflow_enabled:
+                    try:
+                        await asyncio.wait_for(self._send_to_mlflow(data), timeout=15.0)
+                    except asyncio.TimeoutError:
+                        logger.warning("MLflow logging timed out.")
+                    except Exception as e:
+                        logger.error(f"MLflow logging failed: {e}")
 
                 observability_queue.task_done()
             except asyncio.CancelledError:

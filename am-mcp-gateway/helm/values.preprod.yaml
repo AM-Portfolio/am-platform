@@ -29,3 +29,9 @@ env:
   LLM_FALLBACK_CHAIN: litellm
   UI_TEST_AGENT_BASE_URL: "http://am-ui-test-agent.am-apps-preprod.svc.cluster.local:8130"
   MCP_GATEWAY_PUBLIC_URL: "https://am.asrax.in/mcp"
+  # Match local .env.preprod — internal langfuse.am-ai URL was failing ingestion silently
+  LANGFUSE_ENABLED: "true"
+  LANGFUSE_HOST: "https://langfuse.munish.org"
+  LANGFUSE_FLUSH_INTERVAL_SECONDS: "5"
+  # MLflow sync logging blocks the event loop and caused Langfuse 5s gather timeouts
+  MLFLOW_ENABLED: "false"
