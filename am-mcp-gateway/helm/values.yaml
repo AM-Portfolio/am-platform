@@ -36,7 +36,7 @@ env:
   TZ: Asia/Kolkata
   LLM_PROVIDER: litellm
   LLM_FALLBACK_CHAIN: litellm
-  LLM_MODEL: together_ai/meta-llama/Llama-3-8b-chat-hf        # LiteLLM format: provider/model
+  LLM_MODEL: together_ai/meta-llama/Meta-Llama-3-8B-Instruct-Lite
   LLM_TEMPERATURE: "0.2"
   LLM_MAX_TOKENS: "4096"
   LLM_TIMEOUT_SECONDS: "60"
@@ -62,6 +62,10 @@ env:
   RATE_LIMIT_BURST: "10"
   SESSION_BACKEND: redis
   SESSION_TTL_SECONDS: "3600"
+  UI_TEST_AGENT_BASE_URL: "http://am-ui-test-agent.am-apps-preprod.svc.cluster.local:8130"
+  UI_TEST_MANIFEST_PATH: "/config/testing/manifest.json"
+  MCP_GATEWAY_PUBLIC_URL: "http://am-mcp-gateway.am-apps-preprod.svc.cluster.local:8120"
+  LITELLM_MCP_SERVER_ALIAS: "am_mcp_gateway"
 
 probes:
   port: 8120

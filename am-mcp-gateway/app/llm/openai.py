@@ -15,7 +15,15 @@ class OpenAIProvider(BaseLLMProvider):
         self.max_tokens = settings.LLM_MAX_TOKENS
         self.timeout = settings.LLM_TIMEOUT_SECONDS
 
-    async def generate_chat_stream(self, prompt: str, system_prompt: str = None) -> AsyncIterator[str]:
+    async def generate_chat_stream(
+        self,
+        prompt: str,
+        system_prompt: str = None,
+        *,
+        model: str | None = None,
+        temperature: float | None = None,
+        metadata: dict | None = None,
+    ) -> AsyncIterator[str]:
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY is not configured")
 
@@ -62,7 +70,15 @@ class OpenAIProvider(BaseLLMProvider):
                         except Exception as e:
                             logger.error(f"Error parsing OpenAI stream chunk: {e}")
 
-    async def generate_chat(self, prompt: str, system_prompt: str = None) -> str:
+    async def generate_chat(
+        self,
+        prompt: str,
+        system_prompt: str = None,
+        *,
+        model: str | None = None,
+        temperature: float | None = None,
+        metadata: dict | None = None,
+    ) -> str:
         if not self.api_key:
             raise ValueError("OPENAI_API_KEY is not configured")
 

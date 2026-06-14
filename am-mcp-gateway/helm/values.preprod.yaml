@@ -25,3 +25,7 @@ vault:
 env:
   APP_ENV: preprod
   LOG_LEVEL: INFO
+  LLM_MODEL: together_ai/meta-llama/Meta-Llama-3-8B-Instruct-Lite
+  LLM_FALLBACK_CHAIN: litellm
+  UI_TEST_AGENT_BASE_URL: "http://am-ui-test-agent.am-apps-preprod.svc.cluster.local:8130"
+  MCP_GATEWAY_PUBLIC_URL: "https://am.asrax.in/mcp"

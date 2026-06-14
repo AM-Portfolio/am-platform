@@ -1,11 +1,14 @@
 import asyncio
 import logging
+import os
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.api.chat import router as chat_router
+from app.api.agent_llm import router as agent_llm_router
+from app.api.ui_test_tools import router as ui_test_tools_router
 from app.api.health import router as health_router
 from app.observability.tracer import observability_tracer
 
@@ -18,6 +21,13 @@ logger = logging.getLogger("am-mcp-gateway")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logger.info(
+        "LLM config: base_url=%s model=%s fallback=%s auth_disabled=%s",
+        settings.LITELLM_BASE_URL,
+        settings.LLM_MODEL,
+        settings.LLM_FALLBACK_CHAIN,
+        os.environ.get("AUTH_DISABLED", "false"),
+    )
     # Startup: Launch background worker for observability
     worker_task = asyncio.create_task(observability_tracer.worker())
     logger.info("Observability background tracing worker started.")
@@ -50,4 +60,6 @@ app.add_middleware(
 
 # Mount Routers
 app.include_router(chat_router, prefix="/api/v1")
+app.include_router(agent_llm_router, prefix="/api/v1")
+app.include_router(ui_test_tools_router, prefix="/api/v1")
 app.include_router(health_router)

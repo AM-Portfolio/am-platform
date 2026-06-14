@@ -46,10 +46,11 @@ async def test_llm_router_failover():
     router.providers_chain = [mock_deepseek, mock_gemini]
     
     # Call router
-    response, model = await router.generate_chat("Hello")
+    response, model, usage = await router.generate_chat("Hello")
     
     assert response == "Gemini response"
     assert model == "gemini"
+    assert usage is None
     
     # Check that DeepSeek circuit breaker recorded failure
     assert router.breakers["deepseek"].failures == 1

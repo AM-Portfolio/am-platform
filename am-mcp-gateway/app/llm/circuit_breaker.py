@@ -21,6 +21,8 @@ class CircuitBreaker:
 
     def record_success(self):
         """Records a successful call and closes the circuit if it was open or half-open."""
+        if not settings.LLM_CB_ENABLED:
+            return
         if self.state != CircuitState.CLOSED:
             logger.info(f"Circuit breaker for provider '{self.provider}' changed state from {self.state.name} to CLOSED.")
         self.failures = 0
@@ -28,6 +30,8 @@ class CircuitBreaker:
 
     def record_failure(self):
         """Records a failure and opens the circuit if failure threshold is reached."""
+        if not settings.LLM_CB_ENABLED:
+            return
         self.failures += 1
         logger.warning(f"Recorded failure for provider '{self.provider}'. Total failures: {self.failures}/{self.failure_threshold}")
         if self.failures >= self.failure_threshold and self.state != CircuitState.OPEN:
@@ -37,6 +41,8 @@ class CircuitBreaker:
 
     def allow_request(self) -> bool:
         """Determines if a request to the provider is allowed based on the circuit state."""
+        if not settings.LLM_CB_ENABLED:
+            return True
         if self.state == CircuitState.CLOSED:
             return True
         

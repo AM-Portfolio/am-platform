@@ -19,6 +19,14 @@ def test_security_settings_reads_expected_env_vars():
     assert settings.oidc_jwks_url.endswith("/certs")
 
 
+def test_auth_disabled_skips_oidc_requirements(monkeypatch):
+    monkeypatch.setenv("AUTH_DISABLED", "true")
+    monkeypatch.delenv("OIDC_ISSUER", raising=False)
+    monkeypatch.delenv("OIDC_JWKS_URL", raising=False)
+    settings = SecuritySettings()
+    assert settings.auth_disabled is True
+
+
 def test_issuer_matches_http_https_variants():
     configured = "https://auth.munish.org/auth/realms/am-realm"
     token_iss = "http://auth.munish.org/auth/realms/am-realm"

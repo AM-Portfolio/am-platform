@@ -12,11 +12,26 @@ from am_platform_security.validator import TokenValidator
 
 _bearer = HTTPBearer(auto_error=False)
 
+_LOCAL_DEV_SUBJECT = "local-dev-user"
+_LOCAL_DEV_CLIENT_ID = "local-dev-client"
+
 
 @lru_cache(maxsize=1)
 def get_token_validator() -> TokenValidator:
     settings = get_security_settings()
     return TokenValidator(settings)
+
+
+def _dev_auth_context(access_token: str = "local-dev-token") -> AuthContext:
+    return AuthContext(
+        subject=_LOCAL_DEV_SUBJECT,
+        client_id=_LOCAL_DEV_CLIENT_ID,
+        token_type="service",
+        roles=["user", "service"],
+        scopes=[],
+        claims={"sub": _LOCAL_DEV_SUBJECT},
+        access_token=access_token,
+    )
 
 
 def _extract_bearer_token(credentials: HTTPAuthorizationCredentials | None) -> str:
@@ -35,7 +50,12 @@ def require_auth_context(
     def dependency(
         credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
         validator: TokenValidator = Depends(get_token_validator),
+        settings: SecuritySettings = Depends(get_security_settings),
     ) -> AuthContext:
+        if settings.auth_disabled:
+            token = credentials.credentials if credentials else "local-dev-token"
+            return _dev_auth_context(token)
+
         token = _extract_bearer_token(credentials)
         return validator.validate(
             token,
@@ -77,6 +97,9 @@ def require_service_account(
         ),
         settings: SecuritySettings = Depends(get_security_settings),
     ) -> AuthContext:
+        if settings.auth_disabled:
+            return context
+
         if settings.service_role_name not in context.roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

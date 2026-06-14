@@ -38,6 +38,7 @@ class Settings(BaseSettings):
     LITELLM_MASTER_KEY: Optional[str] = Field(default=None)  # sk-... key injected via secret
 
     # Circuit Breaker Configuration
+    LLM_CB_ENABLED: bool = Field(default=True)
     LLM_CB_FAILURE_THRESHOLD: int = Field(default=5)
     LLM_CB_RECOVERY_TIMEOUT_SECONDS: int = Field(default=30)
 
@@ -56,6 +57,24 @@ class Settings(BaseSettings):
     MCP_SERVER_URL: str = Field(default="http://localhost:8080")
     MCP_SERVER_TIMEOUT_SECONDS: int = Field(default=20)
     MCP_SERVER_ENABLED: bool = Field(default=True)
+
+    # ── ui-test-agent (MCP tool proxy) ───────────────────────────
+    UI_TEST_AGENT_BASE_URL: str = Field(default="http://localhost:8130")
+    UI_TEST_MANIFEST_PATH: str = Field(
+        default="../../am-modern-ui/testing/manifest.json",
+        description="Path to wrapper manifest (module → targets + env files)",
+    )
+
+    # ── LiteLLM MCP tool sync ──────────────────────────────────────
+    MCP_GATEWAY_PUBLIC_URL: str = Field(
+        default="http://localhost:8120",
+        description="Base URL LiteLLM uses for OpenAPI spec_path (local or ingress)",
+    )
+    LITELLM_MCP_SERVER_ALIAS: str = Field(default="am_mcp_gateway")
+    LITELLM_SYNC_MCP_TOOLS: bool = Field(
+        default=False,
+        description="On startup, sync manifest tools to LiteLLM MCP server registry",
+    )
 
     # ── Observability ──────────────────────────────────────────
     LANGFUSE_ENABLED: bool = Field(default=False)

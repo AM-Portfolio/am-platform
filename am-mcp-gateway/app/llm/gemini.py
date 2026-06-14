@@ -15,7 +15,15 @@ class GeminiProvider(BaseLLMProvider):
         self.max_tokens = settings.LLM_MAX_TOKENS
         self.timeout = settings.LLM_TIMEOUT_SECONDS
 
-    async def generate_chat_stream(self, prompt: str, system_prompt: str = None) -> AsyncIterator[str]:
+    async def generate_chat_stream(
+        self,
+        prompt: str,
+        system_prompt: str = None,
+        *,
+        model: str | None = None,
+        temperature: float | None = None,
+        metadata: dict | None = None,
+    ) -> AsyncIterator[str]:
         if not self.api_key:
             raise ValueError("GOOGLE_API_KEY is not configured")
 
@@ -100,7 +108,15 @@ class GeminiProvider(BaseLLMProvider):
                             # If parsing fails, it might be partial. Just wait.
                             break
 
-    async def generate_chat(self, prompt: str, system_prompt: str = None) -> str:
+    async def generate_chat(
+        self,
+        prompt: str,
+        system_prompt: str = None,
+        *,
+        model: str | None = None,
+        temperature: float | None = None,
+        metadata: dict | None = None,
+    ) -> str:
         if not self.api_key:
             raise ValueError("GOOGLE_API_KEY is not configured")
 

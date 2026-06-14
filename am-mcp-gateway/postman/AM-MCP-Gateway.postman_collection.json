@@ -63,7 +63,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"message\": \"What is 2+2?\",\n  \"model\": \"together_ai/meta-llama/Llama-3-8b-chat-hf\",\n  \"temperature\": 0.2,\n  \"stream\": false\n}"
+              "raw": "{\n  \"message\": \"What is 2+2?\",\n  \"model\": \"together_ai/meta-llama/Meta-Llama-3-8B-Instruct-Lite\",\n  \"temperature\": 0.2,\n  \"stream\": false\n}"
             },
             "url": "{{base_url}}/api/v1/chat/sync",
             "description": "Sends a synchronous chat request to the LLM via LiteLLM."
@@ -92,7 +92,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"message\": \"Explain quantum computing in one sentence.\",\n  \"model\": \"together_ai/meta-llama/Llama-3-8b-chat-hf\",\n  \"temperature\": 0.2,\n  \"stream\": true\n}"
+              "raw": "{\n  \"message\": \"Explain quantum computing in one sentence.\",\n  \"model\": \"together_ai/meta-llama/Meta-Llama-3-8B-Instruct-Lite\",\n  \"temperature\": 0.2,\n  \"stream\": true\n}"
             },
             "url": "{{base_url}}/api/v1/chat",
             "description": "Sends a streaming chat request to the LLM via LiteLLM (returns Server-Sent Events)."

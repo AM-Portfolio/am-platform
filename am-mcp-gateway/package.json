@@ -6,10 +6,15 @@
   "scripts": {
     "dev": "node ../automation/scripts/run-with-logs.js python ../automation/scripts/run_service.py mcp-gateway dev",
     "start": "npm run dev",
-    "dev:prod": "node ../automation/scripts/run-with-logs.js python ../automation/scripts/run_service.py mcp-gateway dev:prod",
+    "preprod": "node ../automation/scripts/run-with-logs.js python ../automation/scripts/run_service.py mcp-gateway preprod",
+    "prod": "node ../automation/scripts/run-with-logs.js python ../automation/scripts/run_service.py mcp-gateway prod",
     "lint": "node ../automation/scripts/run-with-logs.js python -m black --check app tests",
     "format": "node ../automation/scripts/run-with-logs.js python -m black app tests",
     "test": "node ../automation/scripts/run-with-logs.js pytest tests/",
+    "test:litellm-langfuse": "node ../automation/scripts/run-with-logs.js python scripts/test_litellm_langfuse.py",
+    "test:ui-test-auth": "node ../automation/scripts/run-with-logs.js python -c \"import httpx; r=httpx.post('http://localhost:8120/api/v1/tools/ui-test/run-auth', json={'module':'modern-ui','environment':'preprod','target':'main','wait':false}, timeout=30); print(r.status_code, r.text)\"",
+    "sync:litellm-mcp-tools": "node ../automation/scripts/run-with-logs.js python scripts/sync_litellm_mcp_tools.py",
+    "sync:litellm-mcp-tools:dry": "node ../automation/scripts/run-with-logs.js python scripts/sync_litellm_mcp_tools.py --dry-run",
     "compile": "node ../automation/scripts/run-with-logs.js python -m compileall app"
   }
 }

@@ -10,8 +10,9 @@ PLATFORM_ROOT = Path(__file__).resolve().parents[3]
 
 
 class SecuritySettings(BaseSettings):
-    oidc_issuer: str = Field(..., alias="OIDC_ISSUER")
-    oidc_jwks_url: str = Field(..., alias="OIDC_JWKS_URL")
+    auth_disabled: bool = Field(default=False, alias="AUTH_DISABLED")
+    oidc_issuer: str = Field(default="http://localhost/disabled", alias="OIDC_ISSUER")
+    oidc_jwks_url: str = Field(default="http://localhost/disabled/certs", alias="OIDC_JWKS_URL")
     service_role_name: str = Field(default="service", alias="SERVICE_ROLE_NAME")
 
     model_config = SettingsConfigDict(
