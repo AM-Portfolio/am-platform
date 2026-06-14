@@ -16,9 +16,9 @@ model_list:
     litellm_params:
       model: together_ai/meta-llama/Meta-Llama-3-8B-Instruct-Lite
       api_key: "os.environ/TOGETHER_API_KEY"
-  - model_name: Qwen/Qwen2.5-VL-7B-Instruct
+  - model_name: Qwen/Qwen3-VL-8B-Instruct
     litellm_params:
-      model: together_ai/Qwen/Qwen2.5-VL-7B-Instruct
+      model: together_ai/Qwen/Qwen3-VL-8B-Instruct
       api_key: "os.environ/TOGETHER_API_KEY"
 
 litellm_settings:
