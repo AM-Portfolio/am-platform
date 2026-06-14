@@ -59,7 +59,13 @@ def main() -> None:
 
     service = sys.argv[1]
     mode = sys.argv[2] if len(sys.argv) > 2 else "dev"
-    reload = mode == "dev"
+    reload = "dev" in mode or mode == "preprod"
+
+    import os
+    if "preprod" in mode:
+        os.environ["APP_ENV"] = "preprod"
+    elif "prod" in mode:
+        os.environ["APP_ENV"] = "prod"
 
     import os
     if "preprod" in mode:
