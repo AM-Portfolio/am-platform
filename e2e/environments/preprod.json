@@ -1,0 +1,10 @@
+{
+  "name": "preprod",
+  "webBaseUrl": "https://am.asrax.in",
+  "identityBaseUrl": "https://am.asrax.in/identity",
+  "subscriptionBaseUrl": "https://am.asrax.in/subscriptions",
+  "notificationBaseUrl": "https://am.asrax.in/notifications",
+  "keycloakUrl": "https://auth.munish.org/auth",
+  "keycloakRealm": "am-preprod-realm",
+  "googleRedirectUri": "https://am.asrax.in/callback"
+}

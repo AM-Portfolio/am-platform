@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Google id_token helper (local API testing)</title>
+  <title>Google id_token helper (E2E / API testing)</title>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   <style>
     body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
@@ -15,7 +15,7 @@
   <h1>Google id_token helper</h1>
   <p class="hint">
     Serve this folder over HTTP (not <code>file://</code>):<br />
-    <code>cd am-platform/automation/scripts && python -m http.server 9000</code><br />
+    <code>cd am-platform/e2e/tools && python -m http.server 9000</code><br />
     Then open <code>http://localhost:9000/google-id-token.html</code>
   </p>
   <div id="g_id_onload"
@@ -26,16 +26,15 @@
   <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline"></div>
   <h2>id_token</h2>
   <textarea id="token" readonly placeholder="Sign in with Google to populate…"></textarea>
-  <h2>curl (local am-identity)</h2>
-  <pre id="curl"></pre>
+  <h2>Playwright (recommended)</h2>
+  <pre id="playwright"></pre>
   <script>
     function onGoogleSignIn(response) {
       const token = response.credential;
       document.getElementById('token').value = token;
-      document.getElementById('curl').textContent =
-        'curl -X POST http://localhost:8113/auth/google/token \\\n' +
-        '  -H "Content-Type: application/json" \\\n' +
-        '  -d "{\\"id_token\\":\\"' + token + '\\"}"';
+      document.getElementById('playwright').textContent =
+        '$env:GOOGLE_ID_TOKEN="' + token + '"\n' +
+        'npm run e2e:preprod:api --workspace=@am-platform/e2e';
     }
   </script>
 </body>

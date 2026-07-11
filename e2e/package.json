@@ -1,0 +1,25 @@
+{
+  "name": "@am-platform/e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Playwright API + web UI tests for AM Platform (all environments)",
+  "scripts": {
+    "test": "playwright test",
+    "test:api": "playwright test --project=api",
+    "test:ui": "playwright test --project=ui",
+    "test:local": "cross-env E2E_ENV=local playwright test",
+    "test:preprod": "cross-env E2E_ENV=preprod playwright test",
+    "test:local:api": "cross-env E2E_ENV=local playwright test --project=api",
+    "test:preprod:api": "cross-env E2E_ENV=preprod playwright test --project=api",
+    "test:local:ui": "cross-env E2E_ENV=local playwright test --project=ui",
+    "test:preprod:ui": "cross-env E2E_ENV=preprod playwright test --project=ui",
+    "report": "playwright show-report",
+    "install:browsers": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.51.0",
+    "@types/node": "^22.13.0",
+    "cross-env": "^7.0.3",
+    "typescript": "^5.8.0"
+  }
+}

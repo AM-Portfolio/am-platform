@@ -1,35 +1,34 @@
-# Test POST /auth/google/token against local am-identity (port 8113).
-# Usage:
-#   .\test-google-token-api.ps1 -IdToken "<google-jwt>"
-#   .\test-google-token-api.ps1 -IdTokenFile .\id-token.txt
+# Wrapper — prefer Playwright: npm run e2e:preprod:api (from am-platform/)
 param(
   [string]$BaseUrl = "http://localhost:8113",
   [string]$IdToken = "",
-  [string]$IdTokenFile = ""
+  [string]$IdTokenFile = "",
+  [ValidateSet("local", "preprod", "dev", "prod")]
+  [string]$Env = ""
 )
 
-if ($IdTokenFile) {
-  $IdToken = Get-Content -Raw -Path $IdTokenFile
-}
-$IdToken = $IdToken.Trim()
+$platformRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
+if ($Env -eq "preprod") { $BaseUrl = "https://am.asrax.in/identity" }
+elseif ($Env -eq "local") { $BaseUrl = "http://localhost:8113" }
+
+if ($IdTokenFile) { $IdToken = (Get-Content -Raw $IdTokenFile).Trim() }
 if (-not $IdToken) {
-  Write-Error "Provide -IdToken or -IdTokenFile. Get a token via automation/scripts/google-id-token.html"
+  Write-Error "Provide -IdToken or -IdTokenFile. Or run: npm run e2e:preprod:api"
   exit 1
 }
 
-$body = @{ id_token = $IdToken } | ConvertTo-Json -Compress
+$env:GOOGLE_ID_TOKEN = $IdToken
+if ($Env) { $env:E2E_ENV = $Env } elseif ($BaseUrl -match "asrax") { $env:E2E_ENV = "preprod" } else { $env:E2E_ENV = "local" }
+
+Push-Location $platformRoot
 try {
-  $response = Invoke-RestMethod -Method Post -Uri "$BaseUrl/auth/google/token" `
-    -ContentType "application/json" -Body $body
-  $response | ConvertTo-Json -Depth 5
-  Write-Host "`nOK — access_token length: $($response.access_token.Length)" -ForegroundColor Green
-} catch {
-  Write-Host "HTTP error:" -ForegroundColor Red
-  if ($_.Exception.Response) {
-    $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
-    Write-Host $reader.ReadToEnd()
-  } else {
-    Write-Host $_.Exception.Message
+  $script = switch ($env:E2E_ENV) {
+    "preprod" { "test:preprod:api" }
+    "dev"     { "cross-env E2E_ENV=dev playwright test --project=api" }
+    "prod"    { "cross-env E2E_ENV=prod playwright test --project=api" }
+    default   { "test:local:api" }
   }
-  exit 1
+  npm run $script -w @am-platform/e2e
+} finally {
+  Pop-Location
 }

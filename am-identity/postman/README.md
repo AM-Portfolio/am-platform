@@ -28,20 +28,16 @@ Service listens on **http://localhost:8113**.
 1. Start service: `npm run dev:preprod` (uses `am-env-vault/.../preprod` secrets)
 2. Get a Google **id_token** (valid ~1 hour):
    ```bash
-   cd am-platform/automation/scripts
+   cd am-platform/e2e/tools
    python -m http.server 9000
    ```
    Open http://localhost:9000/google-id-token.html → Sign in with Google → copy token
-3. Call the API:
-   - **Postman:** `03 Auth — Google SSO` → **Google Token Login (id_token)** (set env `google_id_token`)
-   - **PowerShell:** `.\automation\scripts\test-google-token-api.ps1 -IdToken "<token>"`
-   - **curl:**
-     ```bash
-     curl -X POST http://localhost:8113/auth/google/token \
-       -H "Content-Type: application/json" \
-       -d '{"id_token":"YOUR_GOOGLE_ID_TOKEN"}'
-     ```
-4. Optional: `04 Users` → **Get My Profile** with saved `access_token`
+3. Run Playwright (from `am-platform/`):
+   ```powershell
+   $env:GOOGLE_ID_TOKEN="<token>"
+   npm run e2e:local:api
+   ```
+   Or Postman: **Google Token Login (id_token)** with env `google_id_token`
 
 ## Recommended test order
 

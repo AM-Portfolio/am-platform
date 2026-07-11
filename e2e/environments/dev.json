@@ -1,0 +1,10 @@
+{
+  "name": "dev",
+  "webBaseUrl": "https://am-dev.asrax.in",
+  "identityBaseUrl": "https://am-dev.asrax.in/identity",
+  "subscriptionBaseUrl": "https://am-dev.asrax.in/subscriptions",
+  "notificationBaseUrl": "https://am-dev.asrax.in/notifications",
+  "keycloakUrl": "https://auth.munish.org/auth",
+  "keycloakRealm": "am-realm",
+  "googleRedirectUri": "https://am-dev.asrax.in/callback"
+}

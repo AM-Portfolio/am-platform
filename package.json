@@ -5,6 +5,7 @@
   "private": true,
   "workspaces": [
     "automation",
+    "e2e",
     "am-identity",
     "am-subscription",
     "am-notification",
@@ -59,6 +60,14 @@
     "infra:postgres:tunnel": "kubectl --kubeconfig ../VPS/kubeconfig.vps -n infra port-forward svc/postgresql 15432:5432",
     "infra:tcp:redeploy": "python ../am-infra/scripts/redeploy_tcp_proxies_remote.py",
     "postman:build": "python postman/build_platform_postman.py",
+
+    "e2e:install": "npm run install:browsers -w @am-platform/e2e",
+    "e2e:local": "npm run test:local -w @am-platform/e2e",
+    "e2e:preprod": "npm run test:preprod -w @am-platform/e2e",
+    "e2e:local:api": "npm run test:local:api -w @am-platform/e2e",
+    "e2e:preprod:api": "npm run test:preprod:api -w @am-platform/e2e",
+    "e2e:local:ui": "npm run test:local:ui -w @am-platform/e2e",
+    "e2e:preprod:ui": "npm run test:preprod:ui -w @am-platform/e2e",
     "infra:tf:keycloak:init": "npm run tf:keycloak:init -w @am-platform/automation",
     "infra:tf:keycloak:plan": "npm run tf:keycloak:plan -w @am-platform/automation",
     "infra:tf:keycloak:apply": "npm run tf:keycloak:apply -w @am-platform/automation",
