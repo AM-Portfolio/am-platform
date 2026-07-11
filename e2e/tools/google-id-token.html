@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Google id_token helper (E2E / API testing)</title>
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 2rem auto; padding: 0 1rem; }
+    textarea { width: 100%; height: 120px; font-family: monospace; font-size: 12px; }
+    code { background: #f4f4f4; padding: 2px 6px; border-radius: 4px; }
+    .hint { color: #555; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <h1>Google id_token helper</h1>
+  <p class="hint">
+    Serve this folder over HTTP (not <code>file://</code>):<br />
+    <code>cd am-platform/e2e/tools && python -m http.server 9000</code><br />
+    Then open <code>http://localhost:9000/google-id-token.html</code>
+  </p>
+  <div id="g_id_onload"
+       data-client_id="307768822337-ad7tee4d82cc0b4flgrfs157e5e6rc0g.apps.googleusercontent.com"
+       data-callback="onGoogleSignIn"
+       data-auto_prompt="false">
+  </div>
+  <div class="g_id_signin" data-type="standard" data-size="large" data-theme="outline"></div>
+  <h2>id_token</h2>
+  <textarea id="token" readonly placeholder="Sign in with Google to populate…"></textarea>
+  <h2>Playwright (recommended)</h2>
+  <pre id="playwright"></pre>
+  <script>
+    function onGoogleSignIn(response) {
+      const token = response.credential;
+      document.getElementById('token').value = token;
+      document.getElementById('playwright').textContent =
+        '$env:GOOGLE_ID_TOKEN="' + token + '"\n' +
+        'npm run e2e:preprod:api --workspace=@am-platform/e2e';
+    }
+  </script>
+</body>
+</html>

@@ -8,7 +8,9 @@ from typing import Any
 from urllib.parse import urlencode
 
 import httpx
+import jwt
 from fastapi import HTTPException, status
+from jwt import InvalidTokenError, PyJWKClient, PyJWKClientConnectionError
 
 from am_identity.core.config import IdentitySettings
 from am_identity.providers.interface import IIdentityProvider
@@ -16,6 +18,12 @@ from am_identity.schemas.auth import RegisterRequest
 
 # Required for /userinfo and OIDC profile claims (without openid, userinfo returns 403).
 _OIDC_USER_SCOPES = "openid profile email"
+_GOOGLE_ISSUER = "https://accounts.google.com"
+_GOOGLE_JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs"
+_JWKS_REQUEST_HEADERS = {
+    "User-Agent": "am-identity-service/1.0",
+    "Accept": "application/json",
+}
 
 
 def _parse_settings_attribute(attributes: dict[str, Any] | None) -> dict[str, Any]:
@@ -71,6 +79,127 @@ class KeycloakIdentityProvider(IIdentityProvider):
         self._settings_profile_ready = False
         self._user_profile_url = (
             f"{keycloak_base}/admin/realms/{settings.keycloak_realm}/users/profile"
+        )
+        self._google_jwk_client = PyJWKClient(
+            _GOOGLE_JWKS_URL,
+            headers=_JWKS_REQUEST_HEADERS,
+            cache_jwk_set=True,
+            lifespan=300,
+        )
+
+    def _validate_google_id_token(self, id_token: str) -> dict[str, Any]:
+        try:
+            signing_key = self._google_jwk_client.get_signing_key_from_jwt(id_token).key
+            claims = jwt.decode(
+                id_token,
+                signing_key,
+                algorithms=["RS256"],
+                audience=self.settings.google_client_id,
+                issuer=_GOOGLE_ISSUER,
+            )
+        except PyJWKClientConnectionError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Unable to fetch Google JWKS signing keys: {exc}",
+            ) from exc
+        except InvalidTokenError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail=f"Invalid Google ID token: {exc}",
+            ) from exc
+
+        email = claims.get("email")
+        if not email or not claims.get("email_verified", False):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Google account email is missing or not verified",
+            )
+        return claims
+
+    async def _find_user_by_email(self, email: str, admin_token: str) -> dict[str, Any] | None:
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            response = await client.get(
+                self._admin_users_url,
+                params={"email": email, "exact": "true"},
+                headers={"Authorization": f"Bearer {admin_token}"},
+            )
+        if response.status_code >= 400:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Failed to search Keycloak users: {response.text}",
+            )
+        users = response.json()
+        return users[0] if users else None
+
+    async def _ensure_google_user(self, claims: dict[str, Any]) -> str:
+        email = str(claims["email"])
+        google_sub = str(claims["sub"])
+        admin_token = await self._get_admin_access_token()
+        existing = await self._find_user_by_email(email, admin_token)
+        if existing is None:
+            payload = {
+                "username": email,
+                "email": email,
+                "enabled": True,
+                "emailVerified": True,
+                "firstName": claims.get("given_name") or claims.get("name") or email,
+                "lastName": claims.get("family_name") or "",
+            }
+            async with httpx.AsyncClient(
+                timeout=self._session_timeout, verify=self.settings.verify_ssl
+            ) as client:
+                response = await client.post(
+                    self._admin_users_url,
+                    json=payload,
+                    headers={"Authorization": f"Bearer {admin_token}"},
+                )
+            if response.status_code not in (201, 204):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Failed to provision Google user: {response.text}",
+                )
+            existing = await self._find_user_by_email(email, admin_token)
+            if existing is None:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Google user was created but could not be loaded from Keycloak",
+                )
+
+        user_id = existing["id"]
+        federated_url = (
+            f"{self._admin_users_url}/{user_id}/federated-identity/"
+            f"{self.settings.google_idp_alias}"
+        )
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            link_response = await client.post(
+                federated_url,
+                json={
+                    "identityProvider": self.settings.google_idp_alias,
+                    "userId": google_sub,
+                    "userName": email,
+                },
+                headers={"Authorization": f"Bearer {admin_token}"},
+            )
+        if link_response.status_code >= 400 and link_response.status_code != 409:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to link Google identity: {link_response.text}",
+            )
+        return user_id
+
+    async def _issue_tokens_for_user(self, user_id: str) -> dict[str, Any]:
+        return await self._request_token(
+            {
+                "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
+                "client_id": self.settings.identity_client_id,
+                "client_secret": self.settings.identity_client_secret,
+                "requested_subject": user_id,
+                "scope": _OIDC_USER_SCOPES,
+            }
         )
 
     async def _request_token(self, data: dict[str, str]) -> dict[str, Any]:
@@ -388,13 +517,10 @@ class KeycloakIdentityProvider(IIdentityProvider):
         return await self._request_token(token_data)
 
     async def authenticate_google_token(self, id_token: str) -> dict[str, Any]:
-        token_data = {
-            "grant_type": "urn:ietf:params:oauth:grant-type:token-exchange",
-            "client_id": self.settings.identity_client_id,
-            "client_secret": self.settings.identity_client_secret,
-            "subject_token": id_token,
-            "subject_token_type": "urn:ietf:params:oauth:token-type:jwt",
-            "subject_issuer": self.settings.google_idp_alias,
-            "scope": _OIDC_USER_SCOPES,
-        }
-        return await self._request_token(token_data)
+        # Keycloak 26.3 cannot exchange Google id_tokens directly (Standard TE V2
+        # rejects JWT; legacy external exchange fails for Google id_tokens). Validate
+        # the Google token here, provision/link the user, then issue realm tokens via
+        # direct impersonation (legacy token exchange without subject_token).
+        claims = self._validate_google_id_token(id_token)
+        user_id = await self._ensure_google_user(claims)
+        return await self._issue_tokens_for_user(user_id)

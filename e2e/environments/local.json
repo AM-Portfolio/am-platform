@@ -1,0 +1,10 @@
+{
+  "name": "local",
+  "webBaseUrl": "http://localhost:8080",
+  "identityBaseUrl": "http://localhost:8113",
+  "subscriptionBaseUrl": "http://localhost:8110",
+  "notificationBaseUrl": "http://localhost:8111",
+  "keycloakUrl": "https://auth.munish.org/auth",
+  "keycloakRealm": "am-preprod-realm",
+  "googleRedirectUri": "http://localhost:9000/callback"
+}

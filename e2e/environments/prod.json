@@ -1,0 +1,11 @@
+{
+  "name": "prod",
+  "webBaseUrl": "https://am.munish.org",
+  "identityBaseUrl": "https://am.munish.org/identity",
+  "subscriptionBaseUrl": "https://am.munish.org/subscriptions",
+  "notificationBaseUrl": "https://am.munish.org/notifications",
+  "keycloakUrl": "https://auth.munish.org/auth",
+  "keycloakRealm": "am-realm",
+  "googleRedirectUri": "https://am.munish.org/callback",
+  "readOnlySmoke": true
+}

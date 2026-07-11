@@ -13,9 +13,31 @@
 
 ```bash
 cd am-platform/am-identity
-# ensure PYTHONPATH includes libraries and am-identity
-uvicorn am_identity.main:app --reload --port 8113
+
+# Against am-realm (default .secrets.env in am-platform/)
+npm run dev
+
+# Against preprod Keycloak (am-preprod-realm — same as am.asrax.in)
+npm run dev:preprod
 ```
+
+Service listens on **http://localhost:8113**.
+
+## Test Google id_token login (Flutter flow)
+
+1. Start service: `npm run dev:preprod` (uses `am-env-vault/.../preprod` secrets)
+2. Get a Google **id_token** (valid ~1 hour):
+   ```bash
+   cd am-platform/e2e/tools
+   python -m http.server 9000
+   ```
+   Open http://localhost:9000/google-id-token.html → Sign in with Google → copy token
+3. Run Playwright (from `am-platform/`):
+   ```powershell
+   $env:GOOGLE_ID_TOKEN="<token>"
+   npm run e2e:local:api
+   ```
+   Or Postman: **Google Token Login (id_token)** with env `google_id_token`
 
 ## Recommended test order
 
