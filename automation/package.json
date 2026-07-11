@@ -5,6 +5,7 @@
   "description": "Terraform, Helm, and local infra for AM Platform",
   "scripts": {
     "keycloak:deploy": "node scripts/run-with-logs.js powershell.exe -ExecutionPolicy Bypass -File helm/deploy-keycloak.ps1",
+    "keycloak:setup-google-login": "node scripts/run-with-logs.js bash scripts/setup-keycloak-google-login.sh google-login",
     "lago:deploy": "node scripts/run-with-logs.js powershell.exe -ExecutionPolicy Bypass -File helm/deploy-lago.ps1",
     "lago:plans": "node scripts/run-with-logs.js python scripts/provision_lago_plans.py",
     "novu:deploy": "node scripts/run-with-logs.js powershell.exe -ExecutionPolicy Bypass -File helm/deploy-novu.ps1",

@@ -24,6 +24,7 @@ class IdentitySettings(BaseSettings):
     identity_client_secret: str = Field(..., alias="AM_IDENTITY_CLIENT_SECRET")
     web_client_id: str = Field(default="am-web-client", alias="AM_WEB_CLIENT_ID")
     google_idp_alias: str = Field(default="google", alias="GOOGLE_IDP_ALIAS")
+    google_client_id: str = Field(..., alias="GOOGLE_CLIENT_ID")
     google_state_ttl_seconds: int = Field(default=300, alias="GOOGLE_STATE_TTL_SECONDS")
     allowed_google_redirect_uris: str = Field(
         default="http://localhost:9000/callback,https://am.munish.org/callback,https://am.asrax.in/callback,https://am-dev.asrax.in/callback",
