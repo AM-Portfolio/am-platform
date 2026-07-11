@@ -7,6 +7,7 @@
     "dev": "node ../automation/scripts/run-with-logs.js python ../automation/scripts/run_service.py identity dev",
     "start": "npm run dev",
     "dev:prod": "node ../automation/scripts/run-with-logs.js python ../automation/scripts/run_service.py identity dev:prod",
+    "dev:preprod": "node ../automation/scripts/run-with-logs.js python ../automation/scripts/run_service.py identity dev:preprod",
     "test": "node ../automation/scripts/run-with-logs.js echo No am-identity tests yet",
     "lint": "node ../automation/scripts/run-with-logs.js python -m ruff check am_identity && python -m black --check am_identity",
     "lint:fix": "node ../automation/scripts/run-with-logs.js python -m ruff check am_identity --fix",

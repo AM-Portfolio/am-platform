@@ -57,27 +57,45 @@ def python_exe() -> str:
     return sys.executable
 
 
-def load_env_files() -> dict[str, str]:
+def load_env_file(path: Path) -> dict[str, str]:
     merged: dict[str, str] = {}
-    for name in (".env", ".secrets.env"):
-        path = PLATFORM_ROOT / name
-        if not path.is_file():
+    if not path.is_file():
+        return merged
+    for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
             continue
-        for line in path.read_text(encoding="utf-8", errors="ignore").splitlines():
-            line = line.strip()
-            if not line or line.startswith("#") or "=" not in line:
-                continue
-            key, value = line.split("=", 1)
-            merged[key.strip()] = value.strip()
+        key, value = line.split("=", 1)
+        merged[key.strip()] = value.strip()
     return merged
 
 
-def identity_env() -> dict[str, str]:
+def load_env_files(*, preprod: bool = False) -> dict[str, str]:
+    merged: dict[str, str] = {}
+    for name in (".env", ".secrets.env"):
+        merged.update(load_env_file(PLATFORM_ROOT / name))
+    if preprod or os.environ.get("AM_PLATFORM_ENV") == "preprod":
+        preprod_path = (
+            REPO_ROOT
+            / "am-env-vault"
+            / "am-env-vault"
+            / "environments"
+            / "preprod"
+            / "am-platform__secrets.preprod.env"
+        )
+        merged.update(load_env_file(preprod_path))
+    return merged
+
+
+def identity_env(*, preprod: bool = False) -> dict[str, str]:
     env = os.environ.copy()
-    env.update(load_env_files())
+    if preprod:
+        env["AM_PLATFORM_ENV"] = "preprod"
+    env.update(load_env_files(preprod=preprod))
     env["PYTHONPATH"] = os.pathsep.join(str(p) for p in IDENTITY_LIB_PATHS)
     env["APP_NAME"] = "am-identity"
     env["APP_PORT"] = "8113"
+    env.setdefault("IDENTITY_VERIFY_SSL", "false")
     return env
 
 

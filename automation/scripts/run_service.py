@@ -16,11 +16,11 @@ def run_uvicorn(module: str, *, reload: bool, env: dict[str, str], cwd_name: str
     return subprocess.run(args, cwd=PLATFORM_ROOT / cwd_name, env=env).returncode
 
 
-def run_identity(*, reload: bool) -> int:
+def run_identity(*, reload: bool, preprod: bool = False) -> int:
     return run_uvicorn(
         "am_identity.main:app",
         reload=reload,
-        env=identity_env(),
+        env=identity_env(preprod=preprod),
         cwd_name="am-identity",
     )
 
@@ -53,6 +53,8 @@ def main() -> None:
     reload = mode == "dev"
 
     if service == "identity":
+        if mode in ("dev:preprod", "preprod"):
+            sys.exit(run_identity(reload=True, preprod=True))
         sys.exit(run_identity(reload=reload))
     if service == "subscription":
         sys.exit(run_subscription(reload=reload))
