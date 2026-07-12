@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from am_identity.api.admin_router import router as admin_router
 from am_identity.api.auth_router import router as auth_router
 from am_identity.api.internal_router import router as internal_router
 from am_identity.api.user_router import router as user_router
@@ -24,4 +25,5 @@ async def health() -> dict[str, str]:
 
 app.include_router(auth_router)
 app.include_router(user_router)
+app.include_router(admin_router)
 app.include_router(internal_router)

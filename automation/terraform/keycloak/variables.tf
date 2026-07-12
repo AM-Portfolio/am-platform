@@ -57,3 +57,55 @@ variable "verify_email" {
   description = "Whether to require email verification on new registrations (should be true for prod)"
   default     = false
 }
+
+# Zoho (or other) SMTP for Keycloak realm email (verify / reset / required actions).
+# Leave smtp_host empty to skip configuring smtp_server on the realm.
+variable "smtp_host" {
+  type        = string
+  description = "SMTP host (e.g. smtppro.zoho.in)"
+  default     = ""
+}
+
+variable "smtp_port" {
+  type        = string
+  description = "SMTP port as string (Keycloak provider expects string)"
+  default     = "465"
+}
+
+variable "smtp_from" {
+  type        = string
+  description = "From email address (must match authenticated mailbox/alias)"
+  default     = ""
+}
+
+variable "smtp_from_display_name" {
+  type        = string
+  description = "From display name shown in clients"
+  default     = "Asrax Accounts"
+}
+
+variable "smtp_user" {
+  type        = string
+  description = "SMTP auth username (full email)"
+  default     = ""
+  sensitive   = true
+}
+
+variable "smtp_password" {
+  type        = string
+  description = "SMTP auth password (Zoho app password)"
+  default     = ""
+  sensitive   = true
+}
+
+variable "smtp_ssl" {
+  type        = bool
+  description = "Use SSL (typical for port 465)"
+  default     = true
+}
+
+variable "smtp_starttls" {
+  type        = bool
+  description = "Use STARTTLS (typical for port 587)"
+  default     = false
+}

@@ -65,7 +65,8 @@
 |---|---|---|
 | `user` | **Every new user (default)** | Can log in to all AM apps, view own data |
 | `viewer` | Assigned manually | Read-only access across AM apps — no mutations |
-| `admin` | Assigned manually | Can manage content, users, tenant configuration |
+| `admin` | Assigned manually | Can manage users and roles via `am-identity` `/admin/*` |
+| `super_admin` | Bootstrap once, then assign only by `super_admin` | Break-glass enterprise owner; only role that may grant/revoke `super_admin` |
 | `service` | Service accounts only | Internal machine-to-machine — **never assign to humans** |
 
 ### Default Role Assignment
@@ -82,9 +83,21 @@ New user registers / is created
 ### Promoting a User
 
 To give a user `admin` or `viewer`, go to:
-> Keycloak Admin → `am-realm` → Users → `{user}` → Role Mappings → Realm Roles → Assign
+> Keycloak Admin → realm → Users → `{user}` → Role Mappings → Realm Roles → Assign
 
-Or via the `am-identity` API (POST /admin/users/{id}/roles) — uses the service account.
+Or via the `am-identity` API (`PUT` / `POST` / `DELETE` `/admin/users/{id}/roles`) — requires a JWT with `admin` or `super_admin`.
+
+### Realm email (Zoho SMTP)
+
+Keycloak sends verify / reset / required-action mail via Zoho:
+
+| Setting | Preprod value |
+|---------|----------------|
+| Host | `smtppro.zoho.in` |
+| Port | `465` (SSL) |
+| From | `noreply@asrax.in` (`Asrax Accounts`) |
+
+Configured by Terraform `smtp_server` on the realm from `KEYCLOAK_SMTP_*` / `terraform.preprod.tfvars`. Apply with `automation/terraform/keycloak/deploy.ps1 -Env preprod`.
 
 ---
 

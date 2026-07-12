@@ -41,7 +41,14 @@ def _export_terraform_vars(target_folder: str) -> None:
     """Map platform env files to target Terraform folder's auto.tfvars.json."""
     secrets_path = os.path.join(PLATFORM_ROOT, ".secrets.env")
     env_path = os.path.join(PLATFORM_ROOT, ".env")
-    merged = {**_load_env_file(env_path), **_load_env_file(secrets_path)}
+    app_env = os.environ.get("APP_ENV") or _load_env_file(env_path).get("APP_ENV", "")
+    env_secrets = (
+        _load_env_file(os.path.join(PLATFORM_ROOT, f".secrets.{app_env}.env"))
+        if app_env
+        else {}
+    )
+    # Prefer env-specific secrets (e.g. .secrets.preprod.env) over legacy .secrets.env
+    merged = {**_load_env_file(env_path), **_load_env_file(secrets_path), **env_secrets}
 
     sub_pwd = merged.get("AM_SUBSCRIPTION_DB_PASSWORD")
     if not sub_pwd or sub_pwd.startswith("<"):
@@ -63,12 +70,26 @@ def _export_terraform_vars(target_folder: str) -> None:
             "KEYCLOAK_URL": "keycloak_url",
             "KEYCLOAK_ADMIN_USER": "keycloak_admin_username",
             "KEYCLOAK_ADMIN_PASSWORD": "keycloak_admin_password",
-            "KEYCLOAK_REALM": "realm_name"
+            "KEYCLOAK_REALM": "realm_name",
+            "KEYCLOAK_SMTP_HOST": "smtp_host",
+            "KEYCLOAK_SMTP_PORT": "smtp_port",
+            "KEYCLOAK_SMTP_FROM": "smtp_from",
+            "KEYCLOAK_SMTP_FROM_DISPLAY_NAME": "smtp_from_display_name",
+            "KEYCLOAK_SMTP_USER": "smtp_user",
+            "KEYCLOAK_SMTP_PASSWORD": "smtp_password",
         }
         for env_key, tf_key in mapping.items():
             val = merged.get(env_key)
             if val and not val.startswith("<"):
                 tf_vars[tf_key] = val
+        if merged.get("KEYCLOAK_SMTP_SSL", "").lower() in ("true", "1", "yes"):
+            tf_vars["smtp_ssl"] = True
+        elif merged.get("KEYCLOAK_SMTP_SSL", "").lower() in ("false", "0", "no"):
+            tf_vars["smtp_ssl"] = False
+        if merged.get("KEYCLOAK_SMTP_STARTTLS", "").lower() in ("true", "1", "yes"):
+            tf_vars["smtp_starttls"] = True
+        elif merged.get("KEYCLOAK_SMTP_STARTTLS", "").lower() in ("false", "0", "no"):
+            tf_vars["smtp_starttls"] = False
 
     elif target_folder == "billing":
         mapping = {
