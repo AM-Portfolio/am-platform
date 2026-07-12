@@ -10,8 +10,11 @@ from am_identity.schemas.auth import (
     LoginRequest,
     LogoutRequest,
     OTPLoginRequest,
+    PasswordResetConfirmRequest,
+    PasswordResetRequest,
     RefreshRequest,
     RegisterRequest,
+    ResendVerifyEmailRequest,
     TokenResponse,
 )
 
@@ -80,3 +83,41 @@ async def logout(
     provider: IIdentityProvider = Depends(get_identity_provider),
 ):
     await provider.revoke_token(payload.refresh_token)
+
+
+@router.post("/password-reset", status_code=status.HTTP_202_ACCEPTED)
+async def password_reset(
+    payload: PasswordResetRequest,
+    provider: IIdentityProvider = Depends(get_identity_provider),
+):
+    # Always 202 to avoid email enumeration.
+    await provider.send_password_reset_email(payload.email)
+    return {"status": "accepted"}
+
+
+@router.post("/password-reset/confirm", status_code=status.HTTP_501_NOT_IMPLEMENTED)
+async def password_reset_confirm(
+    payload: PasswordResetConfirmRequest,
+    provider: IIdentityProvider = Depends(get_identity_provider),
+):
+    # Keycloak reset links complete in-browser via execute-actions-email.
+    # Identity-owned token confirm is reserved for a later phase.
+    _ = (payload, provider)
+    return {
+        "detail": (
+            "Use the Keycloak reset link from email. "
+            "Identity-owned token confirm is not implemented yet."
+        )
+    }
+
+
+@router.post("/verify-email/resend", status_code=status.HTTP_202_ACCEPTED)
+async def resend_verify_email(
+    payload: ResendVerifyEmailRequest,
+    provider: IIdentityProvider = Depends(get_identity_provider),
+):
+    # Always 202 to avoid email enumeration.
+    users = await provider.list_users(email=payload.email, first=0, max_results=1)
+    if users:
+        await provider.send_verify_email(users[0]["id"])
+    return {"status": "accepted"}

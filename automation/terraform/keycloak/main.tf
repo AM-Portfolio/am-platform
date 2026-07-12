@@ -30,7 +30,7 @@ resource "keycloak_realm" "am_realm" {
   registration_email_as_username = true
   login_with_email_allowed       = true
   duplicate_emails_allowed       = false
-  verify_email                   = var.verify_email # true in prod only
+  verify_email                   = var.verify_email # true in preprod/prod when SMTP is configured
 
   # Session TTLs (recommended baseline)
   sso_session_idle_timeout = "30m"
@@ -49,6 +49,24 @@ resource "keycloak_realm" "am_realm" {
       quick_login_check_milli_seconds  = 1000
       minimum_quick_login_wait_seconds = 60
       max_failure_wait_seconds         = 900
+    }
+  }
+
+  # Zoho Mail (or other) SMTP — only when smtp_host is set
+  dynamic "smtp_server" {
+    for_each = var.smtp_host != "" ? [1] : []
+    content {
+      host              = var.smtp_host
+      port              = var.smtp_port
+      from              = var.smtp_from
+      from_display_name = var.smtp_from_display_name
+      ssl               = var.smtp_ssl
+      starttls          = var.smtp_starttls
+
+      auth {
+        username = var.smtp_user
+        password = var.smtp_password
+      }
     }
   }
 }
@@ -79,6 +97,12 @@ resource "keycloak_role" "role_service" {
   realm_id    = keycloak_realm.am_realm.id
   name        = "service"
   description = "Internal microservice account - not for human users"
+}
+
+resource "keycloak_role" "role_super_admin" {
+  realm_id    = keycloak_realm.am_realm.id
+  name        = "super_admin"
+  description = "Break-glass enterprise owner - can grant/revoke super_admin"
 }
 
 # =========================================================

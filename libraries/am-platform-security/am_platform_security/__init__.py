@@ -1,6 +1,7 @@
 from am_platform_security.config import SecuritySettings, get_security_settings
 from am_platform_security.dependencies import (
     get_token_validator,
+    require_any_roles,
     require_auth_context,
     require_roles,
     require_service_account,
@@ -14,6 +15,7 @@ __all__ = [
     "TokenValidator",
     "get_security_settings",
     "get_token_validator",
+    "require_any_roles",
     "require_auth_context",
     "require_roles",
     "require_service_account",

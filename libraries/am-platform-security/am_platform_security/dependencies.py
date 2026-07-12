@@ -62,6 +62,23 @@ def require_roles(required_roles: Iterable[str], expected_audience: str | None =
     return dependency
 
 
+def require_any_roles(allowed_roles: Iterable[str], expected_audience: str | None = None):
+    """Caller must have at least one of the listed roles (OR semantics)."""
+    allowed_roles_set = set(allowed_roles)
+
+    def dependency(
+        context: AuthContext = Depends(require_auth_context(expected_audience=expected_audience)),
+    ) -> AuthContext:
+        if not allowed_roles_set.intersection(set(context.roles)):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Requires one of roles: {sorted(allowed_roles_set)}",
+            )
+        return context
+
+    return dependency
+
+
 def require_service_account(
     allowed_client_ids: Iterable[str] | None = None,
     expected_audience: str | None = None,
