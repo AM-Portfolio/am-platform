@@ -28,6 +28,8 @@ env:
   LLM_MODEL: together_ai/meta-llama/Meta-Llama-3-8B-Instruct-Lite
   LLM_FALLBACK_CHAIN: litellm
   UI_TEST_AGENT_BASE_URL: "http://am-ui-test-agent.am-apps-preprod.svc.cluster.local:8130"
+  DB_AGENT_BASE_URL: "http://am-db-agent.am-apps-preprod.svc.cluster.local:8140"
+  TOOL_AGENT_BASE_URL: "http://am-tool-agent.am-apps-preprod.svc.cluster.local:8141"
   MCP_GATEWAY_PUBLIC_URL: "https://am.asrax.in/mcp"
   # Match local .env.preprod — internal langfuse.am-ai URL was failing ingestion silently
   LANGFUSE_ENABLED: "true"

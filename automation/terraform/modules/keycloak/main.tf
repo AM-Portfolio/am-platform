@@ -837,3 +837,73 @@ resource "keycloak_openid_client_scope" "am_user_scope" {
   name        = "am-user"
   description = "Standard AM user claims: profile, email, roles, and platform"
 }
+
+# =========================================================
+# 7. USER ID PROTOCOL MAPPERS
+# =========================================================
+
+resource "keycloak_openid_user_property_protocol_mapper" "web_userid_mapper" {
+  realm_id         = keycloak_realm.am_realm.id
+  client_id        = keycloak_openid_client.am_web_client.id
+  name             = "userId-mapper"
+  user_property    = "id"
+  claim_name       = "userId"
+  claim_value_type = "String"
+
+  add_to_id_token     = true
+  add_to_access_token = true
+  add_to_userinfo     = true
+}
+
+resource "keycloak_openid_user_property_protocol_mapper" "diagnostic_userid_mapper" {
+  realm_id         = keycloak_realm.am_realm.id
+  client_id        = keycloak_openid_client.am_diagnostic_client.id
+  name             = "userId-mapper"
+  user_property    = "id"
+  claim_name       = "userId"
+  claim_value_type = "String"
+
+  add_to_id_token     = true
+  add_to_access_token = true
+  add_to_userinfo     = true
+}
+
+resource "keycloak_openid_user_property_protocol_mapper" "identity_service_userid_mapper" {
+  realm_id         = keycloak_realm.am_realm.id
+  client_id        = keycloak_openid_client.am_identity_service.id
+  name             = "userId-mapper"
+  user_property    = "id"
+  claim_name       = "userId"
+  claim_value_type = "String"
+
+  add_to_id_token     = true
+  add_to_access_token = true
+  add_to_userinfo     = true
+}
+
+resource "keycloak_openid_user_property_protocol_mapper" "android_userid_mapper" {
+  realm_id         = keycloak_realm.am_realm.id
+  client_id        = keycloak_openid_client.am_android_client.id
+  name             = "userId-mapper"
+  user_property    = "id"
+  claim_name       = "userId"
+  claim_value_type = "String"
+
+  add_to_id_token     = true
+  add_to_access_token = true
+  add_to_userinfo     = true
+}
+
+resource "keycloak_openid_user_property_protocol_mapper" "ios_userid_mapper" {
+  realm_id         = keycloak_realm.am_realm.id
+  client_id        = keycloak_openid_client.am_ios_client.id
+  name             = "userId-mapper"
+  user_property    = "id"
+  claim_name       = "userId"
+  claim_value_type = "String"
+
+  add_to_id_token     = true
+  add_to_access_token = true
+  add_to_userinfo     = true
+}
+

@@ -33,3 +33,66 @@ def test_issuer_matches_http_https_variants():
     assert _issuer_matches(token_iss, configured)
     assert _issuer_matches(configured, configured)
     assert not _issuer_matches("http://other.example/realms/am-realm", configured)
+
+
+def test_token_validator_extracts_userid_claim(monkeypatch):
+    import jwt
+    from unittest.mock import MagicMock
+    from am_platform_security.validator import TokenValidator
+    
+    settings = SecuritySettings()
+    settings.oidc_issuer = "https://issuer.example/realms/am-realm"
+    settings.oidc_jwks_url = "https://issuer.example/realms/am-realm/protocol/openid-connect/certs"
+    
+    validator = TokenValidator(settings)
+    
+    # Mock JWK client
+    mock_key = MagicMock()
+    mock_key.key = "mock_public_key"
+    monkeypatch.setattr(validator._jwk_client, "get_signing_key_from_jwt", lambda t: mock_key)
+    
+    # Mock jwt.decode to return claims with userId
+    mock_claims = {
+        "iss": "https://issuer.example/realms/am-realm",
+        "sub": "user-sub-123",
+        "userId": "user-id-abc",
+        "azp": "am-web-client",
+        "scope": "openid email",
+        "realm_access": {"roles": ["user"]},
+        "token_type": "user",
+    }
+    monkeypatch.setattr(jwt, "decode", lambda *args, **kwargs: mock_claims)
+    
+    auth_ctx = validator.validate("fake_token")
+    assert auth_ctx.subject == "user-id-abc"
+    assert auth_ctx.claims.get("userId") == "user-id-abc"
+
+
+def test_token_validator_falls_back_to_sub(monkeypatch):
+    import jwt
+    from unittest.mock import MagicMock
+    from am_platform_security.validator import TokenValidator
+    
+    settings = SecuritySettings()
+    settings.oidc_issuer = "https://issuer.example/realms/am-realm"
+    settings.oidc_jwks_url = "https://issuer.example/realms/am-realm/protocol/openid-connect/certs"
+    
+    validator = TokenValidator(settings)
+    
+    mock_key = MagicMock()
+    mock_key.key = "mock_public_key"
+    monkeypatch.setattr(validator._jwk_client, "get_signing_key_from_jwt", lambda t: mock_key)
+    
+    mock_claims = {
+        "iss": "https://issuer.example/realms/am-realm",
+        "sub": "user-sub-123",
+        "azp": "am-web-client",
+        "scope": "openid email",
+        "realm_access": {"roles": ["user"]},
+        "token_type": "user",
+    }
+    monkeypatch.setattr(jwt, "decode", lambda *args, **kwargs: mock_claims)
+    
+    auth_ctx = validator.validate("fake_token")
+    assert auth_ctx.subject == "user-sub-123"
+

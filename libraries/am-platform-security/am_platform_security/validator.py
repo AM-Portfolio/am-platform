@@ -101,7 +101,7 @@ class TokenValidator:
             )
 
         return AuthContext(
-            subject=claims.get("sub", ""),
+            subject=claims.get("userId") or claims.get("sub", ""),
             client_id=client_id,
             token_type=token_type,
             roles=roles,

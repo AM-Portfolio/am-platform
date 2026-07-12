@@ -13,7 +13,7 @@ router = APIRouter(prefix="/users", tags=["users"])
 def _profile_from_claims(claims: dict[str, Any]) -> dict[str, Any]:
     """Build profile from validated JWT when Keycloak userinfo is unavailable."""
     return {
-        "sub": claims.get("sub", ""),
+        "sub": claims.get("userId") or claims.get("sub", ""),
         "email": claims.get("email"),
         "preferred_username": claims.get("preferred_username"),
         "given_name": claims.get("given_name"),

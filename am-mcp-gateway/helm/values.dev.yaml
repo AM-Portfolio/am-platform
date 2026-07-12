@@ -38,3 +38,5 @@ ingress:
 env:
   APP_ENV: dev
   LOG_LEVEL: DEBUG
+  DB_AGENT_BASE_URL: "http://am-db-agent.am-apps-dev.svc.cluster.local:8140"
+  TOOL_AGENT_BASE_URL: "http://am-tool-agent.am-apps-dev.svc.cluster.local:8141"

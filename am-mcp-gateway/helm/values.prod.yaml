@@ -25,3 +25,5 @@ vault:
 env:
   APP_ENV: production
   LOG_LEVEL: INFO
+  DB_AGENT_BASE_URL: "http://am-db-agent.am-apps-prod.svc.cluster.local:8140"
+  TOOL_AGENT_BASE_URL: "http://am-tool-agent.am-apps-prod.svc.cluster.local:8141"
