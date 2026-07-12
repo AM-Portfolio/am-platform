@@ -64,6 +64,9 @@ class KeycloakIdentityProvider(IIdentityProvider):
         self._admin_users_url = (
             f"{keycloak_base}/admin/realms/{settings.keycloak_realm}/users"
         )
+        self._admin_roles_url = (
+            f"{keycloak_base}/admin/realms/{settings.keycloak_realm}/roles"
+        )
         self._auth_url = f"{self._openid_base}/auth"
         self._session_timeout = 20.0
         self._http_headers = {
@@ -276,7 +279,20 @@ class KeycloakIdentityProvider(IIdentityProvider):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Create user failed: {response.text}",
             )
-        return {"status": "created", "email": payload.email}
+        user_id = None
+        location = response.headers.get("Location") or response.headers.get("location")
+        if location and "/" in location:
+            user_id = location.rstrip("/").split("/")[-1]
+        if not user_id:
+            found = await self._find_user_by_email(payload.email, admin_token)
+            user_id = found.get("id") if found else None
+        if user_id:
+            try:
+                await self.execute_actions_email(user_id, ["VERIFY_EMAIL"])
+            except HTTPException:
+                # User is created; mail failure should not undo registration.
+                pass
+        return {"status": "created", "email": payload.email, "id": user_id}
 
     async def authenticate(self, username: str, password: str) -> dict[str, Any]:
         return await self._request_token(
@@ -524,3 +540,338 @@ class KeycloakIdentityProvider(IIdentityProvider):
         claims = self._validate_google_id_token(id_token)
         user_id = await self._ensure_google_user(claims)
         return await self._issue_tokens_for_user(user_id)
+
+    # ── Admin / email helpers ───────────────────────────────────────────────
+
+    def _admin_headers(self, admin_token: str) -> dict[str, str]:
+        return {**self._http_headers, "Authorization": f"Bearer {admin_token}"}
+
+    def _normalize_user(self, user: dict[str, Any], roles: list[str] | None = None) -> dict[str, Any]:
+        return {
+            "id": user.get("id", ""),
+            "email": user.get("email"),
+            "username": user.get("username"),
+            "first_name": user.get("firstName"),
+            "last_name": user.get("lastName"),
+            "enabled": bool(user.get("enabled", True)),
+            "email_verified": bool(user.get("emailVerified", False)),
+            "roles": roles if roles is not None else [],
+        }
+
+    async def list_users(
+        self,
+        *,
+        email: str | None = None,
+        search: str | None = None,
+        first: int = 0,
+        max_results: int = 50,
+    ) -> list[dict[str, Any]]:
+        admin_token = await self._get_admin_access_token()
+        params: dict[str, Any] = {"first": first, "max": max_results}
+        if email:
+            params["email"] = email
+            params["exact"] = "true"
+        elif search:
+            params["search"] = search
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            response = await client.get(
+                self._admin_users_url,
+                params=params,
+                headers=self._admin_headers(admin_token),
+            )
+        if response.status_code >= 400:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"List users failed: {response.text}",
+            )
+        users = response.json() or []
+        result: list[dict[str, Any]] = []
+        for user in users:
+            uid = user.get("id")
+            roles = await self.get_user_realm_roles(uid) if uid else []
+            result.append(self._normalize_user(user, roles))
+        return result
+
+    async def get_user(self, user_id: str) -> dict[str, Any]:
+        admin_token = await self._get_admin_access_token()
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            response = await client.get(
+                f"{self._admin_users_url}/{user_id}",
+                headers=self._admin_headers(admin_token),
+            )
+        if response.status_code >= 400:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"User not found: {user_id}",
+            )
+        user = response.json()
+        roles = await self.get_user_realm_roles(user_id)
+        return self._normalize_user(user, roles)
+
+    async def create_admin_user(
+        self,
+        *,
+        email: str,
+        password: str | None = None,
+        first_name: str | None = None,
+        last_name: str | None = None,
+        enabled: bool = True,
+        send_verify_email: bool = True,
+        temporary_password: bool = False,
+    ) -> dict[str, Any]:
+        admin_token = await self._get_admin_access_token()
+        req: dict[str, Any] = {
+            "username": email,
+            "email": email,
+            "enabled": enabled,
+            "emailVerified": False,
+            "firstName": first_name,
+            "lastName": last_name,
+        }
+        if password:
+            req["credentials"] = [
+                {
+                    "type": "password",
+                    "value": password,
+                    "temporary": temporary_password,
+                }
+            ]
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            response = await client.post(
+                self._admin_users_url,
+                json=req,
+                headers=self._admin_headers(admin_token),
+            )
+        if response.status_code not in (201, 204):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Create user failed: {response.text}",
+            )
+        location = response.headers.get("Location") or response.headers.get("location")
+        user_id = location.rstrip("/").split("/")[-1] if location else None
+        if not user_id:
+            found = await self._find_user_by_email(email, admin_token)
+            user_id = found.get("id") if found else None
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="User created but id could not be resolved",
+            )
+        actions: list[str] = []
+        if send_verify_email:
+            actions.append("VERIFY_EMAIL")
+        if temporary_password or not password:
+            actions.append("UPDATE_PASSWORD")
+        if actions:
+            await self.execute_actions_email(user_id, actions)
+        return await self.get_user(user_id)
+
+    async def update_user(
+        self,
+        user_id: str,
+        *,
+        enabled: bool | None = None,
+        first_name: str | None = None,
+        last_name: str | None = None,
+        attributes: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        admin_token = await self._get_admin_access_token()
+        headers = self._admin_headers(admin_token)
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            get_response = await client.get(
+                f"{self._admin_users_url}/{user_id}", headers=headers
+            )
+            if get_response.status_code >= 400:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"User not found: {user_id}",
+                )
+            user = get_response.json()
+            if enabled is not None:
+                user["enabled"] = enabled
+            if first_name is not None:
+                user["firstName"] = first_name
+            if last_name is not None:
+                user["lastName"] = last_name
+            if attributes is not None:
+                merged = user.get("attributes") or {}
+                merged.update(attributes)
+                user["attributes"] = merged
+            put_response = await client.put(
+                f"{self._admin_users_url}/{user_id}",
+                json=user,
+                headers=headers,
+            )
+        if put_response.status_code >= 400:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Update user failed: {put_response.text}",
+            )
+        return await self.get_user(user_id)
+
+    async def set_user_enabled(self, user_id: str, enabled: bool) -> dict[str, Any]:
+        return await self.update_user(user_id, enabled=enabled)
+
+    async def list_realm_roles(self) -> list[dict[str, Any]]:
+        admin_token = await self._get_admin_access_token()
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            response = await client.get(
+                self._admin_roles_url,
+                headers=self._admin_headers(admin_token),
+            )
+        if response.status_code >= 400:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"List roles failed: {response.text}",
+            )
+        return response.json() or []
+
+    async def _resolve_role_reps(self, role_names: list[str]) -> list[dict[str, Any]]:
+        admin_token = await self._get_admin_access_token()
+        reps: list[dict[str, Any]] = []
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            for name in role_names:
+                response = await client.get(
+                    f"{self._admin_roles_url}/{name}",
+                    headers=self._admin_headers(admin_token),
+                )
+                if response.status_code >= 400:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Unknown realm role: {name}",
+                    )
+                reps.append(response.json())
+        return reps
+
+    async def get_user_realm_roles(self, user_id: str) -> list[str]:
+        admin_token = await self._get_admin_access_token()
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            response = await client.get(
+                f"{self._admin_users_url}/{user_id}/role-mappings/realm",
+                headers=self._admin_headers(admin_token),
+            )
+        if response.status_code >= 400:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Get user roles failed: {response.text}",
+            )
+        return [r.get("name") for r in (response.json() or []) if r.get("name")]
+
+    async def set_user_realm_roles(self, user_id: str, role_names: list[str]) -> list[str]:
+        current = await self.get_user_realm_roles(user_id)
+        # Preserve non-human / system roles we do not manage via this API surface
+        preserve = [r for r in current if r == "service" or r.startswith("default-roles-")]
+        desired = list(dict.fromkeys([*preserve, *role_names]))
+        to_add = [r for r in desired if r not in current]
+        to_remove = [r for r in current if r not in desired]
+        if to_add:
+            await self.add_user_realm_roles(user_id, to_add)
+        if to_remove:
+            for name in to_remove:
+                await self.remove_user_realm_role(user_id, name)
+        return await self.get_user_realm_roles(user_id)
+
+    async def add_user_realm_roles(self, user_id: str, role_names: list[str]) -> list[str]:
+        if not role_names:
+            return await self.get_user_realm_roles(user_id)
+        admin_token = await self._get_admin_access_token()
+        reps = await self._resolve_role_reps(role_names)
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            response = await client.post(
+                f"{self._admin_users_url}/{user_id}/role-mappings/realm",
+                json=reps,
+                headers=self._admin_headers(admin_token),
+            )
+        if response.status_code >= 400:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Add roles failed: {response.text}",
+            )
+        return await self.get_user_realm_roles(user_id)
+
+    async def remove_user_realm_role(self, user_id: str, role_name: str) -> list[str]:
+        admin_token = await self._get_admin_access_token()
+        reps = await self._resolve_role_reps([role_name])
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            response = await client.request(
+                "DELETE",
+                f"{self._admin_users_url}/{user_id}/role-mappings/realm",
+                json=reps,
+                headers=self._admin_headers(admin_token),
+            )
+        if response.status_code >= 400:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Remove role failed: {response.text}",
+            )
+        return await self.get_user_realm_roles(user_id)
+
+    async def execute_actions_email(
+        self,
+        user_id: str,
+        actions: list[str],
+        *,
+        lifespan_seconds: int | None = None,
+    ) -> None:
+        admin_token = await self._get_admin_access_token()
+        params: dict[str, Any] = {}
+        if lifespan_seconds is not None:
+            params["lifespan"] = lifespan_seconds
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            response = await client.put(
+                f"{self._admin_users_url}/{user_id}/execute-actions-email",
+                params=params,
+                json=actions,
+                headers=self._admin_headers(admin_token),
+            )
+        if response.status_code >= 400:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Execute actions email failed: {response.text}",
+            )
+
+    async def send_verify_email(self, user_id: str) -> None:
+        await self.execute_actions_email(user_id, ["VERIFY_EMAIL"])
+
+    async def send_password_reset_email(self, email: str) -> bool:
+        admin_token = await self._get_admin_access_token()
+        user = await self._find_user_by_email(email, admin_token)
+        if not user or not user.get("id"):
+            return False
+        await self.execute_actions_email(user["id"], ["UPDATE_PASSWORD"])
+        return True
+
+    async def logout_user_sessions(self, user_id: str) -> None:
+        admin_token = await self._get_admin_access_token()
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            response = await client.post(
+                f"{self._admin_users_url}/{user_id}/logout",
+                headers=self._admin_headers(admin_token),
+            )
+        if response.status_code >= 400:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Logout user sessions failed: {response.text}",
+            )

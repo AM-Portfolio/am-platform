@@ -63,3 +63,17 @@ class ServiceTokenResponse(BaseModel):
     access_token: str
     expires_in: int
     token_type: str = "Bearer"
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetConfirmRequest(BaseModel):
+    email: EmailStr
+    token: str
+    new_password: str = Field(min_length=8)
+
+
+class ResendVerifyEmailRequest(BaseModel):
+    email: EmailStr

@@ -12,6 +12,7 @@
 - `plan_subscription.md` - subscription, entitlements, and usage plan.
 - `plan_notification.md` - notification routing and inbox plan.
 - `plan_payments.md` - future payment abstraction and billing plan, outside the main 10/10 platform score.
+- `features/` - phase-wise feature specs with development and post-dev verification checklists (see [features/README.md](./features/README.md)).
 
 ## Current Status
 
