@@ -18,6 +18,8 @@
 
 **Unchanged:** Google SSO IdP, Novu for product notifications only.
 
+**Important (preprod hotfix):** Do **not** recreate ConfigMap `am-identity-google-login-fix` or mount it over `keycloak_provider.py` / `config.py`. That overlay was a temporary Google-login hotfix; the same Google login code is now in `main` (`authenticate_google_token`, `_ensure_google_user`, `IDENTITY_VERIFY_SSL`). Remounting the old ConfigMap hides newer admin/email methods and breaks `/auth/*`.
+
 **Secrets:** never commit or paste Zoho passwords/tokens into chat or git. Use `.secrets.*.env` / Vault / `am-env-vault` only.
 
 ```mermaid
@@ -44,7 +46,7 @@ flowchart LR
 | 4 | Admin + user management APIs | [x] Done | `/admin/*` with `require_any_roles` |
 | 5 | Auth email APIs | [x] Done | register verify, password-reset, resend-verify |
 | 6 | Docs + Postman | [~] Partial | Realm guide + feature doc updated; Postman TBD |
-| — | **Post-development verification** | [ ] Pending | Run on preprod after identity deploy |
+| — | **Post-development verification** | [x] Passed on preprod | E2E `ssd2658@gmail.com`: SMTP realm OK; VERIFY_EMAIL + UPDATE_PASSWORD execute-actions 204; admin/super_admin JWT + `/admin/*`; reject service. Also fixed vault-sync to include `KEYCLOAK_SMTP_*`. Check Gmail inbox/spam for Asrax Accounts mails. |
 
 ---
 

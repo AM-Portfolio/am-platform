@@ -1,4 +1,16 @@
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
+import re
+
+
+_PASSWORD_POLICY = re.compile(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$")
+
+
+def _validate_password(value: str) -> str:
+    if not _PASSWORD_POLICY.match(value):
+        raise ValueError(
+            "Password must be at least 8 characters and include upper, lower, and a digit"
+        )
+    return value
 
 
 class RegisterRequest(BaseModel):
@@ -7,6 +19,10 @@ class RegisterRequest(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
 
+    @field_validator("password")
+    @classmethod
+    def password_policy(cls, value: str) -> str:
+        return _validate_password(value)
 
 class LoginRequest(BaseModel):
     username: str
@@ -70,9 +86,17 @@ class PasswordResetRequest(BaseModel):
 
 
 class PasswordResetConfirmRequest(BaseModel):
-    email: EmailStr
     token: str
     new_password: str = Field(min_length=8)
+
+    @field_validator("new_password")
+    @classmethod
+    def password_policy(cls, value: str) -> str:
+        return _validate_password(value)
+
+
+class VerifyEmailConfirmRequest(BaseModel):
+    token: str
 
 
 class ResendVerifyEmailRequest(BaseModel):

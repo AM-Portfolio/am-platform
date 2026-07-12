@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Request, status
 
 from am_identity.deps import get_identity_provider
+from am_identity.email.rate_limit import enforce_rate_limit
 from am_identity.providers.interface import IIdentityProvider
 from am_identity.schemas.auth import (
     GoogleAuthURLRequest,
@@ -16,6 +17,7 @@ from am_identity.schemas.auth import (
     RegisterRequest,
     ResendVerifyEmailRequest,
     TokenResponse,
+    VerifyEmailConfirmRequest,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -24,8 +26,10 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register_user(
     payload: RegisterRequest,
+    request: Request,
     provider: IIdentityProvider = Depends(get_identity_provider),
 ):
+    enforce_rate_limit(request, name="register", limit=10)
     return await provider.create_user(payload)
 
 
@@ -88,36 +92,40 @@ async def logout(
 @router.post("/password-reset", status_code=status.HTTP_202_ACCEPTED)
 async def password_reset(
     payload: PasswordResetRequest,
+    request: Request,
     provider: IIdentityProvider = Depends(get_identity_provider),
 ):
+    enforce_rate_limit(request, name="password-reset", limit=5)
     # Always 202 to avoid email enumeration.
     await provider.send_password_reset_email(payload.email)
     return {"status": "accepted"}
 
 
-@router.post("/password-reset/confirm", status_code=status.HTTP_501_NOT_IMPLEMENTED)
+@router.post("/password-reset/confirm", status_code=status.HTTP_200_OK)
 async def password_reset_confirm(
     payload: PasswordResetConfirmRequest,
     provider: IIdentityProvider = Depends(get_identity_provider),
 ):
-    # Keycloak reset links complete in-browser via execute-actions-email.
-    # Identity-owned token confirm is reserved for a later phase.
-    _ = (payload, provider)
-    return {
-        "detail": (
-            "Use the Keycloak reset link from email. "
-            "Identity-owned token confirm is not implemented yet."
-        )
-    }
+    return await provider.confirm_password_reset(payload.token, payload.new_password)
 
 
 @router.post("/verify-email/resend", status_code=status.HTTP_202_ACCEPTED)
 async def resend_verify_email(
     payload: ResendVerifyEmailRequest,
+    request: Request,
     provider: IIdentityProvider = Depends(get_identity_provider),
 ):
+    enforce_rate_limit(request, name="verify-email-resend", limit=5)
     # Always 202 to avoid email enumeration.
     users = await provider.list_users(email=payload.email, first=0, max_results=1)
     if users:
         await provider.send_verify_email(users[0]["id"])
     return {"status": "accepted"}
+
+
+@router.post("/verify-email/confirm", status_code=status.HTTP_200_OK)
+async def confirm_verify_email(
+    payload: VerifyEmailConfirmRequest,
+    provider: IIdentityProvider = Depends(get_identity_provider),
+):
+    return await provider.confirm_verify_email(payload.token)

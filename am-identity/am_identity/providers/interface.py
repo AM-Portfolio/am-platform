@@ -142,5 +142,13 @@ class IIdentityProvider(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    async def confirm_verify_email(self, token: str) -> dict[str, Any]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def confirm_password_reset(self, token: str, new_password: str) -> dict[str, Any]:
+        raise NotImplementedError
+
+    @abstractmethod
     async def logout_user_sessions(self, user_id: str) -> None:
         raise NotImplementedError

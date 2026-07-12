@@ -121,6 +121,14 @@ Write-VaultSecret $path @{
     GOOGLE_CLIENT_ID          = $secrets["GOOGLE_CLIENT_ID"]
     GOOGLE_CLIENT_SECRET      = $secrets["GOOGLE_CLIENT_SECRET"]
     ALLOWED_GOOGLE_REDIRECT_URIS = $secrets["ALLOWED_GOOGLE_REDIRECT_URIS"]
+    KEYCLOAK_SMTP_HOST              = $secrets["KEYCLOAK_SMTP_HOST"]
+    KEYCLOAK_SMTP_PORT              = $secrets["KEYCLOAK_SMTP_PORT"]
+    KEYCLOAK_SMTP_USER              = $secrets["KEYCLOAK_SMTP_USER"]
+    KEYCLOAK_SMTP_PASSWORD          = $secrets["KEYCLOAK_SMTP_PASSWORD"]
+    KEYCLOAK_SMTP_FROM              = $secrets["KEYCLOAK_SMTP_FROM"]
+    KEYCLOAK_SMTP_FROM_DISPLAY_NAME = $secrets["KEYCLOAK_SMTP_FROM_DISPLAY_NAME"]
+    KEYCLOAK_SMTP_STARTTLS          = $secrets["KEYCLOAK_SMTP_STARTTLS"]
+    KEYCLOAK_SMTP_SSL               = $secrets["KEYCLOAK_SMTP_SSL"]
 }
 Test-VaultSecret $path
 
@@ -131,6 +139,8 @@ Write-VaultSecret $path @{
     AM_IDENTITY_CLIENT_SECRET = $secrets["AM_IDENTITY_CLIENT_SECRET"]
     KEYCLOAK_URL              = $secrets["KEYCLOAK_URL"]
     KEYCLOAK_REALM            = $secrets["KEYCLOAK_REALM"]
+    KEYCLOAK_ADMIN_USER       = $secrets["KEYCLOAK_ADMIN_USER"]
+    KEYCLOAK_ADMIN_PASSWORD   = $secrets["KEYCLOAK_ADMIN_PASSWORD"]
     OIDC_DISCOVERY_URL        = $secrets["OIDC_DISCOVERY_URL"]
     OIDC_ISSUER               = $secrets["OIDC_ISSUER"]
     OIDC_JWKS_URL             = $secrets["OIDC_JWKS_URL"]
@@ -138,6 +148,17 @@ Write-VaultSecret $path @{
     GOOGLE_CLIENT_ID          = $secrets["GOOGLE_CLIENT_ID"]
     GOOGLE_CLIENT_SECRET      = $secrets["GOOGLE_CLIENT_SECRET"]
     ALLOWED_GOOGLE_REDIRECT_URIS = $secrets["ALLOWED_GOOGLE_REDIRECT_URIS"]
+    AUTH_UI_BASE_URL          = $secrets["AUTH_UI_BASE_URL"]
+    AUTH_EMAIL_TOKEN_SECRET   = $secrets["AUTH_EMAIL_TOKEN_SECRET"]
+    AUTH_EMAIL_TOKEN_TTL_SECONDS = $secrets["AUTH_EMAIL_TOKEN_TTL_SECONDS"]
+    SMTP_HOST                 = $secrets["SMTP_HOST"]
+    SMTP_PORT                 = $secrets["SMTP_PORT"]
+    SMTP_USER                 = $secrets["SMTP_USER"]
+    SMTP_PASSWORD             = $secrets["SMTP_PASSWORD"]
+    SMTP_FROM                 = $secrets["SMTP_FROM"]
+    SMTP_FROM_DISPLAY_NAME    = $secrets["SMTP_FROM_DISPLAY_NAME"]
+    SMTP_SSL                  = $secrets["SMTP_SSL"]
+    SMTP_STARTTLS             = $secrets["SMTP_STARTTLS"]
 }
 Test-VaultSecret $path
 
