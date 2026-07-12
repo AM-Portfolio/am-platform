@@ -7,6 +7,8 @@ _NAVY_DEEP = "#0F3460"
 _CTA = "#6C63FF"
 _TEXT = "#2D3436"
 _MUTED = "#636E72"
+_PROMO_BG = "#F4F5FB"
+_INSIGHT = "Track portfolios, markets, and trades in one Asrax workspace."
 
 
 def _shell(*, preheader: str, headline: str, body: str, cta_label: str, cta_url: str) -> str:
@@ -22,39 +24,51 @@ def _shell(*, preheader: str, headline: str, body: str, cta_label: str, cta_url:
   <div style="display:none;max-height:0;overflow:hidden;opacity:0;">{preheader}</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(160deg,{_NAVY_TOP} 0%,{_NAVY_MID} 55%,{_NAVY_DEEP} 100%);background-color:{_NAVY_TOP};">
     <tr>
-      <td align="center" style="padding:32px 16px;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+      <td align="center" style="padding:20px 12px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:440px;">
           <tr>
-            <td align="center" style="padding:0 8px 24px;">
-              <div style="font-size:28px;font-weight:700;letter-spacing:0.08em;color:#FFFFFF;">ASRAX</div>
-              <div style="margin-top:6px;font-size:13px;color:rgba(255,255,255,0.7);">AM Investment · Account</div>
-              <div style="margin:14px auto 0;width:48px;height:3px;background:{_CTA};border-radius:2px;"></div>
+            <td align="center" style="padding:0 4px 14px;">
+              <div style="font-size:22px;font-weight:700;letter-spacing:0.1em;color:#FFFFFF;">ASRAX</div>
+              <div style="margin-top:4px;font-size:11px;letter-spacing:0.04em;color:rgba(255,255,255,0.65);">AM Investment</div>
             </td>
           </tr>
           <tr>
-            <td style="background:#FFFFFF;border-radius:24px;padding:32px 28px;box-shadow:0 16px 40px rgba(0,0,0,0.28);">
-              <h1 style="margin:0 0 12px;font-size:22px;line-height:1.3;color:{_TEXT};">{headline}</h1>
-              <p style="margin:0 0 24px;font-size:15px;line-height:1.55;color:{_MUTED};">{body}</p>
-              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 20px;">
+            <td style="background:#FFFFFF;border-radius:16px;padding:22px 22px 18px;box-shadow:0 12px 28px rgba(0,0,0,0.25);">
+              <h1 style="margin:0 0 8px;font-size:18px;line-height:1.25;color:{_TEXT};">{headline}</h1>
+              <p style="margin:0 0 18px;font-size:14px;line-height:1.5;color:{_MUTED};">{body}</p>
+              <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 16px;">
                 <tr>
-                  <td align="center" style="border-radius:12px;background:{_CTA};">
-                    <a href="{safe_url}" style="display:inline-block;padding:14px 28px;font-size:15px;font-weight:600;color:#FFFFFF;text-decoration:none;border-radius:12px;">
+                  <td align="center" style="border-radius:10px;background:{_CTA};">
+                    <a href="{safe_url}" style="display:inline-block;padding:12px 26px;font-size:14px;font-weight:600;color:#FFFFFF;text-decoration:none;border-radius:10px;">
                       {cta_label}
                     </a>
                   </td>
                 </tr>
               </table>
-              <p style="margin:0 0 8px;font-size:12px;line-height:1.5;color:{_MUTED};word-break:break-all;">
-                Or open this link:<br/>
-                <a href="{safe_url}" style="color:{_CTA};">{safe_url}</a>
+              <p style="margin:0 0 14px;font-size:11px;line-height:1.4;color:{_MUTED};text-align:center;">
+                Link expires in 12 hours. Use the button above — do not forward this email.
               </p>
-              <p style="margin:16px 0 0;font-size:12px;color:{_MUTED};">This link expires in 12 hours.</p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:{_PROMO_BG};border-radius:10px;">
+                <tr>
+                  <td style="padding:10px 12px;font-size:12px;line-height:1.45;color:{_MUTED};">
+                    <span style="display:inline-block;font-size:10px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:{_CTA};margin-bottom:4px;">Asrax tip</span><br/>
+                    {_INSIGHT}
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
           <tr>
-            <td align="center" style="padding:24px 8px 8px;font-size:12px;line-height:1.5;color:rgba(255,255,255,0.55);">
-              If you did not expect this email, you can ignore it.<br/>
-              asrax.in
+            <td align="center" style="padding:16px 8px 4px;font-size:11px;line-height:1.55;color:rgba(255,255,255,0.55);">
+              Questions? Contact Asrax Accounts<br/>
+              <a href="mailto:noreply@asrax.in" style="color:rgba(255,255,255,0.75);text-decoration:none;">noreply@asrax.in</a>
+              &nbsp;·&nbsp;
+              <a href="https://asrax.in" style="color:rgba(255,255,255,0.75);text-decoration:none;">asrax.in</a>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:6px 8px 8px;font-size:10px;line-height:1.4;color:rgba(255,255,255,0.4);">
+              If you did not expect this email, you can ignore it.
             </td>
           </tr>
         </table>
@@ -66,41 +80,41 @@ def _shell(*, preheader: str, headline: str, body: str, cta_label: str, cta_url:
 """
 
 
+def _plain(*, headline: str, body: str, action_url: str) -> str:
+    return (
+        f"{headline}\n\n"
+        f"{body}\n\n"
+        f"Open this link to continue:\n{action_url}\n\n"
+        "This link expires in 12 hours.\n\n"
+        f"{_INSIGHT}\n\n"
+        "Questions? Contact Asrax Accounts — noreply@asrax.in · https://asrax.in\n"
+    )
+
+
 def build_verify_email(*, action_url: str) -> tuple[str, str, str]:
     subject = "Verify your Asrax email"
+    body = "Confirm this address to finish setting up your Asrax account."
     html = _shell(
         preheader="Confirm your email to finish setting up your Asrax account.",
         headline="Verify your email",
-        body="Confirm this address to finish setting up your Asrax account.",
+        body=body,
         cta_label="Verify email",
         cta_url=action_url,
     )
-    plain = (
-        "Verify your Asrax email\n\n"
-        "Confirm this address to finish setting up your Asrax account.\n\n"
-        f"{action_url}\n\n"
-        "This link expires in 12 hours.\n"
-    )
-    return subject, html, plain
+    return subject, html, _plain(headline=subject, body=body, action_url=action_url)
 
 
 def build_reset_password(*, action_url: str) -> tuple[str, str, str]:
     subject = "Reset your Asrax password"
+    body = (
+        "Choose a new password for your Asrax account. "
+        "If you did not ask for this, you can ignore this message."
+    )
     html = _shell(
         preheader="Choose a new password for your Asrax account.",
         headline="Reset your password",
-        body=(
-            "Choose a new password for your Asrax account. "
-            "If you did not ask for this, you can ignore this message."
-        ),
+        body=body,
         cta_label="Reset password",
         cta_url=action_url,
     )
-    plain = (
-        "Reset your Asrax password\n\n"
-        "Choose a new password for your Asrax account. "
-        "If you did not ask for this, you can ignore this message.\n\n"
-        f"{action_url}\n\n"
-        "This link expires in 12 hours.\n"
-    )
-    return subject, html, plain
+    return subject, html, _plain(headline=subject, body=body, action_url=action_url)

@@ -1,4 +1,6 @@
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from __future__ import annotations
+
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 import re
 
 
@@ -11,6 +13,13 @@ def _validate_password(value: str) -> str:
             "Password must be at least 8 characters and include upper, lower, and a digit"
         )
     return value
+
+
+def _require_token_or_code(token: str | None, code: str | None) -> None:
+    has_token = bool(token and token.strip())
+    has_code = bool(code and code.strip())
+    if has_token == has_code:
+        raise ValueError("Provide exactly one of token or code")
 
 
 class RegisterRequest(BaseModel):
@@ -86,7 +95,8 @@ class PasswordResetRequest(BaseModel):
 
 
 class PasswordResetConfirmRequest(BaseModel):
-    token: str
+    token: str | None = None
+    code: str | None = None
     new_password: str = Field(min_length=8)
 
     @field_validator("new_password")
@@ -94,9 +104,20 @@ class PasswordResetConfirmRequest(BaseModel):
     def password_policy(cls, value: str) -> str:
         return _validate_password(value)
 
+    @model_validator(mode="after")
+    def token_or_code(self) -> PasswordResetConfirmRequest:
+        _require_token_or_code(self.token, self.code)
+        return self
+
 
 class VerifyEmailConfirmRequest(BaseModel):
-    token: str
+    token: str | None = None
+    code: str | None = None
+
+    @model_validator(mode="after")
+    def token_or_code(self) -> VerifyEmailConfirmRequest:
+        _require_token_or_code(self.token, self.code)
+        return self
 
 
 class ResendVerifyEmailRequest(BaseModel):

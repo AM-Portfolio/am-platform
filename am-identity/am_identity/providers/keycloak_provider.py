@@ -18,6 +18,7 @@ from am_identity.email.templates import build_reset_password, build_verify_email
 from am_identity.email.tokens import (
     AuthMailTokenError,
     mint_auth_mail_token,
+    mint_short_code,
     verify_auth_mail_token,
 )
 from am_identity.providers.interface import IIdentityProvider
@@ -29,7 +30,18 @@ _GOOGLE_ISSUER = "https://accounts.google.com"
 _GOOGLE_JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs"
 _VERIFY_JTI_ATTR = "asraxVerifyJti"
 _RESET_JTI_ATTR = "asraxResetJti"
-_AUTH_MAIL_PROFILE_ATTRS = (_VERIFY_JTI_ATTR, _RESET_JTI_ATTR)
+_VERIFY_CODE_ATTR = "asraxVerifyCode"
+_RESET_CODE_ATTR = "asraxResetCode"
+_VERIFY_TOKEN_ATTR = "asraxVerifyToken"
+_RESET_TOKEN_ATTR = "asraxResetToken"
+_AUTH_MAIL_PROFILE_ATTRS = (
+    _VERIFY_JTI_ATTR,
+    _RESET_JTI_ATTR,
+    _VERIFY_CODE_ATTR,
+    _RESET_CODE_ATTR,
+    _VERIFY_TOKEN_ATTR,
+    _RESET_TOKEN_ATTR,
+)
 _JWKS_REQUEST_HEADERS = {
     "User-Agent": "am-identity-service/1.0",
     "Accept": "application/json",
@@ -885,46 +897,43 @@ class KeycloakIdentityProvider(IIdentityProvider):
         )
         return True
 
-    async def confirm_verify_email(self, token: str) -> dict[str, Any]:
-        try:
-            payload = verify_auth_mail_token(
-                token,
-                secret=self.settings.auth_email_token_secret,
-                expected_purpose="verify_email",
-            )
-        except AuthMailTokenError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid or expired verification token",
-            ) from exc
-        user_id = str(payload["sub"])
-        await self._assert_jti_matches(user_id, _VERIFY_JTI_ATTR, str(payload["jti"]))
+    async def confirm_verify_email(
+        self, token: str | None = None, code: str | None = None
+    ) -> dict[str, Any]:
+        resolved = await self._resolve_auth_mail_token(
+            purpose="verify_email",
+            token=token,
+            code=code,
+            invalid_detail="Invalid or expired verification token",
+        )
+        user_id = str(resolved["sub"])
+        await self._assert_jti_matches(user_id, _VERIFY_JTI_ATTR, str(resolved["jti"]))
         await self._set_email_verified(user_id, verified=True)
         await self._clear_required_actions(user_id, remove={"VERIFY_EMAIL"})
-        await self._set_user_attr(user_id, _VERIFY_JTI_ATTR, None)
+        await self._clear_auth_mail_attrs(user_id, purpose="verify_email")
         return {"status": "verified", "user_id": user_id}
 
-    async def confirm_password_reset(self, token: str, new_password: str) -> dict[str, Any]:
-        try:
-            payload = verify_auth_mail_token(
-                token,
-                secret=self.settings.auth_email_token_secret,
-                expected_purpose="reset_password",
-            )
-        except AuthMailTokenError as exc:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid or expired reset token",
-            ) from exc
-        user_id = str(payload["sub"])
-        await self._assert_jti_matches(user_id, _RESET_JTI_ATTR, str(payload["jti"]))
+    async def confirm_password_reset(
+        self,
+        new_password: str,
+        token: str | None = None,
+        code: str | None = None,
+    ) -> dict[str, Any]:
+        resolved = await self._resolve_auth_mail_token(
+            purpose="reset_password",
+            token=token,
+            code=code,
+            invalid_detail="Invalid or expired reset token",
+        )
+        user_id = str(resolved["sub"])
+        await self._assert_jti_matches(user_id, _RESET_JTI_ATTR, str(resolved["jti"]))
         await self._set_password(user_id, new_password, temporary=False)
         await self._clear_required_actions(
             user_id, remove={"UPDATE_PASSWORD", "VERIFY_EMAIL"}
         )
         # Password reset via email implies the mailbox is controlled by the user.
         await self._set_email_verified(user_id, verified=True)
-        await self._set_user_attr(user_id, _RESET_JTI_ATTR, None)
+        await self._clear_auth_mail_attrs(user_id, purpose="reset_password")
         return {"status": "password_updated", "user_id": user_id}
 
     async def _ensure_auth_mail_profile_attributes(self) -> None:
@@ -1014,14 +1023,20 @@ class KeycloakIdentityProvider(IIdentityProvider):
     async def _set_user_attr(
         self, user_id: str, attr_name: str, value: str | None
     ) -> None:
+        await self._set_user_attrs(user_id, {attr_name: value})
+
+    async def _set_user_attrs(
+        self, user_id: str, updates: dict[str, str | None]
+    ) -> None:
         await self._ensure_auth_mail_profile_attributes()
         admin_token = await self._get_admin_access_token()
         user = await self._get_raw_user(user_id, admin_token)
-        attrs = user.get("attributes") or {}
-        if value is None:
-            attrs.pop(attr_name, None)
-        else:
-            attrs[attr_name] = [value]
+        attrs = dict(user.get("attributes") or {})
+        for attr_name, value in updates.items():
+            if value is None:
+                attrs.pop(attr_name, None)
+            else:
+                attrs[attr_name] = [value]
         user["attributes"] = attrs
         await self._put_raw_user(user, admin_token)
 
@@ -1033,6 +1048,93 @@ class KeycloakIdentityProvider(IIdentityProvider):
         if isinstance(raw, str) and raw:
             return raw
         return None
+
+    def _auth_mail_attr_names(self, purpose: str) -> tuple[str, str, str]:
+        if purpose == "verify_email":
+            return _VERIFY_JTI_ATTR, _VERIFY_CODE_ATTR, _VERIFY_TOKEN_ATTR
+        return _RESET_JTI_ATTR, _RESET_CODE_ATTR, _RESET_TOKEN_ATTR
+
+    async def _clear_auth_mail_attrs(self, user_id: str, *, purpose: str) -> None:
+        jti_attr, code_attr, token_attr = self._auth_mail_attr_names(purpose)
+        await self._set_user_attrs(
+            user_id,
+            {jti_attr: None, code_attr: None, token_attr: None},
+        )
+
+    async def _find_user_by_attr(
+        self, attr_name: str, value: str
+    ) -> dict[str, Any] | None:
+        """Lookup via Keycloak Admin `q=attr:value` (KC 20+). Falls back to None."""
+        code = (value or "").strip()
+        if not code:
+            return None
+        admin_token = await self._get_admin_access_token()
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            response = await client.get(
+                self._admin_users_url,
+                params={"q": f"{attr_name}:{code}", "max": 5},
+                headers=self._admin_headers(admin_token),
+            )
+        if response.status_code >= 400:
+            return None
+        users = response.json() or []
+        matches: list[dict[str, Any]] = []
+        for brief in users:
+            uid = brief.get("id")
+            if not uid:
+                continue
+            # List payloads may omit attributes; always load the full user.
+            full = await self._get_raw_user(str(uid), admin_token)
+            stored = self._attr_first(full, attr_name)
+            if stored and hmac_compare(stored, code):
+                matches.append(full)
+        if len(matches) == 1:
+            return matches[0]
+        return None
+
+    async def _resolve_auth_mail_token(
+        self,
+        *,
+        purpose: str,
+        token: str | None,
+        code: str | None,
+        invalid_detail: str,
+    ) -> dict[str, Any]:
+        raw_token = (token or "").strip() or None
+        raw_code = (code or "").strip() or None
+        if bool(raw_token) == bool(raw_code):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Provide exactly one of token or code",
+            )
+        if raw_code:
+            _, code_attr, token_attr = self._auth_mail_attr_names(purpose)
+            user = await self._find_user_by_attr(code_attr, raw_code)
+            if not user or not user.get("id"):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=invalid_detail,
+                )
+            stored_token = self._attr_first(user, token_attr)
+            if not stored_token:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=invalid_detail,
+                )
+            raw_token = stored_token
+        try:
+            return verify_auth_mail_token(
+                raw_token,  # type: ignore[arg-type]
+                secret=self.settings.auth_email_token_secret,
+                expected_purpose=purpose,  # type: ignore[arg-type]
+            )
+        except AuthMailTokenError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=invalid_detail,
+            ) from exc
 
     async def _assert_jti_matches(
         self, user_id: str, attr_name: str, expected_jti: str
@@ -1118,15 +1220,24 @@ class KeycloakIdentityProvider(IIdentityProvider):
                 detail=str(exc),
             ) from exc
 
-        attr = _VERIFY_JTI_ATTR if purpose == "verify_email" else _RESET_JTI_ATTR
-        await self._set_user_attr(user_id, attr, jti)
+        short_code = mint_short_code()
+        jti_attr, code_attr, token_attr = self._auth_mail_attr_names(purpose)
+        await self._set_user_attrs(
+            user_id,
+            {
+                jti_attr: jti,
+                code_attr: short_code,
+                token_attr: token,
+            },
+        )
 
         base = self.settings.auth_ui_base_url.rstrip("/")
+        # Prefer short ?c= links; HTML never displays the raw URL (button-only).
         if purpose == "verify_email":
-            action_url = f"{base}/verify-email?token={token}"
+            action_url = f"{base}/verify-email?c={short_code}"
             subject, html, plain = build_verify_email(action_url=action_url)
         else:
-            action_url = f"{base}/reset-password?token={token}"
+            action_url = f"{base}/reset-password?c={short_code}"
             subject, html, plain = build_reset_password(action_url=action_url)
 
         try:

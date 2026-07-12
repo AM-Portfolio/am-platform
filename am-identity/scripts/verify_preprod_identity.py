@@ -77,7 +77,7 @@ def main():
         else:
             record(f"probe {path}", code in (200, 401, 403) or code < 500, f"{code}")
 
-    # OpenAPI: confirm new routes exist if docs available
+    # OpenAPI: branded confirm routes + admin
     code, body, _ = req("GET", BASE + "/openapi.json")
     if code == 200 and isinstance(body, dict):
         paths = body.get("paths") or {}
@@ -85,11 +85,47 @@ def main():
             "/admin/roles",
             "/admin/users",
             "/auth/password-reset",
+            "/auth/password-reset/confirm",
             "/auth/verify-email/resend",
+            "/auth/verify-email/confirm",
         ):
             record(f"openapi has {p}", p in paths, "present" if p in paths else "missing")
     else:
         record("openapi.json", False, f"{code} {body}")
+
+    # Confirm endpoints must be implemented (400 on bad token, not 501)
+    code, body, _ = req(
+        "POST",
+        BASE + "/auth/password-reset/confirm",
+        data={"token": "invalid", "new_password": "VerifyTest1a!"},
+    )
+    record(
+        "auth/password-reset/confirm not 501",
+        code == 400,
+        f"{code} {body}",
+    )
+    code, body, _ = req(
+        "POST",
+        BASE + "/auth/verify-email/confirm",
+        data={"token": "invalid"},
+    )
+    record(
+        "auth/verify-email/confirm not 501",
+        code == 400,
+        f"{code} {body}",
+    )
+
+    ui_base = (secrets.get("AUTH_UI_BASE_URL") or "https://am.asrax.in").rstrip("/")
+    record(
+        "AUTH_UI_BASE_URL for branded links",
+        "am.asrax.in" in ui_base or "am-dev.asrax.in" in ui_base,
+        ui_base,
+    )
+    record(
+        "AUTH_EMAIL_TOKEN_SECRET present (local secrets)",
+        bool(secrets.get("AUTH_EMAIL_TOKEN_SECRET", "").strip()),
+        "set" if secrets.get("AUTH_EMAIL_TOKEN_SECRET", "").strip() else "MISSING",
+    )
 
     # B2 register
     code, body, _ = req(
@@ -104,13 +140,17 @@ def main():
     )
     record("auth/register", code == 201, f"{code} {body}")
 
-    # resend verify
+    # resend verify (identity branded SMTP — not Keycloak execute-actions)
     code, body, _ = req(
         "POST",
         BASE + "/auth/verify-email/resend",
         data={"email": test_email},
     )
-    record("auth/verify-email/resend", code == 202, f"{code} {body}")
+    record(
+        "auth/verify-email/resend",
+        code == 202,
+        f"{code} {body if code != 202 else 'accepted (branded mail if SMTP configured in pod)'}",
+    )
 
     # password reset known + unknown
     code, body, _ = req(

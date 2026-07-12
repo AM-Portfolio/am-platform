@@ -10,6 +10,9 @@ from typing import Any, Literal
 
 Purpose = Literal["verify_email", "reset_password"]
 
+# Opaque public handle for mail CTAs (not the HMAC token).
+_SHORT_CODE_BYTES = 9  # token_urlsafe(9) → 12 chars
+
 
 class AuthMailTokenError(Exception):
     """Invalid, expired, or mismatched auth mail token."""
@@ -22,6 +25,11 @@ def _b64encode(raw: bytes) -> str:
 def _b64decode(raw: str) -> bytes:
     padding = "=" * (-len(raw) % 4)
     return urlsafe_b64decode(raw + padding)
+
+
+def mint_short_code() -> str:
+    """Return a short url-safe opaque code for mail deep links."""
+    return secrets.token_urlsafe(_SHORT_CODE_BYTES)
 
 
 def mint_auth_mail_token(

@@ -142,11 +142,18 @@ class IIdentityProvider(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def confirm_verify_email(self, token: str) -> dict[str, Any]:
+    async def confirm_verify_email(
+        self, token: str | None = None, code: str | None = None
+    ) -> dict[str, Any]:
         raise NotImplementedError
 
     @abstractmethod
-    async def confirm_password_reset(self, token: str, new_password: str) -> dict[str, Any]:
+    async def confirm_password_reset(
+        self,
+        new_password: str,
+        token: str | None = None,
+        code: str | None = None,
+    ) -> dict[str, Any]:
         raise NotImplementedError
 
     @abstractmethod

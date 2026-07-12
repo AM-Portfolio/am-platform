@@ -106,7 +106,11 @@ async def password_reset_confirm(
     payload: PasswordResetConfirmRequest,
     provider: IIdentityProvider = Depends(get_identity_provider),
 ):
-    return await provider.confirm_password_reset(payload.token, payload.new_password)
+    return await provider.confirm_password_reset(
+        new_password=payload.new_password,
+        token=payload.token,
+        code=payload.code,
+    )
 
 
 @router.post("/verify-email/resend", status_code=status.HTTP_202_ACCEPTED)
@@ -128,4 +132,4 @@ async def confirm_verify_email(
     payload: VerifyEmailConfirmRequest,
     provider: IIdentityProvider = Depends(get_identity_provider),
 ):
-    return await provider.confirm_verify_email(payload.token)
+    return await provider.confirm_verify_email(token=payload.token, code=payload.code)
