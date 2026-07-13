@@ -19,6 +19,7 @@ from am_identity.schemas.auth import (
     ResendVerifyEmailRequest,
     TokenResponse,
     VerifyEmailConfirmRequest,
+    VerifyEmailConfirmResponse,
 )
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -128,7 +129,11 @@ async def resend_verify_email(
     return {"status": "accepted"}
 
 
-@router.post("/verify-email/confirm", status_code=status.HTTP_200_OK)
+@router.post(
+    "/verify-email/confirm",
+    status_code=status.HTTP_200_OK,
+    response_model=VerifyEmailConfirmResponse,
+)
 async def confirm_verify_email(
     payload: VerifyEmailConfirmRequest,
     provider: IIdentityProvider = Depends(get_identity_provider),

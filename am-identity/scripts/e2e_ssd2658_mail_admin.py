@@ -316,8 +316,17 @@ def main() -> None:
             f"{BASE}/auth/verify-email/confirm",
             data={"token": verify_token},
         )
-        ok = code == 200 and isinstance(body, dict) and body.get("status") == "verified"
-        record("API verify-email/confirm", ok, f"{code} {body if not ok else 'verified'}")
+        ok = (
+            code == 200
+            and isinstance(body, dict)
+            and body.get("status") == "verified"
+            and bool(body.get("access_token"))
+        )
+        record(
+            "API verify-email/confirm",
+            ok,
+            f"{code} {body if not ok else 'verified+tokens'}",
+        )
         code, full = req("GET", f"{KC}/admin/realms/{REALM}/users/{uid}", headers=ah)
         record(
             "KC emailVerified after confirm",

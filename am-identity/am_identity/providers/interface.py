@@ -145,6 +145,7 @@ class IIdentityProvider(ABC):
     async def confirm_verify_email(
         self, token: str | None = None, code: str | None = None
     ) -> dict[str, Any]:
+        """Mark email verified, clear VERIFY_EMAIL required actions, return OIDC tokens."""
         raise NotImplementedError
 
     @abstractmethod

@@ -98,6 +98,13 @@ class TokenResponse(BaseModel):
     scope: str | None = None
 
 
+class VerifyEmailConfirmResponse(TokenResponse):
+    """Verify-email confirm verifies the mailbox and returns a login session."""
+
+    status: str = "verified"
+    user_id: str | None = None
+
+
 class ServiceTokenRequest(BaseModel):
     audience: str | None = None
 

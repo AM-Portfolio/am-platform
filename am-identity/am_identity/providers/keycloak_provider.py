@@ -937,9 +937,20 @@ class KeycloakIdentityProvider(IIdentityProvider):
         user_id = str(resolved["sub"])
         await self._assert_jti_matches(user_id, _VERIFY_JTI_ATTR, str(resolved["jti"]))
         await self._set_email_verified(user_id, verified=True)
-        await self._clear_required_actions(user_id, remove={"VERIFY_EMAIL"})
+        # Registration already sets a permanent password; clear VERIFY_EMAIL so
+        # subsequent email+password login works. Also drop UPDATE_PASSWORD if
+        # present so the account is fully set up after mailbox proof.
+        await self._clear_required_actions(
+            user_id, remove={"VERIFY_EMAIL", "UPDATE_PASSWORD"}
+        )
         await self._clear_auth_mail_attrs(user_id, purpose="verify_email")
-        return {"status": "verified", "user_id": user_id}
+        # Issue session tokens so the branded verify link can auto-login the UI.
+        tokens = await self._issue_tokens_for_user(user_id)
+        return {
+            "status": "verified",
+            "user_id": user_id,
+            **tokens,
+        }
 
     async def confirm_password_reset(
         self,
