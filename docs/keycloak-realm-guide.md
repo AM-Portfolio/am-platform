@@ -44,7 +44,7 @@
 | **Registration** | ✅ Enabled | Users can self-register |
 | **Login with Email** | ✅ Enabled | Email used as username |
 | **Duplicate Emails** | ❌ Disabled | One account per email |
-| **Verify Email** | ❌ (enable in prod) | Enable before go-live |
+| **Verify Email** | Enabled (preprod/prod with Zoho SMTP) | Register triggers VERIFY_EMAIL via Keycloak |
 | **Access Token TTL** | 5 minutes | Short for security |
 | **SSO Session Idle** | 30 minutes | Extends on activity |
 | **SSO Session Max** | 10 hours | Hard cap per day |

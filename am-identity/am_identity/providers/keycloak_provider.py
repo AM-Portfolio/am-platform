@@ -13,6 +13,14 @@ from fastapi import HTTPException, status
 from jwt import InvalidTokenError, PyJWKClient, PyJWKClientConnectionError
 
 from am_identity.core.config import IdentitySettings
+from am_identity.email.smtp_client import SmtpNotConfiguredError, send_auth_email
+from am_identity.email.templates import build_reset_password, build_welcome_verify_email
+from am_identity.email.tokens import (
+    AuthMailTokenError,
+    mint_auth_mail_token,
+    mint_short_code,
+    verify_auth_mail_token,
+)
 from am_identity.providers.interface import IIdentityProvider
 from am_identity.schemas.auth import RegisterRequest
 
@@ -20,6 +28,20 @@ from am_identity.schemas.auth import RegisterRequest
 _OIDC_USER_SCOPES = "openid profile email"
 _GOOGLE_ISSUER = "https://accounts.google.com"
 _GOOGLE_JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs"
+_VERIFY_JTI_ATTR = "asraxVerifyJti"
+_RESET_JTI_ATTR = "asraxResetJti"
+_VERIFY_CODE_ATTR = "asraxVerifyCode"
+_RESET_CODE_ATTR = "asraxResetCode"
+_VERIFY_TOKEN_ATTR = "asraxVerifyToken"
+_RESET_TOKEN_ATTR = "asraxResetToken"
+_AUTH_MAIL_PROFILE_ATTRS = (
+    _VERIFY_JTI_ATTR,
+    _RESET_JTI_ATTR,
+    _VERIFY_CODE_ATTR,
+    _RESET_CODE_ATTR,
+    _VERIFY_TOKEN_ATTR,
+    _RESET_TOKEN_ATTR,
+)
 _JWKS_REQUEST_HEADERS = {
     "User-Agent": "am-identity-service/1.0",
     "Accept": "application/json",
@@ -80,6 +102,7 @@ class KeycloakIdentityProvider(IIdentityProvider):
             if uri.strip()
         }
         self._settings_profile_ready = False
+        self._auth_mail_profile_ready = False
         self._user_profile_url = (
             f"{keycloak_base}/admin/realms/{settings.keycloak_realm}/users/profile"
         )
@@ -255,17 +278,20 @@ class KeycloakIdentityProvider(IIdentityProvider):
 
     async def create_user(self, payload: RegisterRequest) -> dict[str, Any]:
         admin_token = await self._get_admin_access_token()
-        req = {
+        req: dict[str, Any] = {
             "username": payload.email,
             "email": payload.email,
             "enabled": True,
             "emailVerified": False,
+            "requiredActions": ["VERIFY_EMAIL"],
             "firstName": payload.first_name,
             "lastName": payload.last_name,
             "credentials": [
                 {"type": "password", "value": payload.password, "temporary": False}
             ],
         }
+        if payload.phone:
+            req["attributes"] = {"phone": [payload.phone]}
         async with httpx.AsyncClient(
             timeout=self._session_timeout, verify=self.settings.verify_ssl
         ) as client:
@@ -288,23 +314,49 @@ class KeycloakIdentityProvider(IIdentityProvider):
             user_id = found.get("id") if found else None
         if user_id:
             try:
-                await self.execute_actions_email(user_id, ["VERIFY_EMAIL"])
+                await self.send_verify_email(user_id)
             except HTTPException:
                 # User is created; mail failure should not undo registration.
                 pass
-        return {"status": "created", "email": payload.email, "id": user_id}
+        return {
+            "status": "created",
+            "email": payload.email,
+            "id": user_id,
+            "pending": ["verify_email"],
+            "message": (
+                "Account created. Check your email to verify your Asrax account "
+                "before signing in."
+            ),
+        }
 
     async def authenticate(self, username: str, password: str) -> dict[str, Any]:
-        return await self._request_token(
-            {
-                "grant_type": "password",
-                "client_id": self.settings.identity_client_id,
-                "client_secret": self.settings.identity_client_secret,
-                "username": username,
-                "password": password,
-                "scope": _OIDC_USER_SCOPES,
-            }
-        )
+        try:
+            return await self._request_token(
+                {
+                    "grant_type": "password",
+                    "client_id": self.settings.identity_client_id,
+                    "client_secret": self.settings.identity_client_secret,
+                    "username": username,
+                    "password": password,
+                    "scope": _OIDC_USER_SCOPES,
+                }
+            )
+        except HTTPException as exc:
+            detail = str(exc.detail).lower()
+            if (
+                "not fully set up" in detail
+                or "account is not fully" in detail
+                or ("verify" in detail and "email" in detail)
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=(
+                        "Please verify your email before signing in. "
+                        "Check your inbox for the Asrax welcome message, "
+                        "or use resend verification."
+                    ),
+                ) from exc
+            raise
 
     async def authenticate_otp(self, username: str, otp: str) -> dict[str, Any]:
         raise HTTPException(
@@ -632,6 +684,13 @@ class KeycloakIdentityProvider(IIdentityProvider):
             "firstName": first_name,
             "lastName": last_name,
         }
+        actions: list[str] = []
+        if send_verify_email:
+            actions.append("VERIFY_EMAIL")
+        if temporary_password or not password:
+            actions.append("UPDATE_PASSWORD")
+        if actions:
+            req["requiredActions"] = actions
         if password:
             req["credentials"] = [
                 {
@@ -663,13 +722,16 @@ class KeycloakIdentityProvider(IIdentityProvider):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="User created but id could not be resolved",
             )
-        actions: list[str] = []
         if send_verify_email:
-            actions.append("VERIFY_EMAIL")
+            try:
+                await self.send_verify_email(user_id)
+            except HTTPException:
+                pass
         if temporary_password or not password:
-            actions.append("UPDATE_PASSWORD")
-        if actions:
-            await self.execute_actions_email(user_id, actions)
+            try:
+                await self.send_password_reset_email(email)
+            except HTTPException:
+                pass
         return await self.get_user(user_id)
 
     async def update_user(
@@ -851,15 +913,434 @@ class KeycloakIdentityProvider(IIdentityProvider):
             )
 
     async def send_verify_email(self, user_id: str) -> None:
-        await self.execute_actions_email(user_id, ["VERIFY_EMAIL"])
+        await self._send_branded_auth_mail(user_id=user_id, purpose="verify_email")
 
     async def send_password_reset_email(self, email: str) -> bool:
         admin_token = await self._get_admin_access_token()
         user = await self._find_user_by_email(email, admin_token)
         if not user or not user.get("id"):
             return False
-        await self.execute_actions_email(user["id"], ["UPDATE_PASSWORD"])
+        await self._send_branded_auth_mail(
+            user_id=user["id"], purpose="reset_password", email=email
+        )
         return True
+
+    async def confirm_verify_email(
+        self, token: str | None = None, code: str | None = None
+    ) -> dict[str, Any]:
+        resolved = await self._resolve_auth_mail_token(
+            purpose="verify_email",
+            token=token,
+            code=code,
+            invalid_detail="Invalid or expired verification token",
+        )
+        user_id = str(resolved["sub"])
+        await self._assert_jti_matches(user_id, _VERIFY_JTI_ATTR, str(resolved["jti"]))
+        await self._set_email_verified(user_id, verified=True)
+        # Registration already sets a permanent password; clear VERIFY_EMAIL so
+        # subsequent email+password login works. Also drop UPDATE_PASSWORD if
+        # present so the account is fully set up after mailbox proof.
+        await self._clear_required_actions(
+            user_id, remove={"VERIFY_EMAIL", "UPDATE_PASSWORD"}
+        )
+        await self._clear_auth_mail_attrs(user_id, purpose="verify_email")
+        # Issue session tokens so the branded verify link can auto-login the UI.
+        tokens = await self._issue_tokens_for_user(user_id)
+        return {
+            "status": "verified",
+            "user_id": user_id,
+            **tokens,
+        }
+
+    async def confirm_password_reset(
+        self,
+        new_password: str,
+        token: str | None = None,
+        code: str | None = None,
+    ) -> dict[str, Any]:
+        resolved = await self._resolve_auth_mail_token(
+            purpose="reset_password",
+            token=token,
+            code=code,
+            invalid_detail="Invalid or expired reset token",
+        )
+        user_id = str(resolved["sub"])
+        await self._assert_jti_matches(user_id, _RESET_JTI_ATTR, str(resolved["jti"]))
+        await self._set_password(user_id, new_password, temporary=False)
+        await self._clear_required_actions(
+            user_id, remove={"UPDATE_PASSWORD", "VERIFY_EMAIL"}
+        )
+        # Password reset via email implies the mailbox is controlled by the user.
+        await self._set_email_verified(user_id, verified=True)
+        await self._clear_auth_mail_attrs(user_id, purpose="reset_password")
+        return {"status": "password_updated", "user_id": user_id}
+
+    async def change_password(
+        self, *, username: str, current_password: str, new_password: str
+    ) -> dict[str, Any]:
+        # Verify current password via ROPC grant, then set new password in Keycloak.
+        try:
+            await self._request_token(
+                {
+                    "grant_type": "password",
+                    "client_id": self.settings.identity_client_id,
+                    "client_secret": self.settings.identity_client_secret,
+                    "username": username,
+                    "password": current_password,
+                    "scope": _OIDC_USER_SCOPES,
+                }
+            )
+        except HTTPException as exc:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Current password is incorrect",
+            ) from exc
+        admin_token = await self._get_admin_access_token()
+        user = await self._find_user_by_email(username, admin_token)
+        if user is None:
+            # username may not be email
+            async with httpx.AsyncClient(
+                timeout=self._session_timeout, verify=self.settings.verify_ssl
+            ) as client:
+                response = await client.get(
+                    self._admin_users_url,
+                    params={"username": username, "exact": "true"},
+                    headers=self._admin_headers(admin_token),
+                )
+            users = response.json() if response.status_code < 400 else []
+            user = users[0] if users else None
+        if not user or not user.get("id"):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+        user_id = user["id"]
+        await self._set_password(user_id, new_password, temporary=False)
+        await self._clear_required_actions(user_id, remove={"UPDATE_PASSWORD"})
+        return {"status": "password_changed", "user_id": user_id}
+
+    async def _ensure_auth_mail_profile_attributes(self) -> None:
+        if self._auth_mail_profile_ready:
+            return
+        admin_token = await self._get_admin_access_token()
+        headers = self._admin_headers(admin_token)
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            response = await client.get(self._user_profile_url, headers=headers)
+        if response.status_code >= 400:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Failed to load realm user profile: {response.text}",
+            )
+        profile = response.json()
+        names = {attr.get("name") for attr in profile.get("attributes", [])}
+        changed = False
+        for attr_name in _AUTH_MAIL_PROFILE_ATTRS:
+            if attr_name in names:
+                continue
+            profile.setdefault("attributes", []).append(
+                {
+                    "name": attr_name,
+                    "displayName": attr_name,
+                    "multivalued": False,
+                    "group": "user-metadata",
+                    "permissions": {
+                        "view": ["admin"],
+                        "edit": ["admin"],
+                    },
+                }
+            )
+            changed = True
+        if changed:
+            async with httpx.AsyncClient(
+                timeout=self._session_timeout, verify=self.settings.verify_ssl
+            ) as client:
+                put_response = await client.put(
+                    self._user_profile_url,
+                    json=profile,
+                    headers=headers,
+                )
+            if put_response.status_code >= 400:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail=(
+                        "Failed to register auth mail user profile attributes: "
+                        f"{put_response.text}"
+                    ),
+                )
+        self._auth_mail_profile_ready = True
+
+    async def _get_raw_user(self, user_id: str, admin_token: str | None = None) -> dict[str, Any]:
+        token = admin_token or await self._get_admin_access_token()
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            response = await client.get(
+                f"{self._admin_users_url}/{user_id}",
+                headers=self._admin_headers(token),
+            )
+        if response.status_code >= 400:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"User not found: {user_id}",
+            )
+        return response.json()
+
+    async def _put_raw_user(self, user: dict[str, Any], admin_token: str) -> None:
+        user_id = user["id"]
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            response = await client.put(
+                f"{self._admin_users_url}/{user_id}",
+                json=user,
+                headers=self._admin_headers(admin_token),
+            )
+        if response.status_code >= 400:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Update user failed: {response.text}",
+            )
+
+    async def _set_user_attr(
+        self, user_id: str, attr_name: str, value: str | None
+    ) -> None:
+        await self._set_user_attrs(user_id, {attr_name: value})
+
+    async def _set_user_attrs(
+        self, user_id: str, updates: dict[str, str | None]
+    ) -> None:
+        await self._ensure_auth_mail_profile_attributes()
+        admin_token = await self._get_admin_access_token()
+        user = await self._get_raw_user(user_id, admin_token)
+        attrs = dict(user.get("attributes") or {})
+        for attr_name, value in updates.items():
+            if value is None:
+                attrs.pop(attr_name, None)
+            else:
+                attrs[attr_name] = [value]
+        user["attributes"] = attrs
+        await self._put_raw_user(user, admin_token)
+
+    def _attr_first(self, user: dict[str, Any], attr_name: str) -> str | None:
+        attrs = user.get("attributes") or {}
+        raw = attrs.get(attr_name)
+        if isinstance(raw, list) and raw:
+            return str(raw[0])
+        if isinstance(raw, str) and raw:
+            return raw
+        return None
+
+    def _auth_mail_attr_names(self, purpose: str) -> tuple[str, str, str]:
+        if purpose == "verify_email":
+            return _VERIFY_JTI_ATTR, _VERIFY_CODE_ATTR, _VERIFY_TOKEN_ATTR
+        return _RESET_JTI_ATTR, _RESET_CODE_ATTR, _RESET_TOKEN_ATTR
+
+    async def _clear_auth_mail_attrs(self, user_id: str, *, purpose: str) -> None:
+        jti_attr, code_attr, token_attr = self._auth_mail_attr_names(purpose)
+        await self._set_user_attrs(
+            user_id,
+            {jti_attr: None, code_attr: None, token_attr: None},
+        )
+
+    async def _find_user_by_attr(
+        self, attr_name: str, value: str
+    ) -> dict[str, Any] | None:
+        """Lookup via Keycloak Admin `q=attr:value` (KC 20+). Falls back to None."""
+        code = (value or "").strip()
+        if not code:
+            return None
+        admin_token = await self._get_admin_access_token()
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            response = await client.get(
+                self._admin_users_url,
+                params={"q": f"{attr_name}:{code}", "max": 5},
+                headers=self._admin_headers(admin_token),
+            )
+        if response.status_code >= 400:
+            return None
+        users = response.json() or []
+        matches: list[dict[str, Any]] = []
+        for brief in users:
+            uid = brief.get("id")
+            if not uid:
+                continue
+            # List payloads may omit attributes; always load the full user.
+            full = await self._get_raw_user(str(uid), admin_token)
+            stored = self._attr_first(full, attr_name)
+            if stored and hmac_compare(stored, code):
+                matches.append(full)
+        if len(matches) == 1:
+            return matches[0]
+        return None
+
+    async def _resolve_auth_mail_token(
+        self,
+        *,
+        purpose: str,
+        token: str | None,
+        code: str | None,
+        invalid_detail: str,
+    ) -> dict[str, Any]:
+        raw_token = (token or "").strip() or None
+        raw_code = (code or "").strip() or None
+        if bool(raw_token) == bool(raw_code):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Provide exactly one of token or code",
+            )
+        if raw_code:
+            _, code_attr, token_attr = self._auth_mail_attr_names(purpose)
+            user = await self._find_user_by_attr(code_attr, raw_code)
+            if not user or not user.get("id"):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=invalid_detail,
+                )
+            stored_token = self._attr_first(user, token_attr)
+            if not stored_token:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=invalid_detail,
+                )
+            raw_token = stored_token
+        try:
+            return verify_auth_mail_token(
+                raw_token,  # type: ignore[arg-type]
+                secret=self.settings.auth_email_token_secret,
+                expected_purpose=purpose,  # type: ignore[arg-type]
+            )
+        except AuthMailTokenError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=invalid_detail,
+            ) from exc
+
+    async def _assert_jti_matches(
+        self, user_id: str, attr_name: str, expected_jti: str
+    ) -> None:
+        user = await self._get_raw_user(user_id)
+        stored = self._attr_first(user, attr_name)
+        if not stored or not hmac_compare(stored, expected_jti):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid or expired token",
+            )
+
+    async def _set_email_verified(self, user_id: str, *, verified: bool) -> None:
+        admin_token = await self._get_admin_access_token()
+        user = await self._get_raw_user(user_id, admin_token)
+        user["emailVerified"] = verified
+        await self._put_raw_user(user, admin_token)
+
+    async def _clear_required_actions(
+        self, user_id: str, *, remove: set[str] | None = None
+    ) -> None:
+        admin_token = await self._get_admin_access_token()
+        user = await self._get_raw_user(user_id, admin_token)
+        current = list(user.get("requiredActions") or [])
+        if remove is None:
+            user["requiredActions"] = []
+        else:
+            user["requiredActions"] = [a for a in current if a not in remove]
+        await self._put_raw_user(user, admin_token)
+
+    async def _set_password(
+        self, user_id: str, password: str, *, temporary: bool = False
+    ) -> None:
+        admin_token = await self._get_admin_access_token()
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            response = await client.put(
+                f"{self._admin_users_url}/{user_id}/reset-password",
+                json={
+                    "type": "password",
+                    "value": password,
+                    "temporary": temporary,
+                },
+                headers=self._admin_headers(admin_token),
+            )
+        if response.status_code >= 400:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Password update failed: {response.text}",
+            )
+
+    async def _send_branded_auth_mail(
+        self,
+        *,
+        user_id: str,
+        purpose: str,
+        email: str | None = None,
+    ) -> None:
+        if purpose not in ("verify_email", "reset_password"):
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Unknown auth mail purpose: {purpose}",
+            )
+        user = await self._get_raw_user(user_id)
+        to_email = (email or user.get("email") or "").strip()
+        if not to_email:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User has no email address",
+            )
+        try:
+            token, jti = mint_auth_mail_token(
+                secret=self.settings.auth_email_token_secret,
+                purpose=purpose,  # type: ignore[arg-type]
+                user_id=user_id,
+                email=to_email,
+                ttl_seconds=self.settings.auth_email_token_ttl_seconds,
+            )
+        except AuthMailTokenError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=str(exc),
+            ) from exc
+
+        short_code = mint_short_code()
+        jti_attr, code_attr, token_attr = self._auth_mail_attr_names(purpose)
+        await self._set_user_attrs(
+            user_id,
+            {
+                jti_attr: jti,
+                code_attr: short_code,
+                token_attr: token,
+            },
+        )
+
+        base = self.settings.auth_ui_base_url.rstrip("/")
+        # Prefer short ?c= links; HTML never displays the raw URL (button-only).
+        if purpose == "verify_email":
+            action_url = f"{base}/verify-email?c={short_code}"
+            subject, html, plain = build_welcome_verify_email(action_url=action_url)
+        else:
+            action_url = f"{base}/reset-password?c={short_code}"
+            subject, html, plain = build_reset_password(action_url=action_url)
+
+        try:
+            send_auth_email(
+                smtp=self.settings.resolved_smtp(),
+                to_email=to_email,
+                subject=subject,
+                html_body=html,
+                text_body=plain,
+            )
+        except SmtpNotConfiguredError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=str(exc),
+            ) from exc
+        except Exception as exc:  # noqa: BLE001 — surface SMTP failures cleanly
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail=f"Failed to send auth email: {exc}",
+            ) from exc
 
     async def logout_user_sessions(self, user_id: str) -> None:
         admin_token = await self._get_admin_access_token()
@@ -875,3 +1356,11 @@ class KeycloakIdentityProvider(IIdentityProvider):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Logout user sessions failed: {response.text}",
             )
+
+
+def hmac_compare(a: str, b: str) -> bool:
+    import hmac as _hmac
+
+    if len(a) != len(b):
+        return False
+    return _hmac.compare_digest(a, b)

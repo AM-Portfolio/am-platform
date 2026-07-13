@@ -18,6 +18,8 @@
 
 **Unchanged:** Google SSO IdP, Novu for product notifications only.
 
+**Important (preprod hotfix):** Do **not** recreate ConfigMap `am-identity-google-login-fix` or mount it over `keycloak_provider.py` / `config.py`. That overlay was a temporary Google-login hotfix; the same Google login code is now in `main` (`authenticate_google_token`, `_ensure_google_user`, `IDENTITY_VERIFY_SSL`). Remounting the old ConfigMap hides newer admin/email methods and breaks `/auth/*`.
+
 **Secrets:** never commit or paste Zoho passwords/tokens into chat or git. Use `.secrets.*.env` / Vault / `am-env-vault` only.
 
 ```mermaid
@@ -40,11 +42,11 @@ flowchart LR
 |-------|--------|------------|-------|
 | 1 | Zoho Mail ops + secrets | [x] Done | Local SMTP OK; secrets in `.secrets.preprod.env`; From display **Asrax Accounts** |
 | 2 | Terraform SMTP + `super_admin` | [x] Done | Targeted apply on preprod: smtp_server + role + verify_email |
-| 3 | Keycloak provider helpers | [x] Done | list/get/roles/execute-actions-email |
+| 3 | Keycloak provider helpers | [x] Done | list/get/roles; branded mail helpers (jti attrs) |
 | 4 | Admin + user management APIs | [x] Done | `/admin/*` with `require_any_roles` |
-| 5 | Auth email APIs | [x] Done | register verify, password-reset, resend-verify |
+| 5 | Auth email APIs | [x] Done | register/resend/reset via identity SMTP + HMAC tokens; `*/confirm` live |
 | 6 | Docs + Postman | [~] Partial | Realm guide + feature doc updated; Postman TBD |
-| — | **Post-development verification** | [ ] Pending | Run on preprod after identity deploy |
+| — | **Post-development verification** | [~] In progress | Preprod OpenAPI has confirm routes (400 on bad token, not 501). E2E updated for branded mail + confirm (no execute-actions success path). Manual: Gmail links must use `AUTH_UI_BASE_URL` (`am.asrax.in`). |
 
 ---
 
@@ -114,14 +116,14 @@ Manual / ops before Terraform or API work.
 
 ### Development checklist
 
-- [ ] User search / get by id
-- [ ] Enable / disable user
-- [ ] Realm role list / map / unmap
-- [ ] `execute-actions-email` (VERIFY_EMAIL, UPDATE_PASSWORD)
+- [x] User search / get by id
+- [x] Enable / disable user
+- [x] Realm role list / map / unmap
+- [x] Branded auth mail (mint HMAC token, store jti, Zoho SMTP) — not Keycloak execute-actions for public flows
 
 ### Phase 3 exit criteria
 
-- [ ] Provider methods callable from services (unit/integration smoke as available)
+- [x] Provider methods callable from services (unit/integration smoke as available)
 
 ---
 
@@ -156,11 +158,11 @@ Guard: caller must have **`admin` or `super_admin`**.
 
 ### Development checklist
 
-- [ ] `POST /auth/register` → `emailVerified=false` + VERIFY_EMAIL
-- [ ] `POST /auth/password-reset` → always **202** (no email enumeration)
-- [ ] `POST /auth/password-reset/confirm` (if identity-owned token path)
-- [ ] `POST /auth/verify-email/resend`
-- [ ] Existing login / refresh / logout / Google SSO unchanged
+- [x] `POST /auth/register` → `emailVerified=false` + branded verify mail
+- [x] `POST /auth/password-reset` → always **202** (no email enumeration)
+- [x] `POST /auth/password-reset/confirm` (HMAC token + Keycloak password update)
+- [x] `POST /auth/verify-email/resend` + `POST /auth/verify-email/confirm`
+- [x] Existing login / refresh / logout / Google SSO unchanged
 
 ```mermaid
 sequenceDiagram
@@ -168,22 +170,29 @@ sequenceDiagram
   participant Identity as am_identity
   participant KC as Keycloak
   participant Mail as ZohoSMTP
+  participant UI as AUTH_UI_BASE_URL
 
   User->>Identity: POST /auth/register
   Identity->>KC: create user emailVerified false
-  Identity->>KC: execute-actions-email VERIFY_EMAIL
-  KC->>Mail: Zoho SMTP
-  Mail-->>User: Verify email
+  Identity->>KC: store asraxVerifyJti
+  Identity->>Mail: branded verify email (SMTP_*)
+  Mail-->>User: link to UI/verify-email?token=...
+  User->>UI: open link
+  UI->>Identity: POST /auth/verify-email/confirm
+  Identity->>KC: emailVerified true, clear VERIFY_EMAIL
 
   User->>Identity: POST /auth/password-reset
-  Identity->>KC: execute-actions-email UPDATE_PASSWORD
-  KC->>Mail: Zoho SMTP
-  Mail-->>User: Reset password
+  Identity->>KC: store asraxResetJti
+  Identity->>Mail: branded reset email
+  Mail-->>User: link to UI/reset-password?token=...
+  User->>UI: open link
+  UI->>Identity: POST /auth/password-reset/confirm
+  Identity->>KC: set password, clear actions
 ```
 
 ### Phase 5 exit criteria
 
-- [ ] Register and reset paths return expected status codes against Keycloak with SMTP configured
+- [x] Register/resend/reset return expected status codes; confirm returns **400** (not 501) on bad token; mail links use `AUTH_UI_BASE_URL`
 
 ---
 
@@ -203,9 +212,11 @@ Do **not** mark the feature done until this section is complete on **preprod**.
 
 ### Mail
 
-- [ ] Keycloak SMTP test email received (company From)
-- [ ] Register → Zoho verification email received and link works
-- [ ] Forgot password → Zoho reset email → password updated → login works
+- [ ] Identity SMTP (`SMTP_*`) sends branded Asrax mail (company From)
+- [ ] Register / resend → verification email with link on `AUTH_UI_BASE_URL` (`am.asrax.in/verify-email?token=...`)
+- [ ] Forgot password → reset email → `POST /auth/password-reset/confirm` → login works
+- [ ] Confirm APIs return **400** on bad/expired token (not **501**)
+- [ ] Manual Gmail check: links are **not** Keycloak execute-actions URLs on `auth.munish.org`
 
 ### Admin / roles
 
