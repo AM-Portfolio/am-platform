@@ -6,7 +6,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-BASE = "https://am.asrax.in/identity"
+BASE = "https://am-preprod.asrax.in/identity"
 KC = "https://auth.munish.org/auth"
 REALM = "am-preprod-realm"
 SECRETS = Path(r"A:\InfraCode\AM-Portfolio-grp\am-platform\.secrets.preprod.env")
@@ -115,11 +115,11 @@ def main():
         f"{code} {body}",
     )
 
-    ui_base = (secrets.get("AUTH_UI_BASE_URL") or "https://am.asrax.in").rstrip("/")
+    ui_base = (secrets.get("AUTH_UI_BASE_URL") or "").strip().rstrip("/")
     record(
-        "AUTH_UI_BASE_URL for branded links",
-        "am.asrax.in" in ui_base or "am-dev.asrax.in" in ui_base,
-        ui_base,
+        "AUTH_UI_BASE_URL for branded links (from Vault/secrets)",
+        bool(ui_base),
+        ui_base or "(missing — set AUTH_UI_BASE_URL)",
     )
     record(
         "AUTH_EMAIL_TOKEN_SECRET present (local secrets)",

@@ -1,10 +1,10 @@
 {
   "name": "preprod",
-  "webBaseUrl": "https://am.asrax.in",
-  "identityBaseUrl": "https://am.asrax.in/identity",
-  "subscriptionBaseUrl": "https://am.asrax.in/subscriptions",
-  "notificationBaseUrl": "https://am.asrax.in/notifications",
+  "webBaseUrl": "https://am-preprod.asrax.in",
+  "identityBaseUrl": "https://am-preprod.asrax.in/identity",
+  "subscriptionBaseUrl": "https://am-preprod.asrax.in/subscriptions",
+  "notificationBaseUrl": "https://am-preprod.asrax.in/notifications",
   "keycloakUrl": "https://auth.munish.org/auth",
   "keycloakRealm": "am-preprod-realm",
-  "googleRedirectUri": "https://am.asrax.in/callback"
+  "googleRedirectUri": "https://am-preprod.asrax.in/callback"
 }

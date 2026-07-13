@@ -66,12 +66,12 @@
       "name": "AM Platform — Preprod",
       "values": {
         "platform_env": "preprod",
-        "identity_base_url": "https://am.asrax.in/identity",
-        "subscription_base_url": "https://am.asrax.in/subscriptions",
-        "notification_base_url": "https://am.asrax.in/notifications",
-        "base_url": "https://am.asrax.in/identity",
+        "identity_base_url": "https://am-preprod.asrax.in/identity",
+        "subscription_base_url": "https://am-preprod.asrax.in/subscriptions",
+        "notification_base_url": "https://am-preprod.asrax.in/notifications",
+        "base_url": "https://am-preprod.asrax.in/identity",
         "keycloak_url": "https://auth.munish.org/auth",
-        "google_redirect_uri": "https://am.asrax.in/callback"
+        "google_redirect_uri": "https://am-preprod.asrax.in/callback"
       }
     },
     "prod": {

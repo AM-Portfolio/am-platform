@@ -26,19 +26,15 @@ class IdentitySettings(BaseSettings):
     google_idp_alias: str = Field(default="google", alias="GOOGLE_IDP_ALIAS")
     google_client_id: str = Field(..., alias="GOOGLE_CLIENT_ID")
     google_state_ttl_seconds: int = Field(default=300, alias="GOOGLE_STATE_TTL_SECONDS")
-    allowed_google_redirect_uris: str = Field(
-        default="http://localhost:9000/callback,https://am.munish.org/callback,https://am.asrax.in/callback,https://am-dev.asrax.in/callback",
-        alias="ALLOWED_GOOGLE_REDIRECT_URIS",
-    )
+    # Host allowlist — set per env in Vault (ALLOWED_GOOGLE_REDIRECT_URIS). No code defaults.
+    allowed_google_redirect_uris: str = Field(..., alias="ALLOWED_GOOGLE_REDIRECT_URIS")
 
     service_token_ttl: int = Field(default=300, alias="SERVICE_TOKEN_TTL")
 
     verify_ssl: bool = Field(default=True, alias="IDENTITY_VERIFY_SSL")
 
-    # Branded auth mail (identity-owned; Keycloak is still the user store).
-    auth_ui_base_url: str = Field(
-        default="https://am.asrax.in", alias="AUTH_UI_BASE_URL"
-    )
+    # Branded auth mail / UI links — set per env in Vault (AUTH_UI_BASE_URL). No code default.
+    auth_ui_base_url: str = Field(..., alias="AUTH_UI_BASE_URL")
     auth_email_token_secret: str = Field(
         default="", alias="AUTH_EMAIL_TOKEN_SECRET"
     )
