@@ -22,7 +22,7 @@ env:
   LOG_LEVEL: INFO
   IDENTITY_VERIFY_SSL: "false"
 
-# Dual-host: am-preprod (target) + am.asrax.in (current preprod until Phase 4)
+# Preprod app host only — am.asrax.in reserved for prod (Phase 4 dual-host strip)
 ingress:
   enabled: true
   className: "traefik"
@@ -34,10 +34,6 @@ ingress:
       am-apps-preprod-strip-prefix-apps@kubernetescrd
   hosts:
     - host: am-preprod.asrax.in
-      paths:
-        - path: /identity
-          pathType: Prefix
-    - host: am.asrax.in
       paths:
         - path: /identity
           pathType: Prefix
