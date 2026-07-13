@@ -101,6 +101,10 @@ class KeycloakIdentityProvider(IIdentityProvider):
             for uri in settings.allowed_google_redirect_uris.split(",")
             if uri.strip()
         }
+        if not self._allowed_redirect_uris:
+            raise ValueError(
+                "ALLOWED_GOOGLE_REDIRECT_URIS is empty — set via Vault for this environment"
+            )
         self._settings_profile_ready = False
         self._auth_mail_profile_ready = False
         self._user_profile_url = (
@@ -1314,14 +1318,24 @@ class KeycloakIdentityProvider(IIdentityProvider):
             },
         )
 
-        base = self.settings.auth_ui_base_url.rstrip("/")
+        base = (self.settings.auth_ui_base_url or "").strip().rstrip("/")
+        if not base:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="AUTH_UI_BASE_URL is not configured (set via Vault)",
+            )
         # Prefer short ?c= links; HTML never displays the raw URL (button-only).
+        # app_home / action hosts come only from Vault AUTH_UI_BASE_URL at runtime.
         if purpose == "verify_email":
             action_url = f"{base}/verify-email?c={short_code}"
-            subject, html, plain = build_welcome_verify_email(action_url=action_url)
+            subject, html, plain = build_welcome_verify_email(
+                action_url=action_url, app_home=base
+            )
         else:
             action_url = f"{base}/reset-password?c={short_code}"
-            subject, html, plain = build_reset_password(action_url=action_url)
+            subject, html, plain = build_reset_password(
+                action_url=action_url, app_home=base
+            )
 
         try:
             send_auth_email(

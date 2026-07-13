@@ -1,11 +1,11 @@
 {
   "name": "prod",
-  "webBaseUrl": "https://am.munish.org",
-  "identityBaseUrl": "https://am.munish.org/identity",
-  "subscriptionBaseUrl": "https://am.munish.org/subscriptions",
-  "notificationBaseUrl": "https://am.munish.org/notifications",
+  "webBaseUrl": "https://am.asrax.in",
+  "identityBaseUrl": "https://am.asrax.in/identity",
+  "subscriptionBaseUrl": "https://am.asrax.in/subscriptions",
+  "notificationBaseUrl": "https://am.asrax.in/notifications",
   "keycloakUrl": "https://auth.munish.org/auth",
   "keycloakRealm": "am-realm",
-  "googleRedirectUri": "https://am.munish.org/callback",
+  "googleRedirectUri": "https://am.asrax.in/callback",
   "readOnlySmoke": true
 }

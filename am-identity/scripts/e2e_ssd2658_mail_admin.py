@@ -1,10 +1,10 @@
 """E2E preprod checks for ssd2658@gmail.com — branded auth mail + confirm + admin roles.
 
 Public verify/reset no longer rely on Keycloak execute-actions-email.
-Mail links use AUTH_UI_BASE_URL (am.asrax.in). Gmail body is not readable here;
+Mail links use AUTH_UI_BASE_URL from Vault/secrets (runtime). Gmail body is not readable here;
 confirm is exercised by minting a token with AUTH_EMAIL_TOKEN_SECRET and setting
 the matching Keycloak jti attribute (same contract as the mailer).
-Manual: check ssd2658@gmail.com for Asrax branded links on am.asrax.in.
+Manual: check ssd2658@gmail.com for Asrax branded links (AUTH_UI_BASE_URL from secrets).
 """
 from __future__ import annotations
 
@@ -21,7 +21,8 @@ from base64 import urlsafe_b64encode
 from pathlib import Path
 from urllib.parse import urlparse
 
-BASE = "https://am.asrax.in/identity"
+BASE = "https://am-preprod.asrax.in/identity"
+# Mail link host assertions use AUTH_UI_BASE_URL from secrets only (no hardcoded fallback).
 KC = "https://auth.munish.org/auth"
 REALM = "am-preprod-realm"
 EMAIL = "ssd2658@gmail.com"
@@ -126,7 +127,7 @@ def set_user_attr(uid: str, ah: dict, attr: str, value: str | None) -> int:
 def main() -> None:
     secrets_map = load_secrets()
     token_secret = secrets_map.get("AUTH_EMAIL_TOKEN_SECRET", "").strip()
-    ui_base = (secrets_map.get("AUTH_UI_BASE_URL") or "https://am.asrax.in").rstrip("/")
+    ui_base = (secrets_map.get("AUTH_UI_BASE_URL") or "").strip().rstrip("/")
     ttl = int(secrets_map.get("AUTH_EMAIL_TOKEN_TTL_SECONDS") or "43200")
 
     record(
@@ -136,9 +137,9 @@ def main() -> None:
     )
     host = urlparse(ui_base).hostname or ""
     record(
-        "AUTH_UI_BASE_URL host",
-        host in ("am.asrax.in", "am-dev.asrax.in"),
-        f"host={host} base={ui_base}",
+        "AUTH_UI_BASE_URL from Vault/secrets (required)",
+        bool(ui_base) and bool(host),
+        f"host={host or '(missing)'} base={ui_base or '(missing)'}",
     )
 
     # ── Keycloak admin ────────────────────────────────────────────────────
