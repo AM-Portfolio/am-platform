@@ -14,7 +14,7 @@ from jwt import InvalidTokenError, PyJWKClient, PyJWKClientConnectionError
 
 from am_identity.core.config import IdentitySettings
 from am_identity.email.smtp_client import SmtpNotConfiguredError, send_auth_email
-from am_identity.email.templates import build_reset_password, build_verify_email
+from am_identity.email.templates import build_reset_password, build_welcome_verify_email
 from am_identity.email.tokens import (
     AuthMailTokenError,
     mint_auth_mail_token,
@@ -278,7 +278,7 @@ class KeycloakIdentityProvider(IIdentityProvider):
 
     async def create_user(self, payload: RegisterRequest) -> dict[str, Any]:
         admin_token = await self._get_admin_access_token()
-        req = {
+        req: dict[str, Any] = {
             "username": payload.email,
             "email": payload.email,
             "enabled": True,
@@ -290,6 +290,8 @@ class KeycloakIdentityProvider(IIdentityProvider):
                 {"type": "password", "value": payload.password, "temporary": False}
             ],
         }
+        if payload.phone:
+            req["attributes"] = {"phone": [payload.phone]}
         async with httpx.AsyncClient(
             timeout=self._session_timeout, verify=self.settings.verify_ssl
         ) as client:
@@ -316,19 +318,45 @@ class KeycloakIdentityProvider(IIdentityProvider):
             except HTTPException:
                 # User is created; mail failure should not undo registration.
                 pass
-        return {"status": "created", "email": payload.email, "id": user_id}
+        return {
+            "status": "created",
+            "email": payload.email,
+            "id": user_id,
+            "pending": ["verify_email"],
+            "message": (
+                "Account created. Check your email to verify your Asrax account "
+                "before signing in."
+            ),
+        }
 
     async def authenticate(self, username: str, password: str) -> dict[str, Any]:
-        return await self._request_token(
-            {
-                "grant_type": "password",
-                "client_id": self.settings.identity_client_id,
-                "client_secret": self.settings.identity_client_secret,
-                "username": username,
-                "password": password,
-                "scope": _OIDC_USER_SCOPES,
-            }
-        )
+        try:
+            return await self._request_token(
+                {
+                    "grant_type": "password",
+                    "client_id": self.settings.identity_client_id,
+                    "client_secret": self.settings.identity_client_secret,
+                    "username": username,
+                    "password": password,
+                    "scope": _OIDC_USER_SCOPES,
+                }
+            )
+        except HTTPException as exc:
+            detail = str(exc.detail).lower()
+            if (
+                "not fully set up" in detail
+                or "account is not fully" in detail
+                or ("verify" in detail and "email" in detail)
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=(
+                        "Please verify your email before signing in. "
+                        "Check your inbox for the Asrax welcome message, "
+                        "or use resend verification."
+                    ),
+                ) from exc
+            raise
 
     async def authenticate_otp(self, username: str, otp: str) -> dict[str, Any]:
         raise HTTPException(
@@ -936,6 +964,50 @@ class KeycloakIdentityProvider(IIdentityProvider):
         await self._clear_auth_mail_attrs(user_id, purpose="reset_password")
         return {"status": "password_updated", "user_id": user_id}
 
+    async def change_password(
+        self, *, username: str, current_password: str, new_password: str
+    ) -> dict[str, Any]:
+        # Verify current password via ROPC grant, then set new password in Keycloak.
+        try:
+            await self._request_token(
+                {
+                    "grant_type": "password",
+                    "client_id": self.settings.identity_client_id,
+                    "client_secret": self.settings.identity_client_secret,
+                    "username": username,
+                    "password": current_password,
+                    "scope": _OIDC_USER_SCOPES,
+                }
+            )
+        except HTTPException as exc:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Current password is incorrect",
+            ) from exc
+        admin_token = await self._get_admin_access_token()
+        user = await self._find_user_by_email(username, admin_token)
+        if user is None:
+            # username may not be email
+            async with httpx.AsyncClient(
+                timeout=self._session_timeout, verify=self.settings.verify_ssl
+            ) as client:
+                response = await client.get(
+                    self._admin_users_url,
+                    params={"username": username, "exact": "true"},
+                    headers=self._admin_headers(admin_token),
+                )
+            users = response.json() if response.status_code < 400 else []
+            user = users[0] if users else None
+        if not user or not user.get("id"):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+        user_id = user["id"]
+        await self._set_password(user_id, new_password, temporary=False)
+        await self._clear_required_actions(user_id, remove={"UPDATE_PASSWORD"})
+        return {"status": "password_changed", "user_id": user_id}
+
     async def _ensure_auth_mail_profile_attributes(self) -> None:
         if self._auth_mail_profile_ready:
             return
@@ -1235,7 +1307,7 @@ class KeycloakIdentityProvider(IIdentityProvider):
         # Prefer short ?c= links; HTML never displays the raw URL (button-only).
         if purpose == "verify_email":
             action_url = f"{base}/verify-email?c={short_code}"
-            subject, html, plain = build_verify_email(action_url=action_url)
+            subject, html, plain = build_welcome_verify_email(action_url=action_url)
         else:
             action_url = f"{base}/reset-password?c={short_code}"
             subject, html, plain = build_reset_password(action_url=action_url)

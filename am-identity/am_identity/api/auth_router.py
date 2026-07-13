@@ -4,6 +4,7 @@ from am_identity.deps import get_identity_provider
 from am_identity.email.rate_limit import enforce_rate_limit
 from am_identity.providers.interface import IIdentityProvider
 from am_identity.schemas.auth import (
+    ChangePasswordRequest,
     GoogleAuthURLRequest,
     GoogleAuthURLResponse,
     GoogleCallbackRequest,
@@ -133,3 +134,15 @@ async def confirm_verify_email(
     provider: IIdentityProvider = Depends(get_identity_provider),
 ):
     return await provider.confirm_verify_email(token=payload.token, code=payload.code)
+
+
+@router.post("/change-password", status_code=status.HTTP_200_OK)
+async def change_password(
+    payload: ChangePasswordRequest,
+    provider: IIdentityProvider = Depends(get_identity_provider),
+):
+    return await provider.change_password(
+        username=str(payload.email),
+        current_password=payload.current_password,
+        new_password=payload.new_password,
+    )

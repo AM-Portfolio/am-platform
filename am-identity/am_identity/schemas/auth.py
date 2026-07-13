@@ -5,6 +5,7 @@ import re
 
 
 _PASSWORD_POLICY = re.compile(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$")
+_PHONE_POLICY = re.compile(r"^\+?[1-9]\d{9,14}$")
 
 
 def _validate_password(value: str) -> str:
@@ -13,6 +14,15 @@ def _validate_password(value: str) -> str:
             "Password must be at least 8 characters and include upper, lower, and a digit"
         )
     return value
+
+
+def _validate_phone(value: str) -> str:
+    cleaned = re.sub(r"[\s\-()]", "", value.strip())
+    if not _PHONE_POLICY.match(cleaned):
+        raise ValueError(
+            "Phone must be 10–15 digits, optionally starting with +"
+        )
+    return cleaned
 
 
 def _require_token_or_code(token: str | None, code: str | None) -> None:
@@ -27,11 +37,19 @@ class RegisterRequest(BaseModel):
     password: str = Field(min_length=8)
     first_name: str | None = None
     last_name: str | None = None
+    phone: str | None = None
 
     @field_validator("password")
     @classmethod
     def password_policy(cls, value: str) -> str:
         return _validate_password(value)
+
+    @field_validator("phone")
+    @classmethod
+    def phone_policy(cls, value: str | None) -> str | None:
+        if value is None or not value.strip():
+            return None
+        return _validate_phone(value)
 
 class LoginRequest(BaseModel):
     username: str
@@ -122,3 +140,14 @@ class VerifyEmailConfirmRequest(BaseModel):
 
 class ResendVerifyEmailRequest(BaseModel):
     email: EmailStr
+
+
+class ChangePasswordRequest(BaseModel):
+    email: EmailStr
+    current_password: str
+    new_password: str = Field(min_length=8)
+
+    @field_validator("new_password")
+    @classmethod
+    def password_policy(cls, value: str) -> str:
+        return _validate_password(value)

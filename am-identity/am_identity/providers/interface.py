@@ -157,5 +157,11 @@ class IIdentityProvider(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    async def change_password(
+        self, *, username: str, current_password: str, new_password: str
+    ) -> dict[str, Any]:
+        raise NotImplementedError
+
+    @abstractmethod
     async def logout_user_sessions(self, user_id: str) -> None:
         raise NotImplementedError
