@@ -1,6 +1,6 @@
 # Production Environment — am-subscription
 environment: prod
-replicaCount: 2
+replicaCount: 1
 
 resources:
   limits:
@@ -13,8 +13,9 @@ resources:
 vault:
   enabled: true
   secretPaths:
+    # Infra is on apps KV (same as market/proxy). Service secrets still on secret/ mount.
     postgres:
-      path: "secret/data/prod/infra/postgres"
+      path: "apps/data/prod/infra/postgres"
     subscription:
       path: "secret/data/prod/services/am-subscription"
     lago:
