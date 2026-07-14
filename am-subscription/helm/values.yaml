@@ -238,19 +238,11 @@ resources:
     cpu: 100m
     memory: 256Mi
 
+# Host list is environment-specific — see values.preprod.yaml / values.prod.yaml
 ingress:
   enabled: true
   className: "traefik"
   annotations:
     kubernetes.io/ingress.class: "traefik"
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-    traefik.ingress.kubernetes.io/router.middlewares: >-
-      am-apps-preprod-global-cors@kubernetescrd,
-      am-apps-preprod-strip-prefix-apps@kubernetescrd
-  hosts:
-    - host: am.asrax.in
-      paths:
-        - path: /subscriptions
-          pathType: Prefix
-        - path: /webhooks/provider
-          pathType: Prefix
+  hosts: []

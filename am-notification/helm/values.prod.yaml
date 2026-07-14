@@ -30,3 +30,21 @@ vault:
 env:
   APP_ENV: production
   LOG_LEVEL: INFO
+
+# Prod app host (prep). Do not remove munish from infra Traefik.
+ingress:
+  enabled: true
+  className: "traefik"
+  annotations:
+    kubernetes.io/ingress.class: "traefik"
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    # CORS only — service routes already include /notifications (do not strip).
+    traefik.ingress.kubernetes.io/router.middlewares: >-
+      am-apps-prod-global-cors@kubernetescrd
+  hosts:
+    - host: am.asrax.in
+      paths:
+        - path: /notifications
+          pathType: Prefix
+        - path: /webhooks/novu
+          pathType: Prefix

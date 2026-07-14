@@ -31,3 +31,21 @@ vault:
 env:
   APP_ENV: preprod
   LOG_LEVEL: INFO
+
+# Preprod app host only — am.asrax.in is owned by prod (no Host collision)
+ingress:
+  enabled: true
+  className: "traefik"
+  annotations:
+    kubernetes.io/ingress.class: "traefik"
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    # CORS only — service routes already include /notifications (do not strip).
+    traefik.ingress.kubernetes.io/router.middlewares: >-
+      am-apps-preprod-global-cors@kubernetescrd
+  hosts:
+    - host: am-preprod.asrax.in
+      paths:
+        - path: /notifications
+          pathType: Prefix
+        - path: /webhooks/novu
+          pathType: Prefix
