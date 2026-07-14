@@ -27,6 +27,44 @@ security:
 # Empty stub — universal-chart batchSearch/scheduler templates require config to exist
 config: {}
 
+# Vault key→env mappings live here so base+env values alone are enough for CI
+# (central-deploy used to omit vault-mappings.yaml). Env files only override paths.
+vault:
+  secretPaths:
+    mongodb:
+      mappings:
+        AM_NOTIFICATION_MONGO_URI: "url"
+        AM_NOTIFICATION_MONGO_DATABASE: "AM_NOTIFICATION_MONGO_DATABASE"
+        AM_NOTIFICATION_DB_USER: "AM_NOTIFICATION_DB_USER"
+        AM_NOTIFICATION_DB_PASSWORD: "AM_NOTIFICATION_DB_PASSWORD"
+    kafka:
+      mappings:
+        KAFKA_BOOTSTRAP_SERVERS: "bootstrap_servers"
+        KAFKA_USERNAME: "username"
+        KAFKA_PASSWORD: "password"
+        KAFKA_SECURITY_PROTOCOL: "KAFKA_SECURITY_PROTOCOL"
+        KAFKA_SASL_MECHANISM: "KAFKA_SASL_MECHANISM"
+        AM_NOTIFICATION_KAFKA_BOOTSTRAP_SERVERS: "bootstrap_servers"
+    notification:
+      mappings:
+        AM_NOTIFICATION_CLIENT_ID: "AM_NOTIFICATION_CLIENT_ID"
+        AM_NOTIFICATION_CLIENT_SECRET: "AM_NOTIFICATION_CLIENT_SECRET"
+        NOTIFICATION_PROVIDER: "NOTIFICATION_PROVIDER"
+        NOVU_APPLICATION_IDENTIFIER: "NOVU_APPLICATION_IDENTIFIER"
+        KAFKA_ENABLED: "KAFKA_ENABLED"
+    novu:
+      mappings:
+        NOVU_API_URL: "NOVU_API_URL"
+        NOVU_API_KEY: "NOVU_API_KEY"
+    identity-oidc:
+      mappings:
+        OIDC_JWKS_URL: "OIDC_JWKS_URL"
+        OIDC_ISSUER: "OIDC_ISSUER"
+    service-oauth:
+      mappings:
+        OAUTH2_CLIENT_ID: "AM_NOTIFICATION_CLIENT_ID"
+        OAUTH2_CLIENT_SECRET: "AM_NOTIFICATION_CLIENT_SECRET"
+
 env:
   APP_ENV: production
   APP_NAME: am-notification
