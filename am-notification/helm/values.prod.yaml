@@ -1,6 +1,6 @@
 # Production Environment — am-notification
 environment: prod
-replicaCount: 2
+replicaCount: 1
 
 resources:
   limits:
@@ -13,10 +13,11 @@ resources:
 vault:
   enabled: true
   secretPaths:
+    # Infra is on apps KV (same as market/proxy). Service secrets still on secret/ mount.
     mongodb:
-      path: "secret/data/prod/infra/mongodb"
+      path: "apps/data/prod/infra/mongodb"
     kafka:
-      path: "secret/data/prod/infra/kafka"
+      path: "apps/data/prod/infra/kafka"
     notification:
       path: "secret/data/prod/services/am-notification"
     novu:
@@ -30,3 +31,21 @@ vault:
 env:
   APP_ENV: production
   LOG_LEVEL: INFO
+
+# Prod app host (prep). Do not remove munish from infra Traefik.
+ingress:
+  enabled: true
+  className: "traefik"
+  annotations:
+    kubernetes.io/ingress.class: "traefik"
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    # CORS only — service routes already include /notifications (do not strip).
+    traefik.ingress.kubernetes.io/router.middlewares: >-
+      am-apps-prod-global-cors@kubernetescrd
+  hosts:
+    - host: am.asrax.in
+      paths:
+        - path: /notifications
+          pathType: Prefix
+        - path: /webhooks/novu
+          pathType: Prefix
