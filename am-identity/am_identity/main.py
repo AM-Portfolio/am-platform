@@ -7,6 +7,7 @@ from am_identity.api.user_router import router as user_router
 from am_identity.core.config import get_settings
 from am_platform_common import LoggingMiddleware, setup_logging
 
+
 settings = get_settings()
 setup_logging(env=settings.app_env)
 
