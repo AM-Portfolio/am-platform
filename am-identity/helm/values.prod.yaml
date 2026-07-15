@@ -14,7 +14,7 @@ vault:
   enabled: true
   secretPaths:
     identity:
-      path: "secret/data/prod/services/am-identity"
+      path: "apps/data/prod/services/am-identity"
 
 
 env:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import json
+import logging
 import secrets
 import time
 from typing import Any
@@ -26,6 +27,7 @@ from am_identity.schemas.auth import RegisterRequest
 
 # Required for /userinfo and OIDC profile claims (without openid, userinfo returns 403).
 _OIDC_USER_SCOPES = "openid profile email"
+logger = logging.getLogger(__name__)
 _GOOGLE_ISSUER = "https://accounts.google.com"
 _GOOGLE_JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs"
 _VERIFY_JTI_ATTR = "asraxVerifyJti"
@@ -316,21 +318,39 @@ class KeycloakIdentityProvider(IIdentityProvider):
         if not user_id:
             found = await self._find_user_by_email(payload.email, admin_token)
             user_id = found.get("id") if found else None
+        email_sent = False
+        email_error: str | None = None
         if user_id:
             try:
                 await self.send_verify_email(user_id)
-            except HTTPException:
-                # User is created; mail failure should not undo registration.
-                pass
+                email_sent = True
+            except HTTPException as exc:
+                # User is created; mail failure should not undo registration —
+                # but surface it so UI/ops know SMTP/config failed.
+                email_error = str(exc.detail)
+                logger.warning(
+                    "verify_email_failed_after_create user_id=%s email=%s detail=%s",
+                    user_id,
+                    payload.email,
+                    email_error,
+                )
+        message = (
+            "Account created. Check your email to verify your Asrax account "
+            "before signing in."
+            if email_sent
+            else (
+                "Account created, but we could not send the verification email. "
+                "Use Resend on the next screen or contact support."
+            )
+        )
         return {
             "status": "created",
             "email": payload.email,
             "id": user_id,
             "pending": ["verify_email"],
-            "message": (
-                "Account created. Check your email to verify your Asrax account "
-                "before signing in."
-            ),
+            "email_sent": email_sent,
+            "email_error": email_error,
+            "message": message,
         }
 
     async def authenticate(self, username: str, password: str) -> dict[str, Any]:
@@ -726,17 +746,34 @@ class KeycloakIdentityProvider(IIdentityProvider):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="User created but id could not be resolved",
             )
+        verify_sent = False
+        reset_sent = False
         if send_verify_email:
             try:
                 await self.send_verify_email(user_id)
-            except HTTPException:
-                pass
+                verify_sent = True
+            except HTTPException as exc:
+                logger.warning(
+                    "admin_create verify_email failed user_id=%s detail=%s",
+                    user_id,
+                    exc.detail,
+                )
         if temporary_password or not password:
             try:
                 await self.send_password_reset_email(email)
-            except HTTPException:
-                pass
-        return await self.get_user(user_id)
+                reset_sent = True
+            except HTTPException as exc:
+                logger.warning(
+                    "admin_create password_reset_email failed email=%s detail=%s",
+                    email,
+                    exc.detail,
+                )
+        user = await self.get_user(user_id)
+        user["email_sent"] = {
+            "verify_email": verify_sent if send_verify_email else None,
+            "password_reset": reset_sent if (temporary_password or not password) else None,
+        }
+        return user
 
     async def update_user(
         self,
