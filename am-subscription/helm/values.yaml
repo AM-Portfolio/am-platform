@@ -285,7 +285,7 @@ ingress:
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
   hosts: []
 
-# Plane A — Prometheus scrape
+# Plane A - Prometheus scrape
 podAnnotations:
   prometheus.io/scrape: "true"
   prometheus.io/port: "8080"
