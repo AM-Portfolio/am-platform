@@ -247,6 +247,7 @@ vault:
         OAUTH2_CLIENT_SECRET: "AM_SUBSCRIPTION_CLIENT_SECRET"
 
 env:
+  OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "http://otel-collector.monitoring.svc.cluster.local:4318/v1/traces"
   APP_ENV: production
   APP_NAME: am-subscription
   APP_PORT: "8080"
@@ -283,3 +284,9 @@ ingress:
     kubernetes.io/ingress.class: "traefik"
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
   hosts: []
+
+# Plane A — Prometheus scrape
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/metrics"

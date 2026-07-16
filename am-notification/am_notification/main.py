@@ -43,6 +43,9 @@ app = FastAPI(
     description="Lean notification orchestration with Novu adapter",
     lifespan=lifespan,
 )
+
+from am_notification.plane_a import setup_plane_a
+setup_plane_a(app, application="am-notification")
 app.add_middleware(LoggingMiddleware)
 
 

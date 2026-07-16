@@ -16,6 +16,9 @@ app = FastAPI(
     version="0.1.0",
     description="Unified Keycloak-backed identity layer for AM Platform",
 )
+
+from am_identity.plane_a import setup_plane_a
+setup_plane_a(app, application="am-identity")
 app.add_middleware(LoggingMiddleware)
 
 

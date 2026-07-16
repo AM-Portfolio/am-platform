@@ -20,6 +20,8 @@ hostAliases:
 vault:
   enabled: true
   secretPaths:
+    otel:
+      path: "apps/data/dev/infra/observability"
     mongodb:
       path: "apps/data/dev/infra/mongodb"
     kafka:

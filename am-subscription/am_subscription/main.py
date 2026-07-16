@@ -35,6 +35,9 @@ app = FastAPI(
     description="Subscription lifecycle, entitlements, and usage metering",
     lifespan=lifespan,
 )
+
+from am_subscription.plane_a import setup_plane_a
+setup_plane_a(app, application="am-subscription")
 app.add_middleware(LoggingMiddleware)
 
 

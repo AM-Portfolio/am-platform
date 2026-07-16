@@ -5,6 +5,10 @@ proxyHeaders: "xforwarded"
 extraEnvVars:
   - name: KC_HOSTNAME
     value: "auth.munish.org"
+  - name: KC_METRICS_ENABLED
+    value: "true"
+  - name: KC_HEALTH_ENABLED
+    value: "true"
 
 global:
   security:
@@ -24,6 +28,20 @@ resources:
   requests:
     cpu: "500m"
     memory: "1024Mi"
+
+# Prometheus metrics (management interface /metrics)
+metrics:
+  enabled: true
+  service:
+    ports:
+      http: 9000
+  serviceMonitor:
+    enabled: false
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9000"
+  prometheus.io/path: "/auth/metrics"
 
 # Disable internal PostgreSQL installation
 postgresql:

@@ -13,6 +13,8 @@ resources:
 vault:
   enabled: true
   secretPaths:
+    otel:
+      path: "apps/data/prod/infra/observability"
     # Infra is on apps KV (same as market/proxy). Service secrets still on secret/ mount.
     postgres:
       path: "apps/data/prod/infra/postgres"

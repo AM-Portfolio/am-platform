@@ -1,0 +1,12 @@
+apiVersion: am.obs/v1
+kind: ServiceObservability
+service: am-notification
+tier: B
+runtime: python
+k8s_app_label: am-notification
+metrics_application: am-notification
+namespace: am-apps-preprod
+owners: [platform]
+signals:
+  bundle: tier-b-python
+  domain: []

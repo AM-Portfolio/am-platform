@@ -1,0 +1,12 @@
+apiVersion: am.obs/v1
+kind: ServiceObservability
+service: am-subscription
+tier: B
+runtime: python
+k8s_app_label: am-subscription
+metrics_application: am-subscription
+namespace: am-apps-preprod
+owners: [platform]
+signals:
+  bundle: tier-b-python
+  domain: []
