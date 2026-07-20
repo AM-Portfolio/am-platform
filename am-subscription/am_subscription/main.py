@@ -12,13 +12,12 @@ from am_subscription.core.config import get_settings
 from am_subscription.core.database import init_db
 from am_subscription.core.log_utils import get_logger
 from am_platform_common import APIException, InternalServerError, LoggingMiddleware, setup_logging
+from am_subscription.services.kafka_consumer import consumer_instance
 
 settings = get_settings()
 setup_logging(env=settings.app_env, level=settings.log_level)
 logger = get_logger("main")
 
-
-from am_subscription.services.kafka_consumer import consumer_instance
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
