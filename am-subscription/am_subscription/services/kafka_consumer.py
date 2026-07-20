@@ -5,12 +5,14 @@ from typing import Any
 
 from aiokafka import AIOKafkaConsumer
 from aiokafka.helpers import create_ssl_context
-from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from am_subscription.core.config import get_settings
-from am_subscription.core.database import engine
+from am_subscription.core.database import get_session_factory
+from am_subscription.core.plan_catalog import get_plan_catalog
+from am_subscription.models.db import SubscriptionState
+from am_subscription.providers.lago_provider import LagoProvider
+from am_subscription.services.event_publisher import EventPublisher
 from am_subscription.services.subscription_service import SubscriptionService
-from am_subscription.providers.lago_provider import LagoBillingProvider
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +22,10 @@ class SubscriptionKafkaConsumer:
         self.settings = get_settings()
         self.consumer: AIOKafkaConsumer | None = None
         self._task: asyncio.Task | None = None
-        self._session_factory = async_sessionmaker(engine, expire_on_commit=False)
-        self._lago_provider = LagoBillingProvider(self.settings)
+        self._session_factory = get_session_factory()
+        self._lago_provider = LagoProvider(self.settings)
+        self._catalog = get_plan_catalog()
+        self._events = EventPublisher(self.settings)
 
     async def start(self) -> None:
         if not self.settings.kafka_enabled:
@@ -82,15 +86,32 @@ class SubscriptionKafkaConsumer:
                 return
 
             logger.info(f"Handling permanent deletion for user: {user_id}")
+            correlation_id = EventPublisher.new_correlation_id()
             async with self._session_factory() as session:
-                sub_service = SubscriptionService(session, self._lago_provider)
+                sub_service = SubscriptionService(
+                    session,
+                    self._catalog,
+                    self._lago_provider,
+                    self._events,
+                    self.settings.default_plan_code,
+                )
                 try:
                     sub = await sub_service.get_by_user(user_id)
-                    if sub and sub.status in ("active", "past_due", "paused"):
+                    if sub and sub.state in (
+                        SubscriptionState.active,
+                        SubscriptionState.past_due,
+                        SubscriptionState.paused,
+                    ):
                         logger.info(
                             f"Canceling subscription {sub.id} for deleted user {user_id}"
                         )
-                        await sub_service.cancel(sub.id, user_id)
+                        await sub_service.cancel(
+                            sub.id,
+                            user_id,
+                            actor="system:kafka-consumer",
+                            reason="user_permanently_deleted",
+                            correlation_id=correlation_id,
+                        )
                     else:
                         logger.info(
                             f"No active subscription found for deleted user {user_id}"
