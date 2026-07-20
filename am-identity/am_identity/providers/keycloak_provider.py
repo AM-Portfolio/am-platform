@@ -1408,6 +1408,47 @@ class KeycloakIdentityProvider(IIdentityProvider):
                 detail=f"Logout user sessions failed: {response.text}",
             )
 
+    async def set_user_attribute(self, user_id: str, key: str, value: str) -> dict[str, Any]:
+        admin_token = await self._get_admin_access_token()
+        headers = self._admin_headers(admin_token)
+        async with httpx.AsyncClient(timeout=self._session_timeout, verify=self.settings.verify_ssl) as client:
+            get_response = await client.get(f"{self._admin_users_url}/{user_id}", headers=headers)
+            if get_response.status_code >= 400:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User not found: {user_id}")
+            user = get_response.json()
+            attrs = user.get("attributes", {})
+            attrs[key] = [value]
+            user["attributes"] = attrs
+            put_response = await client.put(f"{self._admin_users_url}/{user_id}", json=user, headers=headers)
+            if put_response.status_code >= 400:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Failed to set user attribute: {put_response.text}")
+        return await self.get_user(user_id)
+
+    async def remove_user_attribute(self, user_id: str, key: str) -> dict[str, Any]:
+        admin_token = await self._get_admin_access_token()
+        headers = self._admin_headers(admin_token)
+        async with httpx.AsyncClient(timeout=self._session_timeout, verify=self.settings.verify_ssl) as client:
+            get_response = await client.get(f"{self._admin_users_url}/{user_id}", headers=headers)
+            if get_response.status_code >= 400:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"User not found: {user_id}")
+            user = get_response.json()
+            attrs = user.get("attributes", {})
+            if key in attrs:
+                del attrs[key]
+                user["attributes"] = attrs
+                put_response = await client.put(f"{self._admin_users_url}/{user_id}", json=user, headers=headers)
+                if put_response.status_code >= 400:
+                    raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Failed to remove user attribute: {put_response.text}")
+        return await self.get_user(user_id)
+
+    async def hard_delete_user(self, user_id: str) -> None:
+        admin_token = await self._get_admin_access_token()
+        headers = self._admin_headers(admin_token)
+        async with httpx.AsyncClient(timeout=self._session_timeout, verify=self.settings.verify_ssl) as client:
+            response = await client.delete(f"{self._admin_users_url}/{user_id}", headers=headers)
+            if response.status_code >= 400:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Failed to delete user: {response.text}")
+
 
 def hmac_compare(a: str, b: str) -> bool:
     import hmac as _hmac

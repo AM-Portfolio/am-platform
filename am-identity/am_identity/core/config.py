@@ -53,6 +53,16 @@ class IdentitySettings(BaseSettings):
     smtp_ssl: bool = Field(default=True, alias="SMTP_SSL")
     smtp_starttls: bool = Field(default=False, alias="SMTP_STARTTLS")
 
+    kafka_enabled: bool = Field(default=False, alias="KAFKA_ENABLED")
+    kafka_bootstrap_servers: str = Field(
+        default="kafka.infra.svc.cluster.local:9092", alias="KAFKA_BOOTSTRAP_SERVERS"
+    )
+    kafka_security_protocol: str = Field(default="SASL_PLAINTEXT", alias="KAFKA_SECURITY_PROTOCOL")
+    kafka_sasl_mechanism: str = Field(default="SCRAM-SHA-256", alias="KAFKA_SASL_MECHANISM")
+    kafka_username: str = Field(default="", alias="KAFKA_USERNAME")
+    kafka_password: str = Field(default="", alias="KAFKA_PASSWORD")
+
+
     model_config = SettingsConfigDict(
         env_file=".env",
         case_sensitive=False,

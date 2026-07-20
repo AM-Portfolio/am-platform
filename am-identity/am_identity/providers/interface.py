@@ -166,3 +166,18 @@ class IIdentityProvider(ABC):
     @abstractmethod
     async def logout_user_sessions(self, user_id: str) -> None:
         raise NotImplementedError
+
+    @abstractmethod
+    async def set_user_attribute(self, user_id: str, key: str, value: str) -> dict[str, Any]:
+        """Set or update a single custom attribute for a user."""
+        raise NotImplementedError
+
+    @abstractmethod
+    async def remove_user_attribute(self, user_id: str, key: str) -> dict[str, Any]:
+        """Remove a single custom attribute from a user."""
+        raise NotImplementedError
+
+    @abstractmethod
+    async def hard_delete_user(self, user_id: str) -> None:
+        """Permanently delete a user account from the identity provider."""
+        raise NotImplementedError

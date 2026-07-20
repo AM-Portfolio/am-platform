@@ -383,7 +383,7 @@
         },
         {
           "name": "03 Auth — Google SSO",
-          "description": "**Flow:**\n1. Run **Get Google Auth URL** → copy `auth_url` from response\n2. Open URL in browser, sign in with Google\n3. After redirect, copy `code` and `state` from callback query string\n4. Set `google_auth_code` env var (or edit callback body)\n5. Run **Google Callback** → tokens saved automatically",
+          "description": "**Browser broker flow:**\n1. **Get Google Auth URL** → open `auth_url` in browser\n2. After redirect, copy `code` + `state` → **Google Callback**\n\n**Flutter / mobile id_token flow:**\n1. Obtain a Google `id_token` (see `automation/scripts/google-id-token.html`)\n2. Set env `google_id_token`\n3. Run **Google Token Login**",
           "item": [
             {
               "name": "Get Google Auth URL",
@@ -434,6 +434,25 @@
                 },
                 "url": "{{identity_base_url}}/auth/google/callback",
                 "description": "Exchange authorization code for AM tokens. `redirect_uri` must match the one used in step 1."
+              },
+              "response": []
+            },
+            {
+              "name": "Google Token Login (id_token)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"id_token\": \"{{google_id_token}}\"\n}"
+                },
+                "url": "{{identity_base_url}}/auth/google/token",
+                "description": "Same endpoint as Flutter GSI: exchange Google id_token for Keycloak/AM tokens. Requires `google_id_token` env var (1h TTL)."
               },
               "response": []
             }
@@ -488,6 +507,35 @@
                 },
                 "url": "{{identity_base_url}}/users/me/settings",
                 "description": "Patches user attributes in Keycloak (settings stored as user attribute)."
+              },
+              "response": []
+            },
+            {
+              "name": "Request Account Deletion",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"feedback\": \"I don't need this account anymore.\"\n}"
+                },
+                "url": "{{identity_base_url}}/users/me/request-deletion",
+                "description": "Initiates the 90-day account deletion process. Also publishes a Kafka event."
               },
               "response": []
             }

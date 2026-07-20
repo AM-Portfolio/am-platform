@@ -11,7 +11,11 @@ class UserProfileResponse(BaseModel):
     family_name: str | None = None
     roles: list[str] = []
     settings: dict[str, Any] = {}
+    deletion_pending: bool = False
+    account_restored: bool = False
 
+class AccountDeletionRequest(BaseModel):
+    feedback: str
 
 class UpdateUserSettingsRequest(BaseModel):
     settings: dict[str, Any]

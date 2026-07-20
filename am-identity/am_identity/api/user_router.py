@@ -35,6 +35,39 @@ async def get_me(
         else:
             raise
     settings = await provider.get_user_settings(context.subject)
+
+    deletion_pending = False
+    account_restored = False
+    admin_token = await provider._get_admin_access_token() if hasattr(provider, '_get_admin_access_token') else ""
+    if admin_token:
+        # We need to fetch the raw user to check attributes because get_current_user_info doesn't include custom attributes
+        user = await provider.get_user(context.subject)
+        
+        # Check if the user was pending deletion
+        attrs = user.get("attributes", {}) if isinstance(user.get("attributes"), dict) else {}
+        
+        # Wait, the get_user() method we added earlier doesn't return attributes. Let's use the provider's logic directly.
+        # Actually, get_user() returns _normalize_user which doesn't include raw attributes.
+        # So instead we can add a method to get raw attributes or just use the provider to get the user data.
+        import httpx
+        from am_identity.core.config import get_settings
+        settings_conf = get_settings()
+        admin_users_url = f"{settings_conf.keycloak_url.rstrip('/')}/admin/realms/{settings_conf.keycloak_realm}/users"
+        
+        async with httpx.AsyncClient(timeout=20.0, verify=settings_conf.verify_ssl) as client:
+            get_response = await client.get(f"{admin_users_url}/{context.subject}", headers={"Authorization": f"Bearer {admin_token}"})
+            if get_response.status_code < 400:
+                raw_user = get_response.json()
+                raw_attrs = raw_user.get("attributes", {})
+                if raw_attrs.get("account_status") == ["pending_deletion"]:
+                    deletion_pending = True
+                    # Auto-cancel deletion on successful login
+                    await provider.remove_user_attribute(context.subject, "account_status")
+                    await provider.remove_user_attribute(context.subject, "deletion_requested_at")
+                    await provider.remove_user_attribute(context.subject, "deletion_feedback")
+                    account_restored = True
+                    deletion_pending = False
+
     return UserProfileResponse(
         sub=user_info.get("sub", context.subject),
         email=user_info.get("email"),
@@ -43,7 +76,35 @@ async def get_me(
         family_name=user_info.get("family_name"),
         roles=context.roles,
         settings=settings,
+        deletion_pending=deletion_pending,
+        account_restored=account_restored,
     )
+
+from datetime import datetime, timezone
+from am_identity.schemas.user import AccountDeletionRequest
+from am_identity.core.kafka import publish_event
+
+@router.post("/me/request-deletion")
+async def request_deletion(
+    payload: AccountDeletionRequest,
+    context: AuthContext = Depends(require_auth_context()),
+    provider: IIdentityProvider = Depends(get_identity_provider),
+):
+    await provider.set_user_attribute(context.subject, "account_status", "pending_deletion")
+    await provider.set_user_attribute(context.subject, "deletion_requested_at", str(datetime.now(timezone.utc).timestamp()))
+    await provider.set_user_attribute(context.subject, "deletion_feedback", payload.feedback)
+    
+    await publish_event(
+        topic="am.identity.events.v1",
+        event_type="am.identity.deletion_requested.v1",
+        payload={
+            "user_id": context.subject,
+            "email": context.claims.get("email", ""),
+            "feedback": payload.feedback,
+        }
+    )
+    
+    return {"message": "Account scheduled for deletion in 90 days."}
 
 
 @router.patch("/me/settings")

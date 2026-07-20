@@ -18,6 +18,8 @@ setup_logging(env=settings.app_env, level=settings.log_level)
 logger = get_logger("main")
 
 
+from am_subscription.services.kafka_consumer import consumer_instance
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     logger.info(
@@ -25,7 +27,9 @@ async def lifespan(_: FastAPI):
         extra={"port": settings.app_port, "lago_api": settings.lago_api_url},
     )
     await init_db()
+    await consumer_instance.start()
     yield
+    await consumer_instance.stop()
     logger.info("Shutting down am-subscription")
 
 
