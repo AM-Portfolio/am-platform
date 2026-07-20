@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Idempotent sync of novu-workflows.json to Novu (Development) and promote to Production."""
+
 from __future__ import annotations
 
 import argparse
@@ -41,10 +42,14 @@ def build_steps(raw_steps: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return steps
 
 
-def get_notification_group_id(client: httpx.Client, base_url: str, headers: dict[str, str]) -> str:
+def get_notification_group_id(
+    client: httpx.Client, base_url: str, headers: dict[str, str]
+) -> str:
     response = client.get(f"{base_url}/v1/notification-groups", headers=headers)
     if response.status_code >= 400:
-        print(f"Failed to list notification groups: {response.status_code} {response.text[:300]}")
+        print(
+            f"Failed to list notification groups: {response.status_code} {response.text[:300]}"
+        )
         sys.exit(1)
     groups = response.json().get("data", [])
     if not groups:
@@ -102,7 +107,9 @@ def promote_dev_changes(
         params={"promoted": "false"},
     )
     if pending.status_code >= 400:
-        print(f"Failed to list pending changes: {pending.status_code} {pending.text[:300]}")
+        print(
+            f"Failed to list pending changes: {pending.status_code} {pending.text[:300]}"
+        )
         sys.exit(1)
 
     changes = pending.json().get("data", [])
@@ -115,9 +122,13 @@ def promote_dev_changes(
         change_id = change.get("_id")
         if not change_id:
             continue
-        apply_resp = client.post(f"{base_url}/v1/changes/{change_id}/apply", headers=auth_headers, json={})
+        apply_resp = client.post(
+            f"{base_url}/v1/changes/{change_id}/apply", headers=auth_headers, json={}
+        )
         if apply_resp.status_code >= 400:
-            print(f"Failed to promote change {change_id}: {apply_resp.status_code} {apply_resp.text[:200]}")
+            print(
+                f"Failed to promote change {change_id}: {apply_resp.status_code} {apply_resp.text[:200]}"
+            )
             sys.exit(1)
         promoted += 1
     print(f"Promoted {promoted} Novu change(s) to Production.")
@@ -127,7 +138,9 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--workflows", required=True)
     parser.add_argument("--novu-api-url", default="https://novu-api.munish.org")
-    parser.add_argument("--novu-api-key", default="", help="Development environment API key")
+    parser.add_argument(
+        "--novu-api-key", default="", help="Development environment API key"
+    )
     parser.add_argument("--novu-admin-email", default="")
     parser.add_argument("--novu-admin-password", default="")
     parser.add_argument("--novu-dev-environment-id", default="")
@@ -191,7 +204,9 @@ def main() -> None:
                 action = "created"
 
             if resp.status_code >= 400:
-                print(f"Failed to sync {workflow_key}: {resp.status_code} {resp.text[:300]}")
+                print(
+                    f"Failed to sync {workflow_key}: {resp.status_code} {resp.text[:300]}"
+                )
                 sys.exit(1)
             print(f"Workflow {workflow_key} ({trigger_id}) {action} in Development.")
 
@@ -207,7 +222,9 @@ def main() -> None:
                 dev_environment_id=dev_env_id,
             )
         else:
-            print("Novu admin credentials or dev environment id missing — skipped Production promote.")
+            print(
+                "Novu admin credentials or dev environment id missing — skipped Production promote."
+            )
 
     print("Novu workflows synced successfully.")
 

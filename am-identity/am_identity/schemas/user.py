@@ -14,8 +14,10 @@ class UserProfileResponse(BaseModel):
     deletion_pending: bool = False
     account_restored: bool = False
 
+
 class AccountDeletionRequest(BaseModel):
     feedback: str
+
 
 class UpdateUserSettingsRequest(BaseModel):
     settings: dict[str, Any]

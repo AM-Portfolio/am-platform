@@ -36,7 +36,9 @@ class IIdentityProvider(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def update_user_settings(self, user_id: str, settings: dict[str, Any]) -> dict[str, Any]:
+    async def update_user_settings(
+        self, user_id: str, settings: dict[str, Any]
+    ) -> dict[str, Any]:
         raise NotImplementedError
 
     @abstractmethod
@@ -48,7 +50,9 @@ class IIdentityProvider(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def authenticate_google(self, code: str, state: str, redirect_uri: str) -> dict[str, Any]:
+    async def authenticate_google(
+        self, code: str, state: str, redirect_uri: str
+    ) -> dict[str, Any]:
         raise NotImplementedError
 
     @abstractmethod
@@ -111,11 +115,15 @@ class IIdentityProvider(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def set_user_realm_roles(self, user_id: str, role_names: list[str]) -> list[str]:
+    async def set_user_realm_roles(
+        self, user_id: str, role_names: list[str]
+    ) -> list[str]:
         raise NotImplementedError
 
     @abstractmethod
-    async def add_user_realm_roles(self, user_id: str, role_names: list[str]) -> list[str]:
+    async def add_user_realm_roles(
+        self, user_id: str, role_names: list[str]
+    ) -> list[str]:
         raise NotImplementedError
 
     @abstractmethod
@@ -168,7 +176,9 @@ class IIdentityProvider(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def set_user_attribute(self, user_id: str, key: str, value: str) -> dict[str, Any]:
+    async def set_user_attribute(
+        self, user_id: str, key: str, value: str
+    ) -> dict[str, Any]:
         """Set or update a single custom attribute for a user."""
         raise NotImplementedError
 

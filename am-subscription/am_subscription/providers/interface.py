@@ -8,7 +8,9 @@ class ISubscriptionProvider(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def ensure_customer(self, external_customer_id: str, email: str | None = None) -> dict[str, Any]:
+    async def ensure_customer(
+        self, external_customer_id: str, email: str | None = None
+    ) -> dict[str, Any]:
         raise NotImplementedError
 
     @abstractmethod
@@ -22,11 +24,15 @@ class ISubscriptionProvider(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def cancel_subscription(self, external_subscription_id: str) -> dict[str, Any]:
+    async def cancel_subscription(
+        self, external_subscription_id: str
+    ) -> dict[str, Any]:
         raise NotImplementedError
 
     @abstractmethod
-    async def change_plan(self, external_subscription_id: str, plan_code: str) -> dict[str, Any]:
+    async def change_plan(
+        self, external_subscription_id: str, plan_code: str
+    ) -> dict[str, Any]:
         raise NotImplementedError
 
 

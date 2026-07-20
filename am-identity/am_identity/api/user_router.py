@@ -8,7 +8,11 @@ from am_identity.core.config import get_settings
 from am_identity.core.kafka import publish_event
 from am_identity.deps import get_identity_provider
 from am_identity.providers.interface import IIdentityProvider
-from am_identity.schemas.user import AccountDeletionRequest, UpdateUserSettingsRequest, UserProfileResponse
+from am_identity.schemas.user import (
+    AccountDeletionRequest,
+    UpdateUserSettingsRequest,
+    UserProfileResponse,
+)
 from am_platform_security import AuthContext, require_auth_context
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -34,7 +38,9 @@ async def get_me(
     try:
         user_info = await provider.get_current_user_info(context.access_token)
     except HTTPException as exc:
-        if exc.status_code == status.HTTP_401_UNAUTHORIZED and context.claims.get("sub"):
+        if exc.status_code == status.HTTP_401_UNAUTHORIZED and context.claims.get(
+            "sub"
+        ):
             user_info = _profile_from_claims(context.claims)
         else:
             raise
@@ -42,24 +48,36 @@ async def get_me(
 
     deletion_pending = False
     account_restored = False
-    admin_token = await provider._get_admin_access_token() if hasattr(provider, '_get_admin_access_token') else ""
+    admin_token = (
+        await provider._get_admin_access_token()
+        if hasattr(provider, "_get_admin_access_token")
+        else ""
+    )
     if admin_token:
-        user = await provider.get_user(context.subject)
-        attrs = user.get("attributes", {}) if isinstance(user.get("attributes"), dict) else {}
-        
         settings_conf = get_settings()
         admin_users_url = f"{settings_conf.keycloak_url.rstrip('/')}/admin/realms/{settings_conf.keycloak_realm}/users"
-        
-        async with httpx.AsyncClient(timeout=20.0, verify=settings_conf.verify_ssl) as client:
-            get_response = await client.get(f"{admin_users_url}/{context.subject}", headers={"Authorization": f"Bearer {admin_token}"})
+
+        async with httpx.AsyncClient(
+            timeout=20.0, verify=settings_conf.verify_ssl
+        ) as client:
+            get_response = await client.get(
+                f"{admin_users_url}/{context.subject}",
+                headers={"Authorization": f"Bearer {admin_token}"},
+            )
             if get_response.status_code < 400:
                 raw_user = get_response.json()
                 raw_attrs = raw_user.get("attributes", {})
                 if raw_attrs.get("account_status") == ["pending_deletion"]:
                     deletion_pending = True
-                    await provider.remove_user_attribute(context.subject, "account_status")
-                    await provider.remove_user_attribute(context.subject, "deletion_requested_at")
-                    await provider.remove_user_attribute(context.subject, "deletion_feedback")
+                    await provider.remove_user_attribute(
+                        context.subject, "account_status"
+                    )
+                    await provider.remove_user_attribute(
+                        context.subject, "deletion_requested_at"
+                    )
+                    await provider.remove_user_attribute(
+                        context.subject, "deletion_feedback"
+                    )
                     account_restored = True
                     deletion_pending = False
 
@@ -82,10 +100,18 @@ async def request_deletion(
     context: AuthContext = Depends(require_auth_context()),
     provider: IIdentityProvider = Depends(get_identity_provider),
 ):
-    await provider.set_user_attribute(context.subject, "account_status", "pending_deletion")
-    await provider.set_user_attribute(context.subject, "deletion_requested_at", str(datetime.now(timezone.utc).timestamp()))
-    await provider.set_user_attribute(context.subject, "deletion_feedback", payload.feedback)
-    
+    await provider.set_user_attribute(
+        context.subject, "account_status", "pending_deletion"
+    )
+    await provider.set_user_attribute(
+        context.subject,
+        "deletion_requested_at",
+        str(datetime.now(timezone.utc).timestamp()),
+    )
+    await provider.set_user_attribute(
+        context.subject, "deletion_feedback", payload.feedback
+    )
+
     await publish_event(
         topic="am.identity.events.v1",
         event_type="am.identity.deletion_requested.v1",
@@ -93,9 +119,9 @@ async def request_deletion(
             "user_id": context.subject,
             "email": context.claims.get("email", ""),
             "feedback": payload.feedback,
-        }
+        },
     )
-    
+
     return {"message": "Account scheduled for deletion in 90 days."}
 
 

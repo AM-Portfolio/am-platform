@@ -64,7 +64,9 @@ async def google_callback(
     payload: GoogleCallbackRequest,
     provider: IIdentityProvider = Depends(get_identity_provider),
 ):
-    return await provider.authenticate_google(payload.code, payload.state, payload.redirect_uri)
+    return await provider.authenticate_google(
+        payload.code, payload.state, payload.redirect_uri
+    )
 
 
 @router.post("/google/token", response_model=TokenResponse)

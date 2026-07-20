@@ -6,6 +6,7 @@ from am_identity.core.config import get_settings
 
 logger = logging.getLogger(__name__)
 
+
 async def publish_event(topic: str, event_type: str, payload: dict) -> None:
     settings = get_settings()
     if not settings.kafka_enabled:
@@ -27,10 +28,7 @@ async def publish_event(topic: str, event_type: str, payload: dict) -> None:
         producer = AIOKafkaProducer(**kwargs)
         await producer.start()
         try:
-            envelope = {
-                "type": event_type,
-                "data": payload
-            }
+            envelope = {"type": event_type, "data": payload}
             message_bytes = json.dumps(envelope).encode("utf-8")
             await producer.send_and_wait(topic, message_bytes)
             logger.info(f"Published event {event_type} to topic {topic}")

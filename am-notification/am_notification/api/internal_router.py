@@ -10,7 +10,9 @@ from am_notification.services.notification_service import NotificationService
 router = APIRouter(prefix="/notifications/internal", tags=["internal"])
 
 
-@router.post("/send", response_model=APIResponse[dict], status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/send", response_model=APIResponse[dict], status_code=status.HTTP_202_ACCEPTED
+)
 async def internal_send(
     payload: NotificationCommand,
     _context: AuthContext = Depends(require_service_account()),

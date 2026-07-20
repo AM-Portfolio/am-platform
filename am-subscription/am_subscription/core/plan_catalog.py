@@ -6,8 +6,12 @@ from pathlib import Path
 
 from am_platform_common import NotFoundError
 
-from am_subscription.core.config import SubscriptionSettings, get_settings
-from am_subscription.schemas.subscription import PlanDTO, PlanEntitlementsDTO, PlanLimitsDTO
+from am_subscription.core.config import get_settings
+from am_subscription.schemas.subscription import (
+    PlanDTO,
+    PlanEntitlementsDTO,
+    PlanLimitsDTO,
+)
 
 
 class PlanCatalog:

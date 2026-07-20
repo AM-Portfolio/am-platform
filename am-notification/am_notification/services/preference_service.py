@@ -16,7 +16,12 @@ DEFAULT_PREFERENCES: dict[str, Any] = {
         "trade": True,
         "system": True,
     },
-    "quiet_hours": {"enabled": False, "start": "22:00", "end": "07:00", "timezone": "UTC"},
+    "quiet_hours": {
+        "enabled": False,
+        "start": "22:00",
+        "end": "07:00",
+        "timezone": "UTC",
+    },
     "locale": "en",
 }
 
@@ -34,7 +39,9 @@ class PreferenceService:
         merged["user_id"] = user_id
         return merged
 
-    async def update_preferences(self, user_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+    async def update_preferences(
+        self, user_id: str, payload: dict[str, Any]
+    ) -> dict[str, Any]:
         payload = {k: v for k, v in payload.items() if k != "user_id"}
         await self._collection.update_one(
             {"user_id": user_id},

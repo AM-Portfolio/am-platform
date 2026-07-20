@@ -14,6 +14,7 @@ from am_subscription.providers.lago_provider import LagoBillingProvider
 
 logger = logging.getLogger(__name__)
 
+
 class SubscriptionKafkaConsumer:
     def __init__(self) -> None:
         self.settings = get_settings()
@@ -56,7 +57,7 @@ class SubscriptionKafkaConsumer:
     async def _consume_loop(self) -> None:
         if not self.consumer:
             return
-        
+
         try:
             async for msg in self.consumer:
                 try:
@@ -79,19 +80,25 @@ class SubscriptionKafkaConsumer:
             user_id = data.get("user_id") or payload.get("user_id")
             if not user_id:
                 return
-            
+
             logger.info(f"Handling permanent deletion for user: {user_id}")
             async with self._session_factory() as session:
                 sub_service = SubscriptionService(session, self._lago_provider)
                 try:
                     sub = await sub_service.get_by_user(user_id)
                     if sub and sub.status in ("active", "past_due", "paused"):
-                        logger.info(f"Canceling subscription {sub.id} for deleted user {user_id}")
+                        logger.info(
+                            f"Canceling subscription {sub.id} for deleted user {user_id}"
+                        )
                         await sub_service.cancel(sub.id, user_id)
                     else:
-                        logger.info(f"No active subscription found for deleted user {user_id}")
+                        logger.info(
+                            f"No active subscription found for deleted user {user_id}"
+                        )
                 except Exception as e:
-                    logger.error(f"Failed to cancel subscription for user {user_id}: {e}")
+                    logger.error(
+                        f"Failed to cancel subscription for user {user_id}: {e}"
+                    )
 
     async def stop(self) -> None:
         if self._task:
@@ -99,5 +106,6 @@ class SubscriptionKafkaConsumer:
         if self.consumer:
             await self.consumer.stop()
             logger.info("Kafka consumer stopped.")
+
 
 consumer_instance = SubscriptionKafkaConsumer()

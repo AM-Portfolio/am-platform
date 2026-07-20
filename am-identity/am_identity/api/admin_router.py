@@ -78,7 +78,9 @@ async def list_users(
     _: AuthContext = Depends(_ADMIN_GUARD),
     provider: IIdentityProvider = Depends(get_identity_provider),
 ):
-    users = await provider.list_users(email=email, search=q, first=first, max_results=max)
+    users = await provider.list_users(
+        email=email, search=q, first=first, max_results=max
+    )
     return [AdminUserSummary(**u) for u in users]
 
 
@@ -91,7 +93,9 @@ async def get_user(
     return AdminUserSummary(**await provider.get_user(user_id))
 
 
-@router.post("/users", response_model=AdminUserSummary, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/users", response_model=AdminUserSummary, status_code=status.HTTP_201_CREATED
+)
 async def create_user(
     payload: CreateAdminUserRequest,
     context: AuthContext = Depends(_ADMIN_GUARD),
@@ -164,12 +168,20 @@ async def replace_roles(
     provider: IIdentityProvider = Depends(get_identity_provider),
 ):
     current = await provider.get_user_realm_roles(user_id)
-    if "super_admin" in current and "super_admin" not in payload.roles and not _is_super_admin(context):
+    if (
+        "super_admin" in current
+        and "super_admin" not in payload.roles
+        and not _is_super_admin(context)
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only super_admin may revoke super_admin",
         )
-    if context.subject == user_id and "admin" in current and "admin" not in payload.roles:
+    if (
+        context.subject == user_id
+        and "admin" in current
+        and "admin" not in payload.roles
+    ):
         remaining_admins = await _count_admins(provider)
         if remaining_admins <= 1 and "super_admin" not in payload.roles:
             raise HTTPException(
@@ -219,4 +231,8 @@ async def remove_role(
 
 async def _count_admins(provider: IIdentityProvider) -> int:
     users = await provider.list_users(first=0, max_results=200)
-    return sum(1 for u in users if "admin" in u.get("roles", []) or "super_admin" in u.get("roles", []))
+    return sum(
+        1
+        for u in users
+        if "admin" in u.get("roles", []) or "super_admin" in u.get("roles", [])
+    )

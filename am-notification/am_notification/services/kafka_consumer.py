@@ -15,7 +15,9 @@ logger = get_logger("kafka_consumer")
 
 
 class NotificationKafkaConsumer:
-    def __init__(self, settings: NotificationSettings, service: NotificationService) -> None:
+    def __init__(
+        self, settings: NotificationSettings, service: NotificationService
+    ) -> None:
         self._settings = settings
         self._service = service
         self._task: asyncio.Task[None] | None = None

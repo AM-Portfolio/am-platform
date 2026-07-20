@@ -1,7 +1,7 @@
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
+from fastapi import APIRouter, Depends, Header, Request
 
 from am_platform_common import APIResponse
 
@@ -22,10 +22,9 @@ async def provider_webhook(
     """Translate billing provider webhooks into canonical platform events."""
     body = await request.json()
     webhook_type = body.get("webhook_type") or body.get("object_type") or "unknown"
-    user_id = (
-        body.get("customer", {}).get("external_id")
-        or body.get("subscription", {}).get("external_customer_id")
-    )
+    user_id = body.get("customer", {}).get("external_id") or body.get(
+        "subscription", {}
+    ).get("external_customer_id")
     correlation_id = body.get("webhook_id") or EventPublisher.new_correlation_id()
 
     event_map = {
@@ -38,11 +37,18 @@ async def provider_webhook(
     await events.publish(
         event_type,
         tenant_id=user_id or "unknown",
-        user_id=user_id.replace("am-user-", "") if user_id and user_id.startswith("am-user-") else user_id,
+        user_id=(
+            user_id.replace("am-user-", "")
+            if user_id and user_id.startswith("am-user-")
+            else user_id
+        ),
         correlation_id=correlation_id,
         idempotency_key=correlation_id,
         payload={"webhook_type": webhook_type, "raw": body},
     )
 
-    logger.info("provider_webhook_received", extra={"webhook_type": webhook_type, "signature": bool(x_lago_signature)})
+    logger.info(
+        "provider_webhook_received",
+        extra={"webhook_type": webhook_type, "signature": bool(x_lago_signature)},
+    )
     return APIResponse(data={"accepted": True, "webhook_type": webhook_type})

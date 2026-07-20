@@ -48,4 +48,6 @@ def enforce_rate_limit(
     limit: int,
     window_seconds: int = 60,
 ) -> None:
-    _limiter.check(f"{name}:{client_ip(request)}", limit=limit, window_seconds=window_seconds)
+    _limiter.check(
+        f"{name}:{client_ip(request)}", limit=limit, window_seconds=window_seconds
+    )

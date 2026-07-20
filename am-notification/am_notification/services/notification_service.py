@@ -27,8 +27,14 @@ class NotificationService:
         self._preferences = PreferenceService(db)
         self._attempts = db.notification_delivery_attempts
 
-    async def process_event_envelope(self, envelope: dict[str, Any]) -> dict[str, Any] | None:
-        event_type = envelope.get("event_type") or envelope.get("type") or envelope.get("workflow_key")
+    async def process_event_envelope(
+        self, envelope: dict[str, Any]
+    ) -> dict[str, Any] | None:
+        event_type = (
+            envelope.get("event_type")
+            or envelope.get("type")
+            or envelope.get("workflow_key")
+        )
         if not event_type:
             return None
 
@@ -37,8 +43,12 @@ class NotificationService:
             data = envelope.get("data") or envelope.get("payload") or {}
             user_id = data.get("user_id") or envelope.get("user_id")
             if user_id:
-                logger.info(f"Purging notification preferences for deleted user {user_id}")
-                await self._db.notification_preferences.delete_many({"subscriber_id": user_id})
+                logger.info(
+                    f"Purging notification preferences for deleted user {user_id}"
+                )
+                await self._db.notification_preferences.delete_many(
+                    {"subscriber_id": user_id}
+                )
                 await self._db.push_tokens.delete_many({"subscriber_id": user_id})
             return {"status": "purged"}
 
@@ -46,12 +56,18 @@ class NotificationService:
             data = envelope.get("data") or envelope.get("payload") or {}
             user_email = data.get("email", "Unknown")
             feedback = data.get("feedback", "No feedback provided")
-            logger.info(f"Sending account deletion feedback email to admin@asrax.in for {user_email}")
+            logger.info(
+                f"Sending account deletion feedback email to admin@asrax.in for {user_email}"
+            )
             # Use provider to send email or trigger a Novu workflow specifically for admins
             await self._provider.trigger(
                 workflow_key="identity.deletion_requested",
-                user_id="admin@asrax.in", # Admin recipient
-                payload={"user_email": user_email, "feedback": feedback, "channel": "email"}
+                user_id="admin@asrax.in",  # Admin recipient
+                payload={
+                    "user_email": user_email,
+                    "feedback": feedback,
+                    "channel": "email",
+                },
             )
             return {"status": "admin_notified"}
 
@@ -85,13 +101,19 @@ class NotificationService:
                 user_id, category=category, channel=channel, critical=critical
             ):
                 continue
-            dedupe_key = self._dedupe.build_dedupe_key(event_id, workflow_key, channel, user_id)
+            dedupe_key = self._dedupe.build_dedupe_key(
+                event_id, workflow_key, channel, user_id
+            )
             if await self._dedupe.is_processed(dedupe_key):
                 continue
             provider_id = await self._provider.trigger(
                 workflow_key=workflow_key,
                 user_id=user_id,
-                payload={**payload, "channel": channel, "locale": payload.get("locale", "en")},
+                payload={
+                    **payload,
+                    "channel": channel,
+                    "locale": payload.get("locale", "en"),
+                },
                 idempotency_key=dedupe_key,
             )
             await self._dedupe.mark_processed(
@@ -135,7 +157,12 @@ class NotificationService:
         return {"status": "sent", **result}
 
     async def list_inbox(
-        self, user_id: str, *, page: int = 0, page_size: int = 20, unread_only: bool = False
+        self,
+        user_id: str,
+        *,
+        page: int = 0,
+        page_size: int = 20,
+        unread_only: bool = False,
     ) -> list[dict[str, Any]]:
         await self._provider.ensure_subscriber(user_id)
         return await self._provider.list_in_app(

@@ -17,7 +17,10 @@ async def init_db() -> None:
     uri = settings.effective_mongo_uri
     logger.info(
         "Connecting to MongoDB",
-        extra={"database": settings.mongo_database, "host_hint": uri.split("@")[-1][:80]},
+        extra={
+            "database": settings.mongo_database,
+            "host_hint": uri.split("@")[-1][:80],
+        },
     )
     _client = AsyncIOMotorClient(uri)
     _db = _client[settings.mongo_database]

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Provision scoped MongoDB users on the shared infra cluster (idempotent)."""
+
 from __future__ import annotations
 
 import argparse
@@ -86,7 +87,9 @@ def main() -> None:
     admin_user = strip_quotes(args.mongo_user)
     admin_password = strip_quotes(args.mongo_password)
 
-    print(json.dumps({"step": "provision_notification_user", "db": args.notification_db}))
+    print(
+        json.dumps({"step": "provision_notification_user", "db": args.notification_db})
+    )
     provision_user(
         kubeconfig,
         admin_user,
