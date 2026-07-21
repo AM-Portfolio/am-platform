@@ -7,16 +7,13 @@ on:
 
 jobs:
   fetch-logs:
-    name: Fetch Pod Logs
-    runs-on: [self-hosted, linux, x64, docker]
+    runs-on: [self-hosted, linux]
     steps:
       - name: Fetch am-identity logs
         run: |
           echo "=== AM-IDENTITY LOGS ==="
-          kubectl logs deployment/am-identity -n am-apps-dev -c am-identity --tail 200 || echo "Failed to fetch am-identity logs"
-
-      - name: Fetch am-trade-management-service logs
-        run: |
-          echo "=== AM-TRADE-MANAGEMENT-SERVICE LOGS ==="
-          kubectl logs deployment/am-trade-management-service -n am-apps-dev -c am-trade-management-service --tail 200 || echo "Failed to fetch trade service logs"
-
+          kubectl get pods -n am-apps-dev -l app=am-identity --sort-by=.metadata.creationTimestamp
+          echo "Logs of newest pod:"
+          POD=kubectl get pods -n am-apps-dev -l app=am-identity --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1].metadata.name}'
+          kubectl logs pod/ -n am-apps-dev -c am-identity || echo "Failed to get logs for am-identity"
+          kubectl describe pod  -n am-apps-dev || true
