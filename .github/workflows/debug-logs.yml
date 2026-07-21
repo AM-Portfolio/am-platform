@@ -8,13 +8,10 @@ jobs:
   fetch-logs:
     runs-on: self-hosted
     steps:
-      - name: Fetch am-identity Pod Logs
+      - name: Fetch Pods and Namespaces
         run: |
-          echo "=== POD STATUS ==="
-          kubectl get pods -n am-apps-dev -l app.kubernetes.io/name=am-identity
-          
-          echo "=== AM-IDENTITY LOGS (PREVIOUS CRASH) ==="
-          kubectl logs -n am-apps-dev -l app.kubernetes.io/name=am-identity -c am-identity --tail=200 -p || echo "No previous logs"
-          
-          echo "=== AM-IDENTITY LOGS (CURRENT CRASH) ==="
-          kubectl logs -n am-apps-dev -l app.kubernetes.io/name=am-identity -c am-identity --tail=200 || echo "No current logs"
+          echo "=== NAMESPACES ==="
+          kubectl get namespaces
+          echo "=== ALL AM-IDENTITY PODS ==="
+          kubectl get pods -A | grep am-identity || echo "No am-identity pods found in any namespace"
+
