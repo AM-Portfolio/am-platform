@@ -6,7 +6,7 @@ on:
 
 jobs:
   fetch-logs:
-    runs-on: [self-hosted, docker-runner]
+    runs-on: ubuntu-latest
     steps:
       - name: Configure Kubernetes Context
         uses: azure/k8s-set-context@v3
