@@ -33,8 +33,12 @@ KAFKA_TOPIC = "am.identity.events.v1"
 PURGE_ENABLED = os.environ.get("PURGE_ENABLED", "true").lower() in ("true", "1", "yes")
 
 # 2. Deletion Period (configurable, defaults to 90 days)
-PURGE_PERIOD_DAYS = int(os.environ.get("PURGE_PERIOD_DAYS", "90"))
-NINETY_DAYS_SECONDS = PURGE_PERIOD_DAYS * 24 * 60 * 60
+PURGE_PERIOD_MINUTES = os.environ.get("PURGE_PERIOD_MINUTES")
+if PURGE_PERIOD_MINUTES:
+    NINETY_DAYS_SECONDS = int(PURGE_PERIOD_MINUTES) * 60
+else:
+    PURGE_PERIOD_DAYS = int(os.environ.get("PURGE_PERIOD_DAYS", "90"))
+    NINETY_DAYS_SECONDS = PURGE_PERIOD_DAYS * 24 * 60 * 60
 
 
 async def get_admin_token(client: httpx.AsyncClient) -> str:

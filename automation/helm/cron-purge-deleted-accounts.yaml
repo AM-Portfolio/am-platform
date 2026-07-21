@@ -2,7 +2,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: purge-deleted-accounts
-  namespace: am-platform
+  namespace: am-apps-dev
 spec:
   schedule: "0 0 * * *" # Run at midnight every day
   successfulJobsHistoryLimit: 3
@@ -26,14 +26,19 @@ spec:
               {{- with index .Data.data "PURGE_PERIOD_DAYS" }}
               export PURGE_PERIOD_DAYS="{{ . }}"
               {{ end }}
+              {{- with index .Data.data "PURGE_PERIOD_MINUTES" }}
+              export PURGE_PERIOD_MINUTES="{{ . }}"
+              {{ end }}
               {{- end }}
             vault.hashicorp.com/auth-path: auth/kubernetes
             vault.hashicorp.com/role: am-backend-role
         spec:
           serviceAccountName: am-backend-sa
+          imagePullSecrets:
+          - name: regcred
           containers:
           - name: purge-deleted-accounts
-            image: asrax/am-automation-scripts:latest # Assuming scripts are packaged into an image
+            image: ghcr.io/am-portfolio/am-automation-scripts:latest # Assuming scripts are packaged into an image
             command:
             - /bin/sh
             - -c
