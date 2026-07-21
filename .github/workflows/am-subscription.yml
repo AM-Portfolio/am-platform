@@ -2,7 +2,7 @@ name: AM Subscription Publish
 
 on:
   push:
-    branches: ["main", "develop", "test/**", "feature/**", "hotfix/**", "fix/**"]
+    branches: ["main", "develop", "test/**", "hotfix/**", "fix/**"]
     paths:
       - "am-subscription/**"
       - "libraries/**"
@@ -35,6 +35,8 @@ jobs:
       build_context: ".."
       preprod_namespace: "am-apps-preprod"
       prod_namespace: "am-apps-prod"
-      deploy_dev: true
+      # deploy_dev disabled on feature branches — Vault sidecar in dev cannot inject
+      # secrets into new pods from feature branches, causing CrashLoopBackOff.
+      deploy_dev: false
       deploy_prod: true
     secrets: inherit
