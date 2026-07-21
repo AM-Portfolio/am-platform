@@ -116,3 +116,5 @@ app.include_router(plans_router)
 app.include_router(subscription_router)
 app.include_router(internal_router)
 app.include_router(webhook_router)
+
+# Trigger CI
