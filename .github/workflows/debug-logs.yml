@@ -1,4 +1,4 @@
-name: Debug K8s Logs
+name: Debug Python locally
 
 on:
   push:
@@ -6,10 +6,17 @@ on:
       - feature/account-deletion
 
 jobs:
-  fetch-logs:
+  run-python:
     runs-on: [self-hosted, linux]
     steps:
-      - name: Run docker image directly
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install and Run
         run: |
-          echo "=== RUNNING DOCKER IMAGE LOCALLY ==="
-          docker run --rm ghcr.io/am-portfolio/am-identity:29751321751 || echo "Docker run failed"
+          pip install -r requirements.txt
+          pip install ./libraries/am-platform-common ./libraries/am-platform-security
+          export PYTHONPATH=$PWD/libraries/am-platform-common:$PWD/libraries/am-platform-security:$PWD/am-identity
+          python am-identity/am_identity/main.py || echo "PYTHON CRASHED"
