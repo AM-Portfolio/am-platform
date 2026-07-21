@@ -38,13 +38,13 @@ spec:
           - name: regcred
           containers:
           - name: purge-deleted-accounts
-            image: ghcr.io/am-portfolio/am-automation-scripts:latest # Assuming scripts are packaged into an image
+            image: ghcr.io/am-portfolio/am-identity:latest # Package scripts inside am-identity image
             command:
             - /bin/sh
             - -c
             - |
               . /vault/secrets/identity 2>/dev/null || true
-              python /scripts/purge_deleted_accounts.py
+              python /app/automation/scripts/purge_deleted_accounts.py
             env:
             - name: KEYCLOAK_URL
               value: "http://keycloak.infra.svc.cluster.local:8080"
