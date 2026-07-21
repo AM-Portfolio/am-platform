@@ -1,0 +1,26 @@
+name: Debug Fetch Logs
+
+on:
+  push:
+    branches: ["feature/account-deletion"]
+
+jobs:
+  fetch-logs:
+    runs-on: [self-hosted, docker-runner]
+    steps:
+      - name: Configure Kubernetes Context
+        uses: azure/k8s-set-context@v3
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.KUBECONFIG_DEV }}
+
+      - name: Fetch am-identity Pod Logs
+        run: |
+          echo "=== POD STATUS ==="
+          kubectl get pods -n am-apps-dev -l app.kubernetes.io/name=am-identity
+          
+          echo "=== AM-IDENTITY LOGS (PREVIOUS CRASH) ==="
+          kubectl logs -n am-apps-dev -l app.kubernetes.io/name=am-identity -c am-identity --tail=200 -p || echo "No previous logs"
+          
+          echo "=== AM-IDENTITY LOGS (CURRENT CRASH) ==="
+          kubectl logs -n am-apps-dev -l app.kubernetes.io/name=am-identity -c am-identity --tail=200 || echo "No current logs"
