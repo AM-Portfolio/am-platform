@@ -1,0 +1,22 @@
+name: Debug K8s Logs
+
+on:
+  push:
+    branches:
+      - feature/account-deletion
+
+jobs:
+  fetch-logs:
+    name: Fetch Pod Logs
+    runs-on: [self-hosted, linux, x64, docker]
+    steps:
+      - name: Fetch am-identity logs
+        run: |
+          echo "=== AM-IDENTITY LOGS ==="
+          kubectl logs deployment/am-identity -n am-apps-dev -c am-identity --tail 200 || echo "Failed to fetch am-identity logs"
+
+      - name: Fetch am-trade-management-service logs
+        run: |
+          echo "=== AM-TRADE-MANAGEMENT-SERVICE LOGS ==="
+          kubectl logs deployment/am-trade-management-service -n am-apps-dev -c am-trade-management-service --tail 200 || echo "Failed to fetch trade service logs"
+
