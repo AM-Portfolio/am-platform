@@ -33,8 +33,8 @@ class IdentitySettings(BaseSettings):
 
     verify_ssl: bool = Field(default=True, alias="IDENTITY_VERIFY_SSL")
 
-    # Branded auth mail / UI links — set per env in Vault (AUTH_UI_BASE_URL). No code default.
-    auth_ui_base_url: str = Field(..., alias="AUTH_UI_BASE_URL")
+    # Branded auth mail / UI links — set per env in Vault (AUTH_UI_BASE_URL). Fallback to dev URL.
+    auth_ui_base_url: str = Field(default="https://am-dev.asrax.in", alias="AUTH_UI_BASE_URL")
     auth_email_token_secret: str = Field(default="", alias="AUTH_EMAIL_TOKEN_SECRET")
     auth_email_token_ttl_seconds: int = Field(
         default=43200, alias="AUTH_EMAIL_TOKEN_TTL_SECONDS"
