@@ -9,12 +9,7 @@ jobs:
   fetch-logs:
     runs-on: [self-hosted, linux]
     steps:
-      - name: Fetch K8s debug info
+      - name: Run docker image directly
         run: |
-          echo "=== POD LOGS ==="
-          for pod in $(kubectl get pods -n am-apps-dev | grep am-identity | awk '{print $1}'); do
-            echo "--- Logs for $pod ---"
-            kubectl logs $pod -n am-apps-dev -c am-identity --tail=200 || true
-            echo "--- Previous logs for $pod (if crashed) ---"
-            kubectl logs $pod -n am-apps-dev -c am-identity --previous --tail=200 || true
-          done
+          echo "=== RUNNING DOCKER IMAGE LOCALLY ==="
+          docker run --rm ghcr.io/am-portfolio/am-identity:29751321751 || echo "Docker run failed"
