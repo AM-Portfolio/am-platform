@@ -11,14 +11,8 @@ jobs:
     steps:
       - name: Fetch K8s debug info
         run: |
-          echo "=== ALL PODS ==="
-          kubectl get pods -n am-apps-dev -l app=am-identity -o wide
-          
-          echo "=== RECENT EVENTS ==="
-          kubectl get events -n am-apps-dev --sort-by=.metadata.creationTimestamp | grep am-identity | tail -n 20 || true
-          
           echo "=== POD LOGS ==="
-          for pod in $(kubectl get pods -n am-apps-dev -l app=am-identity -o name); do
+          for pod in $(kubectl get pods -n am-apps-dev | grep am-identity | awk '{print $1}'); do
             echo "--- Logs for $pod ---"
             kubectl logs $pod -n am-apps-dev -c am-identity --tail=200 || true
             echo "--- Previous logs for $pod (if crashed) ---"
