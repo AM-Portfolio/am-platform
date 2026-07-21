@@ -1,5 +1,6 @@
 # AM Identity — build context: am-platform root (build_context: ..)
 # Public Python base (see docker/python-base.Dockerfile). Avoids GHCR 403 on am-python-base.
+# Trigger rebuild to pick up new automation scripts
 FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \
