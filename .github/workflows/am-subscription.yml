@@ -35,8 +35,8 @@ jobs:
       build_context: ".."
       preprod_namespace: "am-apps-preprod"
       prod_namespace: "am-apps-prod"
-      # deploy_dev disabled on feature branches — Vault sidecar in dev cannot inject
-      # secrets into new pods from feature branches, causing CrashLoopBackOff.
-      deploy_dev: ${{ !startsWith(github.ref, 'refs/heads/feature/') }}
+      # Deploy to dev is enabled for feature branches so developers can review
+      # their deployments. If CrashLoopBackOff occurs, we will debug it in cluster.
+      deploy_dev: true
       deploy_prod: true
     secrets: inherit
