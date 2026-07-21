@@ -10,13 +10,36 @@ spec:
   jobTemplate:
     spec:
       template:
+        metadata:
+          annotations:
+            vault.hashicorp.com/agent-init-first: "true"
+            vault.hashicorp.com/agent-inject: "true"
+            vault.hashicorp.com/agent-inject-secret-identity: apps/data/dev/services/am-identity
+            vault.hashicorp.com/agent-inject-template-identity: |
+              {{- with secret "apps/data/dev/services/am-identity" -}}
+              {{- with index .Data.data "KEYCLOAK_ADMIN_PASSWORD" }}
+              export KEYCLOAK_ADMIN_PASSWORD="{{ . }}"
+              {{ end }}
+              {{- with index .Data.data "PURGE_ENABLED" }}
+              export PURGE_ENABLED="{{ . }}"
+              {{ end }}
+              {{- with index .Data.data "PURGE_PERIOD_DAYS" }}
+              export PURGE_PERIOD_DAYS="{{ . }}"
+              {{ end }}
+              {{- end }}
+            vault.hashicorp.com/auth-path: auth/kubernetes
+            vault.hashicorp.com/role: am-backend-role
         spec:
+          serviceAccountName: am-backend-sa
           containers:
           - name: purge-deleted-accounts
             image: asrax/am-automation-scripts:latest # Assuming scripts are packaged into an image
             command:
-            - python
-            - "/scripts/purge_deleted_accounts.py"
+            - /bin/sh
+            - -c
+            - |
+              . /vault/secrets/identity 2>/dev/null || true
+              python /scripts/purge_deleted_accounts.py
             env:
             - name: KEYCLOAK_URL
               value: "http://keycloak.infra.svc.cluster.local:8080"
@@ -24,11 +47,6 @@ spec:
               value: "am"
             - name: KEYCLOAK_ADMIN_USER
               value: "admin"
-            - name: KEYCLOAK_ADMIN_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: keycloak-admin-secret
-                  key: password
             - name: KAFKA_BOOTSTRAP_SERVERS
               value: "kafka.infra.svc.cluster.local:9092"
           restartPolicy: OnFailure

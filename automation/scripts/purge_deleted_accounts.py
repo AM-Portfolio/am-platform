@@ -28,7 +28,13 @@ KAFKA_BOOTSTRAP_SERVERS = os.environ.get(
     "KAFKA_BOOTSTRAP_SERVERS", "kafka.infra.svc.cluster.local:9092"
 )
 KAFKA_TOPIC = "am.identity.events.v1"
-NINETY_DAYS_SECONDS = 90 * 24 * 60 * 60
+
+# 1. Feature Flag to turn the purge on/off (defaults to True)
+PURGE_ENABLED = os.environ.get("PURGE_ENABLED", "true").lower() in ("true", "1", "yes")
+
+# 2. Deletion Period (configurable, defaults to 90 days)
+PURGE_PERIOD_DAYS = int(os.environ.get("PURGE_PERIOD_DAYS", "90"))
+NINETY_DAYS_SECONDS = PURGE_PERIOD_DAYS * 24 * 60 * 60
 
 
 async def get_admin_token(client: httpx.AsyncClient) -> str:
@@ -87,6 +93,11 @@ async def main():
                         email = user.get("email", user.get("username", ""))
                         feedback = attrs.get("deletion_feedback", [""])[0]
 
+                        if not PURGE_ENABLED:
+                            logger.info(f"[DRY-RUN] Would purge user: {user_id} (Feedback: {feedback})")
+                            purged_count += 1
+                            continue
+
                         logger.info(f"Purging user: {user_id} (Feedback: {feedback})")
 
                         # Hard delete from Keycloak
@@ -105,7 +116,10 @@ async def main():
                         )
                         purged_count += 1
 
-            logger.info(f"Purge complete. Hard deleted {purged_count} accounts.")
+            if not PURGE_ENABLED:
+                logger.info(f"Purge dry-run complete. Would have hard deleted {purged_count} accounts.")
+            else:
+                logger.info(f"Purge complete. Hard deleted {purged_count} accounts.")
 
     finally:
         await producer.stop()
