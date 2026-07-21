@@ -9,11 +9,18 @@ jobs:
   fetch-logs:
     runs-on: [self-hosted, linux]
     steps:
-      - name: Fetch am-identity logs
+      - name: Fetch K8s debug info
         run: |
-          echo "=== AM-IDENTITY LOGS ==="
-          kubectl get pods -n am-apps-dev -l app=am-identity --sort-by=.metadata.creationTimestamp
-          echo "Logs of newest pod:"
-          POD=kubectl get pods -n am-apps-dev -l app=am-identity --sort-by=.metadata.creationTimestamp -o jsonpath='{.items[-1].metadata.name}'
-          kubectl logs pod/ -n am-apps-dev -c am-identity || echo "Failed to get logs for am-identity"
-          kubectl describe pod  -n am-apps-dev || true
+          echo "=== ALL PODS ==="
+          kubectl get pods -n am-apps-dev -l app=am-identity -o wide
+          
+          echo "=== RECENT EVENTS ==="
+          kubectl get events -n am-apps-dev --sort-by=.metadata.creationTimestamp | grep am-identity | tail -n 20 || true
+          
+          echo "=== POD LOGS ==="
+          for pod in $(kubectl get pods -n am-apps-dev -l app=am-identity -o name); do
+            echo "--- Logs for $pod ---"
+            kubectl logs $pod -n am-apps-dev -c am-identity --tail=200 || true
+            echo "--- Previous logs for $pod (if crashed) ---"
+            kubectl logs $pod -n am-apps-dev -c am-identity --previous --tail=200 || true
+          done
