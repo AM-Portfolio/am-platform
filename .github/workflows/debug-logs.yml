@@ -8,10 +8,9 @@ jobs:
   fetch-logs:
     runs-on: self-hosted
     steps:
-      - name: Fetch Pods and Namespaces
+      - name: Fetch Pod Logs
         run: |
-          echo "=== NAMESPACES ==="
-          kubectl get namespaces
-          echo "=== ALL AM-IDENTITY PODS ==="
-          kubectl get pods -A | grep am-identity || echo "No am-identity pods found in any namespace"
+          echo "=== CRASHING POD LOGS ==="
+          kubectl logs -n am-apps-dev am-identity-76788545f7-psrz5 -c am-identity --tail=200 || echo "Failed to fetch logs"
+
 
