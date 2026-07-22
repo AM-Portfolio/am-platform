@@ -46,29 +46,8 @@ async def get_me(
             raise
     settings = await provider.get_user_settings(context.subject)
 
-    deletion_pending = False
+    deletion_pending = await provider.is_user_deletion_pending(context.subject)
     account_restored = False
-    admin_token = (
-        await provider._get_admin_access_token()
-        if hasattr(provider, "_get_admin_access_token")
-        else ""
-    )
-    if admin_token:
-        settings_conf = get_settings()
-        admin_users_url = f"{settings_conf.keycloak_url.rstrip('/')}/admin/realms/{settings_conf.keycloak_realm}/users"
-
-        async with httpx.AsyncClient(
-            timeout=20.0, verify=settings_conf.verify_ssl
-        ) as client:
-            get_response = await client.get(
-                f"{admin_users_url}/{context.subject}",
-                headers={"Authorization": f"Bearer {admin_token}"},
-            )
-            if get_response.status_code < 400:
-                raw_user = get_response.json()
-                raw_attrs = raw_user.get("attributes", {})
-                if raw_attrs.get("account_status") == ["pending_deletion"]:
-                    deletion_pending = True
 
     return UserProfileResponse(
         sub=user_info.get("sub", context.subject),
@@ -89,16 +68,13 @@ async def request_deletion(
     context: AuthContext = Depends(require_auth_context()),
     provider: IIdentityProvider = Depends(get_identity_provider),
 ):
-    await provider.set_user_attribute(
-        context.subject, "account_status", "pending_deletion"
-    )
-    await provider.set_user_attribute(
+    await provider.set_user_attributes(
         context.subject,
-        "deletion_requested_at",
-        str(datetime.now(timezone.utc).timestamp()),
-    )
-    await provider.set_user_attribute(
-        context.subject, "deletion_feedback", payload.feedback
+        {
+            "account_status": "pending_deletion",
+            "deletion_requested_at": str(datetime.now(timezone.utc).timestamp()),
+            "deletion_feedback": payload.feedback,
+        },
     )
 
     await publish_event(
@@ -112,6 +88,30 @@ async def request_deletion(
     )
 
     return {"message": "Account scheduled for deletion in 90 days."}
+
+
+@router.post("/me/restore")
+async def restore_account(
+    context: AuthContext = Depends(require_auth_context()),
+    provider: IIdentityProvider = Depends(get_identity_provider),
+):
+    restored = await provider.restore_user_account(context.subject)
+    if not restored:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Account is not pending deletion or could not be restored.",
+        )
+
+    await publish_event(
+        topic="am.identity.events.v1",
+        event_type="am.identity.account_restored.v1",
+        payload={
+            "user_id": context.subject,
+            "email": context.claims.get("email", ""),
+        },
+    )
+
+    return {"message": "Account successfully restored."}
 
 
 @router.patch("/me/settings")

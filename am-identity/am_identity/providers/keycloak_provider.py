@@ -1434,6 +1434,11 @@ class KeycloakIdentityProvider(IIdentityProvider):
     async def set_user_attribute(
         self, user_id: str, key: str, value: str
     ) -> dict[str, Any]:
+        return await self.set_user_attributes(user_id, {key: value})
+
+    async def set_user_attributes(
+        self, user_id: str, attributes: dict[str, Any]
+    ) -> dict[str, Any]:
         await self._ensure_settings_profile_attribute()
         admin_token = await self._get_admin_access_token()
         headers = self._admin_headers(admin_token)
@@ -1450,7 +1455,8 @@ class KeycloakIdentityProvider(IIdentityProvider):
                 )
             user = get_response.json()
             attrs = user.get("attributes", {})
-            attrs[key] = [value]
+            for key, value in attributes.items():
+                attrs[key] = [value]
             user["attributes"] = attrs
             put_response = await client.put(
                 f"{self._admin_users_url}/{user_id}", json=user, headers=headers
@@ -1458,7 +1464,7 @@ class KeycloakIdentityProvider(IIdentityProvider):
             if put_response.status_code >= 400:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Failed to set user attribute: {put_response.text}",
+                    detail=f"Failed to set user attributes: {put_response.text}",
                 )
         return await self.get_user(user_id)
 
@@ -1505,6 +1511,55 @@ class KeycloakIdentityProvider(IIdentityProvider):
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail=f"Failed to delete user: {response.text}",
                 )
+
+    async def is_user_deletion_pending(self, user_id: str) -> bool:
+        admin_token = await self._get_admin_access_token()
+        headers = self._admin_headers(admin_token)
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            response = await client.get(
+                f"{self._admin_users_url}/{user_id}", headers=headers
+            )
+            if response.status_code >= 400:
+                return False
+            user = response.json()
+            attrs = user.get("attributes", {})
+            return attrs.get("account_status") == ["pending_deletion"]
+
+    async def restore_user_account(self, user_id: str) -> bool:
+        admin_token = await self._get_admin_access_token()
+        headers = self._admin_headers(admin_token)
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            response = await client.get(
+                f"{self._admin_users_url}/{user_id}", headers=headers
+            )
+            if response.status_code >= 400:
+                return False
+            user = response.json()
+            attrs = user.get("attributes", {})
+            
+            updated = False
+            for key in ["account_status", "deletion_requested_at", "deletion_feedback"]:
+                if key in attrs:
+                    del attrs[key]
+                    updated = True
+            
+            if updated:
+                user["attributes"] = attrs
+                put_response = await client.put(
+                    f"{self._admin_users_url}/{user_id}", json=user, headers=headers
+                )
+                if put_response.status_code >= 400:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Failed to restore user: {put_response.text}",
+                    )
+                return True
+            return False
+
 
 
 def hmac_compare(a: str, b: str) -> bool:
