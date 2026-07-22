@@ -3,8 +3,10 @@ import os
 import json
 import logging
 from datetime import datetime, timezone
+from pathlib import Path
 
 import httpx
+import asyncpg
 from aiokafka import AIOKafkaProducer
 
 logging.basicConfig(
@@ -34,6 +36,17 @@ async def main():
     kafka_bootstrap_servers = os.environ.get("KAFKA_BOOTSTRAP_SERVERS", "kafka.infra.svc.cluster.local:9092")
     kafka_topic = "am.identity.events.v1"
     purge_enabled = os.environ.get("PURGE_ENABLED", "true").lower() in ("true", "1", "yes")
+
+    db_url = os.environ.get("DATABASE_URL")
+    if not db_url:
+        db_host = os.environ.get("POSTGRES_HOST", "postgresql.infra.svc.cluster.local")
+        db_port = os.environ.get("POSTGRES_PORT", "5432")
+        db_user = os.environ.get("POSTGRES_USER", "postgres")
+        db_password = os.environ.get("POSTGRES_PASSWORD", "")
+        db_name = os.environ.get("POSTGRES_DB", "postgres")
+        if db_host == "postgres.asrax.in":
+            db_port = os.environ.get("POSTGRES_PORT", "8891")
+        db_url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
 
     purge_period_minutes = os.environ.get("PURGE_PERIOD_MINUTES")
     if purge_period_minutes:
@@ -116,6 +129,53 @@ async def main():
 
                         logger.info(f"Purging user: {user_id} (Feedback: {feedback})")
 
+                        # Option 1: Save to local persistent log file
+                        try:
+                            logs_dir = Path(__file__).resolve().parent.parent.parent / "logs"
+                            logs_dir.mkdir(exist_ok=True)
+                            feedback_file = logs_dir / "deletion_feedbacks.json"
+                            
+                            feedbacks_list = []
+                            if feedback_file.exists():
+                                try:
+                                    with open(feedback_file, "r") as f:
+                                        feedbacks_list = json.load(f)
+                                except Exception:
+                                    feedbacks_list = []
+                            
+                            feedbacks_list.append({
+                                "user_id": user_id,
+                                "email": email,
+                                "feedback": feedback,
+                                "requested_at": datetime.fromtimestamp(req_ts, tz=timezone.utc).isoformat(),
+                                "deleted_at": datetime.now(timezone.utc).isoformat()
+                            })
+                            with open(feedback_file, "w") as f:
+                                json.dump(feedbacks_list, f, indent=2)
+                            logger.info(f"Saved deletion feedback to local log file: {feedback_file}")
+                        except Exception as e:
+                            logger.error(f"Failed to save deletion feedback to local log file: {e}")
+
+                        # Option 2: Store feedback in PostgreSQL
+                        if db_url:
+                            try:
+                                conn = await asyncpg.connect(db_url)
+                                req_dt = datetime.fromtimestamp(req_ts, tz=timezone.utc)
+                                await conn.execute(
+                                    """
+                                    INSERT INTO user_deletion_feedbacks (user_id, email, feedback, requested_at)
+                                    VALUES ($1, $2, $3, $4)
+                                    """,
+                                    user_id,
+                                    email,
+                                    feedback,
+                                    req_dt
+                                )
+                                await conn.close()
+                                logger.info(f"Saved deletion feedback to PostgreSQL table")
+                            except Exception as e:
+                                logger.error(f"Failed to save deletion feedback to PostgreSQL: {e}")
+
                         # Hard delete from Keycloak
                         del_resp = await client.delete(
                             f"{users_url}/{user_id}", headers=headers
@@ -127,7 +187,11 @@ async def main():
                             try:
                                 event_payload = {
                                     "type": "user.permanently_deleted.v1",
-                                    "data": {"user_id": user_id, "email": email},
+                                    "data": {
+                                        "user_id": user_id,
+                                        "email": email,
+                                        "feedback": feedback,
+                                    },
                                 }
                                 await producer.send_and_wait(
                                     kafka_topic, json.dumps(event_payload).encode("utf-8")
