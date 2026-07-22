@@ -95,31 +95,43 @@ class SubscriptionKafkaConsumer:
                     self._events,
                     self.settings.default_plan_code,
                 )
-                try:
-                    sub = await sub_service.get_by_user(user_id)
-                    if sub and sub.state in (
-                        SubscriptionState.active,
-                        SubscriptionState.past_due,
-                        SubscriptionState.paused,
-                    ):
-                        logger.info(
-                            f"Canceling subscription {sub.id} for deleted user {user_id}"
-                        )
-                        await sub_service.cancel(
-                            sub.id,
-                            user_id,
-                            actor="system:kafka-consumer",
-                            reason="user_permanently_deleted",
-                            correlation_id=correlation_id,
-                        )
-                    else:
-                        logger.info(
-                            f"No active subscription found for deleted user {user_id}"
-                        )
-                except Exception as e:
-                    logger.error(
-                        f"Failed to cancel subscription for user {user_id}: {e}"
-                    )
+                # Retry loop for database and Lago provider transient failures
+                max_retries = 3
+                retry_delay = 1.0
+                for attempt in range(1, max_retries + 1):
+                    try:
+                        sub = await sub_service.get_by_user(user_id)
+                        if sub and sub.state in (
+                            SubscriptionState.active,
+                            SubscriptionState.past_due,
+                            SubscriptionState.paused,
+                        ):
+                            logger.info(
+                                f"Canceling subscription {sub.id} for deleted user {user_id} (Attempt {attempt})"
+                            )
+                            await sub_service.cancel(
+                                sub.id,
+                                user_id,
+                                actor="system:kafka-consumer",
+                                reason="user_permanently_deleted",
+                                correlation_id=correlation_id,
+                            )
+                        else:
+                            logger.info(
+                                f"No active subscription found for deleted user {user_id}"
+                            )
+                        break
+                    except Exception as e:
+                        if attempt == max_retries:
+                            logger.error(
+                                f"CRITICAL: Failed to cancel subscription for user {user_id} after {max_retries} attempts: {e}. Manual intervention required."
+                            )
+                        else:
+                            logger.warning(
+                                f"Transient failure during user subscription cancellation (attempt {attempt}/{max_retries}): {e}. Retrying in {retry_delay}s..."
+                            )
+                            await asyncio.sleep(retry_delay)
+                            retry_delay *= 2
 
     async def stop(self) -> None:
         if self._task:

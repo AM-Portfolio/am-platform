@@ -96,117 +96,128 @@ async def main():
             headers = {"Authorization": f"Bearer {admin_token}"}
             users_url = f"{keycloak_url}/admin/realms/{keycloak_realm}/users"
 
-            # Fetch all users (might need pagination for very large realms)
+            # Query only users with account_status:pending_deletion attribute
             response = await client.get(
-                users_url, params={"max": 1000}, headers=headers
+                users_url, params={"q": "account_status:pending_deletion", "max": 1000}, headers=headers
             )
             response.raise_for_status()
             users = response.json()
 
-            purged_count = 0
-            for user in users:
-                attrs = user.get("attributes", {})
+            db_conn = None
+            if db_url:
+                try:
+                    db_conn = await asyncpg.connect(db_url)
+                    logger.info("Connected to PostgreSQL database for archiving feedbacks.")
+                except Exception as e:
+                    logger.error(f"Failed to connect to PostgreSQL database: {e}")
 
-                # Check for pending deletion
-                if attrs.get("account_status") == ["pending_deletion"]:
-                    req_at = attrs.get("deletion_requested_at")
+            try:
+                purged_count = 0
+                for user in users:
+                    attrs = user.get("attributes", {})
 
-                    if not req_at:
-                        continue
+                    # Check for pending deletion
+                    if attrs.get("account_status") == ["pending_deletion"]:
+                        req_at = attrs.get("deletion_requested_at")
 
-                    req_ts = float(req_at[0])
-
-                    # If retention period has passed
-                    if now_ts - req_ts >= ninety_days_seconds:
-                        user_id = user["id"]
-                        email = user.get("email", user.get("username", ""))
-                        feedback = attrs.get("deletion_feedback", [""])[0]
-
-                        if not purge_enabled:
-                            logger.info(f"[DRY-RUN] Would purge user: {user_id} (Feedback: {feedback})")
-                            purged_count += 1
+                        if not req_at:
                             continue
 
-                        logger.info(f"Purging user: {user_id} (Feedback: {feedback})")
+                        req_ts = float(req_at[0])
 
-                        # Option 1: Save to local persistent log file
-                        try:
-                            logs_dir = Path(__file__).resolve().parent.parent.parent / "logs"
-                            logs_dir.mkdir(exist_ok=True)
-                            feedback_file = logs_dir / "deletion_feedbacks.json"
-                            
-                            feedbacks_list = []
-                            if feedback_file.exists():
+                        # If retention period has passed
+                        if now_ts - req_ts >= ninety_days_seconds:
+                            user_id = user["id"]
+                            email = user.get("email", user.get("username", ""))
+                            feedback = attrs.get("deletion_feedback", [""])[0]
+
+                            if not purge_enabled:
+                                logger.info(f"[DRY-RUN] Would purge user: {user_id} (Feedback: {feedback})")
+                                purged_count += 1
+                                continue
+
+                            logger.info(f"Purging user: {user_id} (Feedback: {feedback})")
+
+                            # Option 1: Save to local persistent log file
+                            try:
+                                logs_dir = Path(__file__).resolve().parent.parent.parent / "logs"
+                                logs_dir.mkdir(exist_ok=True)
+                                feedback_file = logs_dir / "deletion_feedbacks.json"
+                                
+                                feedbacks_list = []
+                                if feedback_file.exists():
+                                    try:
+                                        with open(feedback_file, "r") as f:
+                                            feedbacks_list = json.load(f)
+                                    except Exception:
+                                        feedbacks_list = []
+                                
+                                feedbacks_list.append({
+                                    "user_id": user_id,
+                                    "email": email,
+                                    "feedback": feedback,
+                                    "requested_at": datetime.fromtimestamp(req_ts, tz=timezone.utc).isoformat(),
+                                    "deleted_at": datetime.now(timezone.utc).isoformat()
+                                })
+                                with open(feedback_file, "w") as f:
+                                    json.dump(feedbacks_list, f, indent=2)
+                                logger.info(f"Saved deletion feedback to local log file: {feedback_file}")
+                            except Exception as e:
+                                logger.error(f"Failed to save deletion feedback to local log file: {e}")
+
+                            # Option 2: Store feedback in PostgreSQL
+                            if db_conn:
                                 try:
-                                    with open(feedback_file, "r") as f:
-                                        feedbacks_list = json.load(f)
-                                except Exception:
-                                    feedbacks_list = []
-                            
-                            feedbacks_list.append({
-                                "user_id": user_id,
-                                "email": email,
-                                "feedback": feedback,
-                                "requested_at": datetime.fromtimestamp(req_ts, tz=timezone.utc).isoformat(),
-                                "deleted_at": datetime.now(timezone.utc).isoformat()
-                            })
-                            with open(feedback_file, "w") as f:
-                                json.dump(feedbacks_list, f, indent=2)
-                            logger.info(f"Saved deletion feedback to local log file: {feedback_file}")
-                        except Exception as e:
-                            logger.error(f"Failed to save deletion feedback to local log file: {e}")
+                                    req_dt = datetime.fromtimestamp(req_ts, tz=timezone.utc)
+                                    await db_conn.execute(
+                                        """
+                                        INSERT INTO user_deletion_feedbacks (user_id, email, feedback, requested_at)
+                                        VALUES ($1, $2, $3, $4)
+                                        """,
+                                        user_id,
+                                        email,
+                                        feedback,
+                                        req_dt
+                                    )
+                                    logger.info(f"Saved deletion feedback to PostgreSQL table")
+                                except Exception as e:
+                                    logger.error(f"Failed to save deletion feedback to PostgreSQL: {e}")
 
-                        # Option 2: Store feedback in PostgreSQL
-                        if db_url:
-                            try:
-                                conn = await asyncpg.connect(db_url)
-                                req_dt = datetime.fromtimestamp(req_ts, tz=timezone.utc)
-                                await conn.execute(
-                                    """
-                                    INSERT INTO user_deletion_feedbacks (user_id, email, feedback, requested_at)
-                                    VALUES ($1, $2, $3, $4)
-                                    """,
-                                    user_id,
-                                    email,
-                                    feedback,
-                                    req_dt
-                                )
-                                await conn.close()
-                                logger.info(f"Saved deletion feedback to PostgreSQL table")
-                            except Exception as e:
-                                logger.error(f"Failed to save deletion feedback to PostgreSQL: {e}")
+                            # Hard delete from Keycloak
+                            del_resp = await client.delete(
+                                f"{users_url}/{user_id}", headers=headers
+                            )
+                            del_resp.raise_for_status()
 
-                        # Hard delete from Keycloak
-                        del_resp = await client.delete(
-                            f"{users_url}/{user_id}", headers=headers
-                        )
-                        del_resp.raise_for_status()
+                            # Emit Kafka Event for other services if producer is available
+                            if producer:
+                                try:
+                                    event_payload = {
+                                        "type": "user.permanently_deleted.v1",
+                                        "data": {
+                                            "user_id": user_id,
+                                            "email": email,
+                                            "feedback": feedback,
+                                        },
+                                    }
+                                    await producer.send_and_wait(
+                                        kafka_topic, json.dumps(event_payload).encode("utf-8")
+                                    )
+                                    logger.info(f"Published deletion event to Kafka for user: {user_id}")
+                                except Exception as e:
+                                    logger.error(f"Failed to publish Kafka event for user {user_id}: {e}")
+                            else:
+                                logger.info(f"Kafka disabled/offline. Skipped event publishing for: {user_id}")
+                            purged_count += 1
 
-                        # Emit Kafka Event for other services if producer is available
-                        if producer:
-                            try:
-                                event_payload = {
-                                    "type": "user.permanently_deleted.v1",
-                                    "data": {
-                                        "user_id": user_id,
-                                        "email": email,
-                                        "feedback": feedback,
-                                    },
-                                }
-                                await producer.send_and_wait(
-                                    kafka_topic, json.dumps(event_payload).encode("utf-8")
-                                )
-                                logger.info(f"Published deletion event to Kafka for user: {user_id}")
-                            except Exception as e:
-                                logger.error(f"Failed to publish Kafka event for user {user_id}: {e}")
-                        else:
-                            logger.info(f"Kafka disabled/offline. Skipped event publishing for: {user_id}")
-                        purged_count += 1
-
-            if not purge_enabled:
-                logger.info(f"Purge dry-run complete. Would have hard deleted {purged_count} accounts.")
-            else:
-                logger.info(f"Purge complete. Hard deleted {purged_count} accounts.")
+                if not purge_enabled:
+                    logger.info(f"Purge dry-run complete. Would have hard deleted {purged_count} accounts.")
+                else:
+                    logger.info(f"Purge complete. Hard deleted {purged_count} accounts.")
+            finally:
+                if db_conn:
+                    await db_conn.close()
+                    logger.info("Closed PostgreSQL connection.")
 
     finally:
         if producer:
