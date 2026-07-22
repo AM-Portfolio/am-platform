@@ -457,19 +457,28 @@ class KeycloakIdentityProvider(IIdentityProvider):
             )
         profile = response.json()
         names = {attr.get("name") for attr in profile.get("attributes", [])}
-        if "settings" not in names:
-            profile.setdefault("attributes", []).append(
-                {
-                    "name": "settings",
-                    "displayName": "User Settings",
-                    "multivalued": False,
-                    "group": "user-metadata",
-                    "permissions": {
-                        "view": ["admin", "user"],
-                        "edit": ["admin", "user"],
-                    },
-                }
-            )
+        updated = False
+        for attr_name, display in [
+            ("settings", "User Settings"),
+            ("account_status", "Account Status"),
+            ("deletion_requested_at", "Deletion Requested At"),
+            ("deletion_feedback", "Deletion Feedback"),
+        ]:
+            if attr_name not in names:
+                profile.setdefault("attributes", []).append(
+                    {
+                        "name": attr_name,
+                        "displayName": display,
+                        "multivalued": False,
+                        "group": "user-metadata",
+                        "permissions": {
+                            "view": ["admin", "user"],
+                            "edit": ["admin", "user"],
+                        },
+                    }
+                )
+                updated = True
+        if updated:
             async with httpx.AsyncClient(
                 timeout=self._session_timeout, verify=self.settings.verify_ssl
             ) as client:
@@ -481,7 +490,7 @@ class KeycloakIdentityProvider(IIdentityProvider):
             if put_response.status_code >= 400:
                 raise HTTPException(
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail=f"Failed to register settings user profile attribute: {put_response.text}",
+                    detail=f"Failed to register user profile attributes: {put_response.text}",
                 )
         self._settings_profile_ready = True
 
@@ -1425,6 +1434,7 @@ class KeycloakIdentityProvider(IIdentityProvider):
     async def set_user_attribute(
         self, user_id: str, key: str, value: str
     ) -> dict[str, Any]:
+        await self._ensure_settings_profile_attribute()
         admin_token = await self._get_admin_access_token()
         headers = self._admin_headers(admin_token)
         async with httpx.AsyncClient(

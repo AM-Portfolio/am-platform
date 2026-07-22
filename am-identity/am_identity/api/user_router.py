@@ -69,17 +69,6 @@ async def get_me(
                 raw_attrs = raw_user.get("attributes", {})
                 if raw_attrs.get("account_status") == ["pending_deletion"]:
                     deletion_pending = True
-                    await provider.remove_user_attribute(
-                        context.subject, "account_status"
-                    )
-                    await provider.remove_user_attribute(
-                        context.subject, "deletion_requested_at"
-                    )
-                    await provider.remove_user_attribute(
-                        context.subject, "deletion_feedback"
-                    )
-                    account_restored = True
-                    deletion_pending = False
 
     return UserProfileResponse(
         sub=user_info.get("sub", context.subject),
