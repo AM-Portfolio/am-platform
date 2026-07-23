@@ -25,19 +25,29 @@ class SubscriptionState(str, enum.Enum):
 class Subscription(Base):
     __tablename__ = f"{TABLE_PREFIX}subscriptions"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     user_id: Mapped[str] = mapped_column(String(128), unique=True, index=True)
-    tenant_id: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    tenant_id: Mapped[str | None] = mapped_column(
+        String(128), nullable=True, index=True
+    )
     plan_code: Mapped[str] = mapped_column(String(64), index=True)
     state: Mapped[SubscriptionState] = mapped_column(
         Enum(SubscriptionState, name="am_subscription_state"),
         default=SubscriptionState.active,
     )
     provider: Mapped[str] = mapped_column(String(32), default="lago")
-    provider_subscription_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    provider_subscription_id: Mapped[str | None] = mapped_column(
+        String(128), nullable=True
+    )
     billing_interval: Mapped[str] = mapped_column(String(16), default="monthly")
-    current_period_start: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    current_period_end: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    current_period_start: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    current_period_end: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -51,10 +61,14 @@ class Subscription(Base):
 class ProviderMap(Base):
     __tablename__ = f"{TABLE_PREFIX}provider_maps"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     user_id: Mapped[str] = mapped_column(String(128), unique=True, index=True)
     provider: Mapped[str] = mapped_column(String(32), default="lago")
-    external_customer_id: Mapped[str] = mapped_column(String(128), unique=True, index=True)
+    external_customer_id: Mapped[str] = mapped_column(
+        String(128), unique=True, index=True
+    )
     provider_customer_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
     metadata_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -64,15 +78,21 @@ class ProviderMap(Base):
 
 class MeterBuffer(Base):
     __tablename__ = f"{TABLE_PREFIX}meter_buffers"
-    __table_args__ = (UniqueConstraint("idempotency_key", name="uq_am_meter_idempotency"),)
+    __table_args__ = (
+        UniqueConstraint("idempotency_key", name="uq_am_meter_idempotency"),
+    )
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     user_id: Mapped[str] = mapped_column(String(128), index=True)
     metric_code: Mapped[str] = mapped_column(String(64), index=True)
     quantity: Mapped[int] = mapped_column(Integer, default=1)
     idempotency_key: Mapped[str] = mapped_column(String(256))
     properties_json: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    synced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    synced_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -81,7 +101,9 @@ class MeterBuffer(Base):
 class SubscriptionAudit(Base):
     __tablename__ = f"{TABLE_PREFIX}subscription_audits"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
     subscription_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), index=True)
     actor: Mapped[str] = mapped_column(String(128))
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)

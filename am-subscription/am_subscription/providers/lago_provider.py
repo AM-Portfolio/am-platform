@@ -38,7 +38,9 @@ class LagoProvider(ISubscriptionProvider, IMeteringProvider):
         url = f"{self._base_url}{path}"
         logger.debug("Lago request", extra={"method": method, "path": path})
         async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.request(method, url, headers=self._headers, json=json)
+            response = await client.request(
+                method, url, headers=self._headers, json=json
+            )
         if response.status_code not in expected:
             body_preview = response.text[:500] if response.text else ""
             logger.error(
@@ -109,7 +111,9 @@ class LagoProvider(ISubscriptionProvider, IMeteringProvider):
         )
         return payload.get("subscription", payload)
 
-    async def cancel_subscription(self, external_subscription_id: str) -> dict[str, Any]:
+    async def cancel_subscription(
+        self, external_subscription_id: str
+    ) -> dict[str, Any]:
         payload = await self._request(
             "DELETE",
             f"/api/v1/subscriptions/{external_subscription_id}",
@@ -117,7 +121,9 @@ class LagoProvider(ISubscriptionProvider, IMeteringProvider):
         )
         return payload.get("subscription", payload)
 
-    async def change_plan(self, external_subscription_id: str, plan_code: str) -> dict[str, Any]:
+    async def change_plan(
+        self, external_subscription_id: str, plan_code: str
+    ) -> dict[str, Any]:
         payload = await self._request(
             "PUT",
             f"/api/v1/subscriptions/{external_subscription_id}",

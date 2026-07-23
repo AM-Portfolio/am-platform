@@ -35,6 +35,8 @@ jobs:
       build_context: ".."
       preprod_namespace: "am-apps-preprod"
       prod_namespace: "am-apps-prod"
+      # Deploy to dev is enabled for feature branches so developers can review
+      # their deployments. If CrashLoopBackOff occurs, we will debug it in cluster.
       deploy_dev: true
       deploy_prod: true
     secrets: inherit

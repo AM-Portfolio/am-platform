@@ -4,8 +4,11 @@ import os
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PLATFORM_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))
 
+
 def migrate_state(target):
-    state_path = os.path.join(PLATFORM_ROOT, "automation", "terraform", target, "terraform.tfstate")
+    state_path = os.path.join(
+        PLATFORM_ROOT, "automation", "terraform", target, "terraform.tfstate"
+    )
     if not os.path.isfile(state_path):
         print(f"No state file found at {state_path}")
         return
@@ -31,7 +34,10 @@ def migrate_state(target):
 
     with open(state_path, "w", encoding="utf-8") as f:
         json.dump(state, f, indent=2)
-    print(f"Successfully migrated state for {target} at {state_path}. Kept {len(new_resources)} resources.")
+    print(
+        f"Successfully migrated state for {target} at {state_path}. Kept {len(new_resources)} resources."
+    )
+
 
 if __name__ == "__main__":
     migrate_state("keycloak")

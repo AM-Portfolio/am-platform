@@ -3,6 +3,7 @@
 run_terraform.py - python wrapper for running Terraform independently on modules.
 Usage: python automation/scripts/run_terraform.py [keycloak|billing|notification] [init|plan|apply|output]
 """
+
 import sys
 import os
 import subprocess
@@ -13,14 +14,18 @@ import json
 import secrets
 
 TERRAFORM_VERSION = "1.9.8"
-PLATFORM = "windows" if os.name == "nt" else ("darwin" if platform.system() == "Darwin" else "linux")
+PLATFORM = (
+    "windows"
+    if os.name == "nt"
+    else ("darwin" if platform.system() == "Darwin" else "linux")
+)
 ARCH = "amd64"
 EXE = "terraform.exe" if os.name == "nt" else "terraform"
 
-SCRIPT_DIR     = os.path.dirname(os.path.abspath(__file__))
-PLATFORM_ROOT  = os.path.dirname(os.path.dirname(SCRIPT_DIR))          # am-platform/
-BIN_DIR        = os.path.join(PLATFORM_ROOT, "automation", ".bin")
-TF_BIN         = os.path.join(BIN_DIR, EXE)
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+PLATFORM_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))  # am-platform/
+BIN_DIR = os.path.join(PLATFORM_ROOT, "automation", ".bin")
+TF_BIN = os.path.join(BIN_DIR, EXE)
 
 
 def _load_env_file(path: str) -> dict[str, str]:
@@ -56,7 +61,9 @@ def _export_terraform_vars(target_folder: str) -> None:
         print("Generated new subscription DB password and appending to .secrets.env")
         try:
             with open(secrets_path, "a", encoding="utf-8") as f:
-                f.write(f"\n# Auto-generated subscription database password\nAM_SUBSCRIPTION_DB_PASSWORD={sub_pwd}\n")
+                f.write(
+                    f"\n# Auto-generated subscription database password\nAM_SUBSCRIPTION_DB_PASSWORD={sub_pwd}\n"
+                )
         except Exception as e:
             print(f"Warning: Could not append password to .secrets.env: {e}")
         merged["AM_SUBSCRIPTION_DB_PASSWORD"] = sub_pwd
@@ -99,7 +106,7 @@ def _export_terraform_vars(target_folder: str) -> None:
             "POSTGRES_DB": "postgres_db",
             "AM_SUBSCRIPTION_DB_NAME": "subscription_db_name",
             "AM_SUBSCRIPTION_DB_USER": "subscription_db_user",
-            "AM_SUBSCRIPTION_DB_PASSWORD": "subscription_db_password"
+            "AM_SUBSCRIPTION_DB_PASSWORD": "subscription_db_password",
         }
         for env_key, tf_key in mapping.items():
             val = merged.get(env_key)
@@ -107,17 +114,23 @@ def _export_terraform_vars(target_folder: str) -> None:
                 tf_vars[tf_key] = val
 
         # Resolve and pass absolute kubeconfig path
-        kubeconfig_abs = os.path.abspath(os.path.join(PLATFORM_ROOT, "..", "VPS", "kubeconfig.vps"))
+        kubeconfig_abs = os.path.abspath(
+            os.path.join(PLATFORM_ROOT, "..", "VPS", "kubeconfig.vps")
+        )
         tf_vars["kubeconfig_path"] = kubeconfig_abs
 
     elif target_folder == "notification":
         notif_pwd = merged.get("AM_NOTIFICATION_DB_PASSWORD")
         if not notif_pwd or notif_pwd.startswith("<"):
             notif_pwd = secrets.token_hex(16)
-            print("Generated new notification DB password and appending to .secrets.env")
+            print(
+                "Generated new notification DB password and appending to .secrets.env"
+            )
             try:
                 with open(secrets_path, "a", encoding="utf-8") as f:
-                    f.write(f"\n# Auto-generated notification database password\nAM_NOTIFICATION_DB_PASSWORD={notif_pwd}\n")
+                    f.write(
+                        f"\n# Auto-generated notification database password\nAM_NOTIFICATION_DB_PASSWORD={notif_pwd}\n"
+                    )
             except Exception as e:
                 print(f"Warning: Could not append password to .secrets.env: {e}")
             merged["AM_NOTIFICATION_DB_PASSWORD"] = notif_pwd
@@ -128,7 +141,9 @@ def _export_terraform_vars(target_folder: str) -> None:
             print("Generated new Novu DB password and appending to .secrets.env")
             try:
                 with open(secrets_path, "a", encoding="utf-8") as f:
-                    f.write(f"\n# Auto-generated Novu MongoDB password\nNOVU_DB_PASSWORD={novu_pwd}\n")
+                    f.write(
+                        f"\n# Auto-generated Novu MongoDB password\nNOVU_DB_PASSWORD={novu_pwd}\n"
+                    )
             except Exception as e:
                 print(f"Warning: Could not append Novu password to .secrets.env: {e}")
             merged["NOVU_DB_PASSWORD"] = novu_pwd
@@ -154,12 +169,16 @@ def _export_terraform_vars(target_folder: str) -> None:
             if val and not val.startswith("<"):
                 tf_vars[tf_key] = val
 
-        kubeconfig_abs = os.path.abspath(os.path.join(PLATFORM_ROOT, "..", "VPS", "kubeconfig.vps"))
+        kubeconfig_abs = os.path.abspath(
+            os.path.join(PLATFORM_ROOT, "..", "VPS", "kubeconfig.vps")
+        )
         tf_vars["kubeconfig_path"] = kubeconfig_abs
 
-    target_tf_dir = os.path.join(PLATFORM_ROOT, "automation", "terraform", target_folder)
+    target_tf_dir = os.path.join(
+        PLATFORM_ROOT, "automation", "terraform", target_folder
+    )
     vars_path = os.path.join(target_tf_dir, "generated.auto.tfvars.json")
-    
+
     with open(vars_path, "w", encoding="utf-8") as f:
         json.dump(tf_vars, f, indent=2)
     print(f"Generated auto.tfvars at {vars_path}")
@@ -213,14 +232,18 @@ def run(cmd: list[str], target_tf_dir: str):
 
 def main():
     if len(sys.argv) < 3:
-        print("Usage: python run_terraform.py [keycloak|billing|notification] [init|plan|apply|output]")
+        print(
+            "Usage: python run_terraform.py [keycloak|billing|notification] [init|plan|apply|output]"
+        )
         sys.exit(1)
 
     folder = sys.argv[1].lower()
     action = sys.argv[2].lower()
 
     if folder not in ("keycloak", "billing", "notification"):
-        print(f"ERROR: Invalid folder '{folder}'. Must be 'keycloak', 'billing', or 'notification'.")
+        print(
+            f"ERROR: Invalid folder '{folder}'. Must be 'keycloak', 'billing', or 'notification'."
+        )
         sys.exit(1)
 
     target_tf_dir = os.path.join(PLATFORM_ROOT, "automation", "terraform", folder)

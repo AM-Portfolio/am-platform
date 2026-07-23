@@ -58,7 +58,12 @@
         "notification_base_url": "https://am-dev.asrax.in/notifications",
         "base_url": "https://am-dev.asrax.in/identity",
         "keycloak_url": "https://auth.munish.org/auth",
-        "google_redirect_uri": "https://am-dev.asrax.in/callback"
+        "keycloak_realm": "am-dev-realm",
+        "google_redirect_uri": "https://am-dev.asrax.in/callback",
+        "identity_client_secret": "",
+        "portfolio_client_secret": "",
+        "gateway_client_secret": "",
+        "notification_client_secret": ""
       }
     },
     "preprod": {

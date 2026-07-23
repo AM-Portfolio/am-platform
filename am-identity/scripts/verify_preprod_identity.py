@@ -73,7 +73,11 @@ def main():
     for path in ("/health", "/docs", "/openapi.json"):
         code, body, _ = req("GET", BASE + path)
         if path == "/health":
-            record("health", code == 200 and isinstance(body, dict) and body.get("status") == "ok", f"{code} {body}")
+            record(
+                "health",
+                code == 200 and isinstance(body, dict) and body.get("status") == "ok",
+                f"{code} {body}",
+            )
         else:
             record(f"probe {path}", code in (200, 401, 403) or code < 500, f"{code}")
 
@@ -89,7 +93,9 @@ def main():
             "/auth/verify-email/resend",
             "/auth/verify-email/confirm",
         ):
-            record(f"openapi has {p}", p in paths, "present" if p in paths else "missing")
+            record(
+                f"openapi has {p}", p in paths, "present" if p in paths else "missing"
+            )
     else:
         record("openapi.json", False, f"{code} {body}")
 
@@ -267,14 +273,23 @@ def main():
     record("GET /admin/roles", code == 200 and isinstance(body, list), f"{code} {body}")
 
     code, body, _ = req("GET", BASE + "/admin/users?max=5", headers=bh)
-    record("GET /admin/users", code == 200 and isinstance(body, list), f"{code} count={len(body) if isinstance(body, list) else '?'}")
+    record(
+        "GET /admin/users",
+        code == 200 and isinstance(body, list),
+        f"{code} count={len(body) if isinstance(body, list) else '?'}",
+    )
 
     # non-admin: create second user without admin role
     plain_email = f"verify.user.{stamp}@asrax.in"
     code, body, _ = req(
         "POST",
         BASE + "/auth/register",
-        data={"email": plain_email, "password": test_password, "first_name": "Plain", "last_name": "User"},
+        data={
+            "email": plain_email,
+            "password": test_password,
+            "first_name": "Plain",
+            "last_name": "User",
+        },
     )
     record("register plain user", code == 201, f"{code}")
     code, users, _ = req(

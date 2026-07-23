@@ -53,7 +53,9 @@ def mint_auth_mail_token(
         "iat": now,
         "exp": now + int(ttl_seconds),
     }
-    body = _b64encode(json.dumps(payload, separators=(",", ":"), sort_keys=True).encode())
+    body = _b64encode(
+        json.dumps(payload, separators=(",", ":"), sort_keys=True).encode()
+    )
     sig = _b64encode(
         hmac.new(secret.encode("utf-8"), body.encode("ascii"), hashlib.sha256).digest()
     )

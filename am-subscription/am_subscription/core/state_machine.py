@@ -19,7 +19,11 @@ def validate_transition(current: str, target: str) -> None:
     if target not in allowed:
         raise ConflictError(
             message=f"Cannot transition subscription from '{current}' to '{target}'",
-            details={"current_state": current, "target_state": target, "allowed": sorted(allowed)},
+            details={
+                "current_state": current,
+                "target_state": target,
+                "allowed": sorted(allowed),
+            },
         )
 
 

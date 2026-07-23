@@ -3,6 +3,7 @@
 Root-level platform checks (orchestration only).
 Per-module run/test/lint live in each workspace package.json.
 """
+
 from __future__ import annotations
 
 import sys

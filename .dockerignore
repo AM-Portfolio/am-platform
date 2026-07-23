@@ -13,6 +13,7 @@ postman/
 docs/
 automation/terraform/
 automation/scripts/
+!automation/scripts/
 node_modules/
 *.md
 !am-identity/README.md

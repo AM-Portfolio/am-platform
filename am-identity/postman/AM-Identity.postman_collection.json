@@ -253,6 +253,24 @@
             "description": "Patches user attributes in Keycloak (settings stored as user attribute)."
           },
           "response": []
+        },
+        {
+          "name": "Request Account Deletion",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"feedback\": \"I don't need this account anymore.\"\n}"
+            },
+            "url": "{{base_url}}/users/me/request-deletion",
+            "description": "Initiates the 90-day account deletion process. Also publishes a Kafka event."
+          },
+          "response": []
         }
       ]
     },

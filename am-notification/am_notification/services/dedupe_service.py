@@ -22,7 +22,9 @@ class DedupeService:
         return f"{event_id}:{workflow_key}:{channel}:{recipient_user_id}"
 
     async def is_processed(self, dedupe_key: str) -> bool:
-        existing = await self._collection.find_one({"dedupe_key": dedupe_key}, {"_id": 1})
+        existing = await self._collection.find_one(
+            {"dedupe_key": dedupe_key}, {"_id": 1}
+        )
         return existing is not None
 
     async def mark_processed(

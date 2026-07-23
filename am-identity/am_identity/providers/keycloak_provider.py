@@ -98,6 +98,9 @@ class KeycloakIdentityProvider(IIdentityProvider):
             "Accept": "application/json",
         }
         self._google_states: dict[str, tuple[str, float]] = {}
+        self.client = httpx.AsyncClient(
+            timeout=self._session_timeout, verify=settings.verify_ssl
+        )
         self._allowed_redirect_uris = {
             uri.strip()
             for uri in settings.allowed_google_redirect_uris.split(",")
@@ -148,7 +151,9 @@ class KeycloakIdentityProvider(IIdentityProvider):
             )
         return claims
 
-    async def _find_user_by_email(self, email: str, admin_token: str) -> dict[str, Any] | None:
+    async def _find_user_by_email(
+        self, email: str, admin_token: str
+    ) -> dict[str, Any] | None:
         async with httpx.AsyncClient(
             timeout=self._session_timeout, verify=self.settings.verify_ssl
         ) as client:
@@ -455,19 +460,28 @@ class KeycloakIdentityProvider(IIdentityProvider):
             )
         profile = response.json()
         names = {attr.get("name") for attr in profile.get("attributes", [])}
-        if "settings" not in names:
-            profile.setdefault("attributes", []).append(
-                {
-                    "name": "settings",
-                    "displayName": "User Settings",
-                    "multivalued": False,
-                    "group": "user-metadata",
-                    "permissions": {
-                        "view": ["admin", "user"],
-                        "edit": ["admin", "user"],
-                    },
-                }
-            )
+        updated = False
+        for attr_name, display in [
+            ("settings", "User Settings"),
+            ("account_status", "Account Status"),
+            ("deletion_requested_at", "Deletion Requested At"),
+            ("deletion_feedback", "Deletion Feedback"),
+        ]:
+            if attr_name not in names:
+                profile.setdefault("attributes", []).append(
+                    {
+                        "name": attr_name,
+                        "displayName": display,
+                        "multivalued": False,
+                        "group": "user-metadata",
+                        "permissions": {
+                            "view": ["admin", "user"],
+                            "edit": ["admin", "user"],
+                        },
+                    }
+                )
+                updated = True
+        if updated:
             async with httpx.AsyncClient(
                 timeout=self._session_timeout, verify=self.settings.verify_ssl
             ) as client:
@@ -479,7 +493,7 @@ class KeycloakIdentityProvider(IIdentityProvider):
             if put_response.status_code >= 400:
                 raise HTTPException(
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail=f"Failed to register settings user profile attribute: {put_response.text}",
+                    detail=f"Failed to register user profile attributes: {put_response.text}",
                 )
         self._settings_profile_ready = True
 
@@ -622,7 +636,9 @@ class KeycloakIdentityProvider(IIdentityProvider):
     def _admin_headers(self, admin_token: str) -> dict[str, str]:
         return {**self._http_headers, "Authorization": f"Bearer {admin_token}"}
 
-    def _normalize_user(self, user: dict[str, Any], roles: list[str] | None = None) -> dict[str, Any]:
+    def _normalize_user(
+        self, user: dict[str, Any], roles: list[str] | None = None
+    ) -> dict[str, Any]:
         return {
             "id": user.get("id", ""),
             "email": user.get("email"),
@@ -771,7 +787,9 @@ class KeycloakIdentityProvider(IIdentityProvider):
         user = await self.get_user(user_id)
         user["email_sent"] = {
             "verify_email": verify_sent if send_verify_email else None,
-            "password_reset": reset_sent if (temporary_password or not password) else None,
+            "password_reset": (
+                reset_sent if (temporary_password or not password) else None
+            ),
         }
         return user
 
@@ -874,10 +892,14 @@ class KeycloakIdentityProvider(IIdentityProvider):
             )
         return [r.get("name") for r in (response.json() or []) if r.get("name")]
 
-    async def set_user_realm_roles(self, user_id: str, role_names: list[str]) -> list[str]:
+    async def set_user_realm_roles(
+        self, user_id: str, role_names: list[str]
+    ) -> list[str]:
         current = await self.get_user_realm_roles(user_id)
         # Preserve non-human / system roles we do not manage via this API surface
-        preserve = [r for r in current if r == "service" or r.startswith("default-roles-")]
+        preserve = [
+            r for r in current if r == "service" or r.startswith("default-roles-")
+        ]
         desired = list(dict.fromkeys([*preserve, *role_names]))
         to_add = [r for r in desired if r not in current]
         to_remove = [r for r in current if r not in desired]
@@ -888,7 +910,9 @@ class KeycloakIdentityProvider(IIdentityProvider):
                 await self.remove_user_realm_role(user_id, name)
         return await self.get_user_realm_roles(user_id)
 
-    async def add_user_realm_roles(self, user_id: str, role_names: list[str]) -> list[str]:
+    async def add_user_realm_roles(
+        self, user_id: str, role_names: list[str]
+    ) -> list[str]:
         if not role_names:
             return await self.get_user_realm_roles(user_id)
         admin_token = await self._get_admin_access_token()
@@ -1112,7 +1136,9 @@ class KeycloakIdentityProvider(IIdentityProvider):
                 )
         self._auth_mail_profile_ready = True
 
-    async def _get_raw_user(self, user_id: str, admin_token: str | None = None) -> dict[str, Any]:
+    async def _get_raw_user(
+        self, user_id: str, admin_token: str | None = None
+    ) -> dict[str, Any]:
         token = admin_token or await self._get_admin_access_token()
         async with httpx.AsyncClient(
             timeout=self._session_timeout, verify=self.settings.verify_ssl
@@ -1407,6 +1433,121 @@ class KeycloakIdentityProvider(IIdentityProvider):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Logout user sessions failed: {response.text}",
             )
+
+    async def set_user_attribute(
+        self, user_id: str, key: str, value: str
+    ) -> dict[str, Any]:
+        return await self.set_user_attributes(user_id, {key: value})
+
+    async def set_user_attributes(
+        self, user_id: str, attributes: dict[str, Any]
+    ) -> dict[str, Any]:
+        await self._ensure_settings_profile_attribute()
+        admin_token = await self._get_admin_access_token()
+        headers = self._admin_headers(admin_token)
+        get_response = await self.client.get(
+            f"{self._admin_users_url}/{user_id}", headers=headers
+        )
+        if get_response.status_code >= 400:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"User not found: {user_id}",
+            )
+        user = get_response.json()
+        attrs = user.get("attributes", {})
+        for key, value in attributes.items():
+            attrs[key] = [value]
+        user["attributes"] = attrs
+        put_response = await self.client.put(
+            f"{self._admin_users_url}/{user_id}", json=user, headers=headers
+        )
+        if put_response.status_code >= 400:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to set user attributes: {put_response.text}",
+            )
+        return await self.get_user(user_id)
+
+    async def remove_user_attribute(self, user_id: str, key: str) -> dict[str, Any]:
+        admin_token = await self._get_admin_access_token()
+        headers = self._admin_headers(admin_token)
+        get_response = await self.client.get(
+            f"{self._admin_users_url}/{user_id}", headers=headers
+        )
+        if get_response.status_code >= 400:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"User not found: {user_id}",
+            )
+        user = get_response.json()
+        attrs = user.get("attributes", {})
+        if key in attrs:
+            del attrs[key]
+            user["attributes"] = attrs
+            put_response = await self.client.put(
+                f"{self._admin_users_url}/{user_id}", json=user, headers=headers
+            )
+            if put_response.status_code >= 400:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Failed to remove user attribute: {put_response.text}",
+                )
+        return await self.get_user(user_id)
+
+    async def hard_delete_user(self, user_id: str) -> None:
+        admin_token = await self._get_admin_access_token()
+        headers = self._admin_headers(admin_token)
+        response = await self.client.delete(
+            f"{self._admin_users_url}/{user_id}", headers=headers
+        )
+        if response.status_code >= 400:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Failed to delete user: {response.text}",
+            )
+
+    async def is_user_deletion_pending(self, user_id: str) -> bool:
+        admin_token = await self._get_admin_access_token()
+        headers = self._admin_headers(admin_token)
+        response = await self.client.get(
+            f"{self._admin_users_url}/{user_id}", headers=headers
+        )
+        if response.status_code >= 400:
+            return False
+        user = response.json()
+        attrs = user.get("attributes", {})
+        return attrs.get("account_status") == ["pending_deletion"]
+
+    async def restore_user_account(self, user_id: str) -> bool:
+        admin_token = await self._get_admin_access_token()
+        headers = self._admin_headers(admin_token)
+        response = await self.client.get(
+            f"{self._admin_users_url}/{user_id}", headers=headers
+        )
+        if response.status_code >= 400:
+            return False
+        user = response.json()
+        attrs = user.get("attributes", {})
+        
+        updated = False
+        for key in ["account_status", "deletion_requested_at", "deletion_feedback"]:
+            if key in attrs:
+                del attrs[key]
+                updated = True
+        
+        if updated:
+            user["attributes"] = attrs
+            put_response = await self.client.put(
+                f"{self._admin_users_url}/{user_id}", json=user, headers=headers
+            )
+            if put_response.status_code >= 400:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Failed to restore user: {put_response.text}",
+                )
+            return True
+        return False
+
 
 
 def hmac_compare(a: str, b: str) -> bool:

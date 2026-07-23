@@ -14,7 +14,9 @@ def get_provider() -> INotificationProvider:
     settings = get_settings()
     if settings.notification_provider.lower() == "novu":
         return NovuProvider(settings)
-    raise RuntimeError(f"Unsupported notification provider: {settings.notification_provider}")
+    raise RuntimeError(
+        f"Unsupported notification provider: {settings.notification_provider}"
+    )
 
 
 def get_notification_service() -> NotificationService:
@@ -28,4 +30,6 @@ def get_preference_service() -> PreferenceService:
 @lru_cache(maxsize=1)
 def get_kafka_consumer() -> NotificationKafkaConsumer:
     settings = get_settings()
-    return NotificationKafkaConsumer(settings, NotificationService(get_database(), get_provider()))
+    return NotificationKafkaConsumer(
+        settings, NotificationService(get_database(), get_provider())
+    )
