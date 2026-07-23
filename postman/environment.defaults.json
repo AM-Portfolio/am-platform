@@ -54,16 +54,16 @@
       "values": {
         "platform_env": "dev",
         "identity_base_url": "https://am-dev.asrax.in/identity",
-        "subscription_base_url": "https://am-dev.asrax.in",
-        "notification_base_url": "https://am-dev.asrax.in",
+        "subscription_base_url": "https://am-dev.asrax.in/subscriptions",
+        "notification_base_url": "https://am-dev.asrax.in/notifications",
         "base_url": "https://am-dev.asrax.in/identity",
         "keycloak_url": "https://auth.munish.org/auth",
         "keycloak_realm": "am-dev-realm",
         "google_redirect_uri": "https://am-dev.asrax.in/callback",
-        "identity_client_secret": "iio4Fbnpp14Rny3gZpQYIrcU7ra2ytfi",
-        "portfolio_client_secret": "BWq5Q5Dl4ZboS56Xr6eyac6M6GlMjkWk",
-        "gateway_client_secret": "MxuKzHh8cfdbVShLeREV9uanTOGoUG1l",
-        "notification_client_secret": "ScMCQ7MUSGNVZL9yWtwcpheJwpcY9B1p"
+        "identity_client_secret": "",
+        "portfolio_client_secret": "",
+        "gateway_client_secret": "",
+        "notification_client_secret": ""
       }
     },
     "preprod": {
@@ -72,8 +72,8 @@
       "values": {
         "platform_env": "preprod",
         "identity_base_url": "https://am-preprod.asrax.in/identity",
-        "subscription_base_url": "https://am-preprod.asrax.in",
-        "notification_base_url": "https://am-preprod.asrax.in",
+        "subscription_base_url": "https://am-preprod.asrax.in/subscriptions",
+        "notification_base_url": "https://am-preprod.asrax.in/notifications",
         "base_url": "https://am-preprod.asrax.in/identity",
         "keycloak_url": "https://auth.munish.org/auth",
         "google_redirect_uri": "https://am-preprod.asrax.in/callback"
@@ -85,8 +85,8 @@
       "values": {
         "platform_env": "prod",
         "identity_base_url": "https://am.asrax.in/identity",
-        "subscription_base_url": "https://am.asrax.in",
-        "notification_base_url": "https://am.asrax.in",
+        "subscription_base_url": "https://am.asrax.in/subscriptions",
+        "notification_base_url": "https://am.asrax.in/notifications",
         "base_url": "https://am.asrax.in/identity",
         "keycloak_url": "https://auth.munish.org/auth",
         "google_redirect_uri": "https://am.asrax.in/callback"
