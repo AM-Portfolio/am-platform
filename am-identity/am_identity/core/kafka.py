@@ -24,15 +24,29 @@ async def publish_event(topic: str, event_type: str, payload: dict) -> None:
     if settings.kafka_security_protocol.endswith("SSL"):
         kwargs["ssl_context"] = create_ssl_context()
 
-    try:
-        producer = AIOKafkaProducer(**kwargs)
-        await producer.start()
+    import asyncio
+    max_retries = 3
+    retry_delay = 1.0
+    for attempt in range(1, max_retries + 1):
         try:
-            envelope = {"type": event_type, "data": payload}
-            message_bytes = json.dumps(envelope).encode("utf-8")
-            await producer.send_and_wait(topic, message_bytes)
-            logger.info(f"Published event {event_type} to topic {topic}")
-        finally:
-            await producer.stop()
-    except Exception as e:
-        logger.error(f"Failed to publish event {event_type} to topic {topic}: {e}")
+            producer = AIOKafkaProducer(**kwargs)
+            await producer.start()
+            try:
+                envelope = {"type": event_type, "data": payload}
+                message_bytes = json.dumps(envelope).encode("utf-8")
+                await producer.send_and_wait(topic, message_bytes)
+                logger.info(f"Published event {event_type} to topic {topic}")
+                return
+            finally:
+                await producer.stop()
+        except Exception as e:
+            if attempt == max_retries:
+                logger.error(
+                    f"Failed to publish event {event_type} to topic {topic} after {max_retries} attempts: {e}"
+                )
+            else:
+                logger.warning(
+                    f"Failed to publish event {event_type} (attempt {attempt}/{max_retries}): {e}. Retrying in {retry_delay}s..."
+                )
+                await asyncio.sleep(retry_delay)
+                retry_delay *= 2

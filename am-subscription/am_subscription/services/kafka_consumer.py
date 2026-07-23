@@ -32,6 +32,9 @@ class SubscriptionKafkaConsumer:
             logger.info("Kafka consumer disabled in settings.")
             return
 
+        self._task = asyncio.create_task(self._start_with_retry())
+
+    async def _start_with_retry(self) -> None:
         kwargs: dict[str, Any] = {
             "bootstrap_servers": self.settings.kafka_bootstrap_servers,
             "group_id": "am-subscription-group",
@@ -49,14 +52,28 @@ class SubscriptionKafkaConsumer:
 
         topics = [t.strip() for t in self.settings.kafka_topics.split(",") if t.strip()]
 
-        try:
-            self.consumer = AIOKafkaConsumer(*topics, **kwargs)
-            await self.consumer.start()
-            logger.info(f"Kafka consumer started. Listening to {topics}")
-            self._task = asyncio.create_task(self._consume_loop())
-        except Exception as e:
-            logger.error(f"Failed to start Kafka consumer: {e}")
-            self.consumer = None
+        delay_seconds = 5
+        while True:
+            try:
+                self.consumer = AIOKafkaConsumer(*topics, **kwargs)
+                await self.consumer.start()
+                logger.info(f"Kafka consumer started. Listening to {topics}")
+                await self._consume_loop()
+                return
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(
+                    f"Failed to start Kafka consumer: {e}. Retrying in {delay_seconds}s..."
+                )
+                if self.consumer:
+                    try:
+                        await self.consumer.stop()
+                    except Exception:
+                        pass
+                    self.consumer = None
+                await asyncio.sleep(delay_seconds)
+                delay_seconds = min(delay_seconds * 2, 60)
 
     async def _consume_loop(self) -> None:
         if not self.consumer:

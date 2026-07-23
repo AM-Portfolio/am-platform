@@ -39,6 +39,7 @@ async def main():
 
     db_url = os.environ.get("DATABASE_URL")
     if not db_url:
+        from urllib.parse import quote
         db_host = os.environ.get("POSTGRES_HOST", "postgresql.infra.svc.cluster.local")
         db_port = os.environ.get("POSTGRES_PORT", "5432")
         db_user = os.environ.get("POSTGRES_USER", "postgres")
@@ -46,7 +47,7 @@ async def main():
         db_name = os.environ.get("POSTGRES_DB", "postgres")
         if db_host == "postgres.asrax.in":
             db_port = os.environ.get("POSTGRES_PORT", "8891")
-        db_url = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+        db_url = f"postgresql://{quote(db_user, safe='')}:{quote(db_password, safe='')}@{db_host}:{db_port}/{db_name}"
 
     purge_period_minutes = os.environ.get("PURGE_PERIOD_MINUTES")
     if purge_period_minutes:
@@ -129,7 +130,8 @@ async def main():
                         if now_ts - req_ts >= ninety_days_seconds:
                             user_id = user["id"]
                             email = user.get("email", user.get("username", ""))
-                            feedback = attrs.get("deletion_feedback", [""])[0]
+                            feedback_list = attrs.get("deletion_feedback")
+                            feedback = feedback_list[0] if feedback_list else ""
 
                             if not purge_enabled:
                                 logger.info(f"[DRY-RUN] Would purge user: {user_id} (Feedback: {feedback})")
@@ -183,12 +185,6 @@ async def main():
                                 except Exception as e:
                                     logger.error(f"Failed to save deletion feedback to PostgreSQL: {e}")
 
-                            # Hard delete from Keycloak
-                            del_resp = await client.delete(
-                                f"{users_url}/{user_id}", headers=headers
-                            )
-                            del_resp.raise_for_status()
-
                             # Emit Kafka Event for other services if producer is available
                             if producer:
                                 try:
@@ -197,7 +193,6 @@ async def main():
                                         "data": {
                                             "user_id": user_id,
                                             "email": email,
-                                            "feedback": feedback,
                                         },
                                     }
                                     await producer.send_and_wait(
@@ -205,9 +200,16 @@ async def main():
                                     )
                                     logger.info(f"Published deletion event to Kafka for user: {user_id}")
                                 except Exception as e:
-                                    logger.error(f"Failed to publish Kafka event for user {user_id}: {e}")
+                                    logger.error(f"Failed to publish Kafka event for user {user_id}: {e}. Aborting deletion.")
+                                    raise
                             else:
                                 logger.info(f"Kafka disabled/offline. Skipped event publishing for: {user_id}")
+
+                            # Hard delete from Keycloak
+                            del_resp = await client.delete(
+                                f"{users_url}/{user_id}", headers=headers
+                            )
+                            del_resp.raise_for_status()
                             purged_count += 1
 
                 if not purge_enabled:
