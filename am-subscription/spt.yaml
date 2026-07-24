@@ -1,0 +1,26 @@
+apiVersion: am.spt/v1
+kind: ServiceLoadTest
+service: am-subscription
+label: am-subscription
+enabled: true
+runtime: python
+owners: [billing-team]
+description: Subscription service load-test registration (OpenAPI via FastAPI)
+createdBy: billing-team
+updatedBy: billing-team
+createdAt: "2026-07-24"
+updatedAt: "2026-07-24"
+tags: [billing, python, fastapi]
+source:
+  repo: am-platform
+  path: am-subscription/spt.yaml
+  team: billing-team
+traces:
+  - name: openapi
+    ref: /openapi.json
+targets:
+  dev: "https://am-dev.asrax.in/subscription"
+  preprod: "https://am-preprod.asrax.in/subscription"
+  prod: "https://am.asrax.in/subscription"
+openapi:
+  path: /openapi.json
