@@ -2,6 +2,7 @@ from datetime import datetime
 from uuid import UUID
 
 from am_platform_common import BaseDTO
+from am_subscription.models.db import SubscriptionState
 
 
 class PlanEntitlementsDTO(BaseDTO):
@@ -44,7 +45,7 @@ class SubscriptionDTO(BaseDTO):
     tenant_id: str | None
     plan_code: str
     plan_name: str
-    state: str
+    state: SubscriptionState
     billing_interval: str
     current_period_start: datetime | None
     current_period_end: datetime | None
