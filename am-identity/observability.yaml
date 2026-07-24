@@ -1,0 +1,17 @@
+apiVersion: am.obs/v1
+kind: ServiceObservability
+service: am-identity
+tier: A
+runtime: python
+k8s_app_label: am-identity
+metrics_application: am-identity
+namespace: am-apps-preprod
+owners: [identity-team]
+signals:
+  bundle: tier-a-python-core
+  domain: [user_logins_total, login_failures_total, token_refreshes_total]
+  include: []
+dashboard:
+  technical:
+    rows:
+      collapse: [row_k8s]

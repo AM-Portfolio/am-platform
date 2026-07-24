@@ -1,0 +1,26 @@
+apiVersion: am.spt/v1
+kind: ServiceLoadTest
+service: am-identity
+label: am-identity
+enabled: true
+runtime: python
+owners: [identity-team]
+description: Identity service load-test registration (OpenAPI via FastAPI)
+createdBy: identity-team
+updatedBy: identity-team
+createdAt: "2026-07-24"
+updatedAt: "2026-07-24"
+tags: [auth, python, fastapi]
+source:
+  repo: am-platform
+  path: am-identity/spt.yaml
+  team: identity-team
+traces:
+  - name: openapi
+    ref: /openapi.json
+targets:
+  dev: "https://am-dev.asrax.in/identity"
+  preprod: "https://am-preprod.asrax.in/identity"
+  prod: "https://am.asrax.in/identity"
+openapi:
+  path: /openapi.json

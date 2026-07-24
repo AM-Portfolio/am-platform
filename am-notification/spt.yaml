@@ -1,0 +1,26 @@
+apiVersion: am.spt/v1
+kind: ServiceLoadTest
+service: am-notification
+label: am-notification
+enabled: true
+runtime: python
+owners: [notification-team]
+description: Notification service load-test registration (OpenAPI via FastAPI)
+createdBy: notification-team
+updatedBy: notification-team
+createdAt: "2026-07-24"
+updatedAt: "2026-07-24"
+tags: [notifications, python, fastapi]
+source:
+  repo: am-platform
+  path: am-notification/spt.yaml
+  team: notification-team
+traces:
+  - name: openapi
+    ref: /openapi.json
+targets:
+  dev: "https://am-dev.asrax.in/notification"
+  preprod: "https://am-preprod.asrax.in/notification"
+  prod: "https://am.asrax.in/notification"
+openapi:
+  path: /openapi.json

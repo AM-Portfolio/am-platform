@@ -1,0 +1,17 @@
+apiVersion: am.obs/v1
+kind: ServiceObservability
+service: am-subscription
+tier: B
+runtime: python
+k8s_app_label: am-subscription
+metrics_application: am-subscription
+namespace: am-apps-preprod
+owners: [billing-team]
+signals:
+  bundle: tier-b-python-core
+  domain: [subscription_created_total, billing_webhook_received_total]
+  include: []
+dashboard:
+  technical:
+    rows:
+      collapse: [row_k8s]
