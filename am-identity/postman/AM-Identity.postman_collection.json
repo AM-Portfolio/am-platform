@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "am-identity-collection-v1",
     "name": "AM Identity Service",
-    "description": "Organized API collection for **am-identity** (port 8113).\n\n## Quick start\n1. Import `AM-Identity.local.postman_environment.json`\n2. Run **Health → Health Check**\n3. Run **Auth → Login** (or Google SSO flow)\n4. `access_token` / `refresh_token` are saved automatically\n5. Run **Users → Get My Profile**\n\n## Folders\n| Folder | Purpose |\n|--------|----------|\n| 00 Health | Liveness |\n| 01 Auth — Registration | Sign up |\n| 02 Auth — Login & Session | Password login, refresh, logout |\n| 03 Auth — Google SSO | URL + callback (manual browser step for `code`) |\n| 04 Users | Bearer-protected profile/settings |\n| 05 Internal | Service-account only |\n| 99 Keycloak Helpers | Direct token calls for setup/debug |\n\n## Gateway (future)\nPublic routes via Traefik: `/api/auth/*`, `/api/users/*`",
+    "description": "Organized API collection for **am-identity** (port 8113).\n\n## Quick start\n1. Import `AM-Identity.local.postman_environment.json`\n2. Run **Health → Health Check**\n3. Run **Auth → Login** (or Google SSO flow)\n4. `access_token` / `refresh_token` are saved automatically\n5. Run **Users → Get My Profile**\n\n## Folders\n| Folder | Purpose |\n|--------|----------|\n| 00 Health | Liveness |\n| 01 Auth — Registration | Sign up |\n| 02 Auth — Login & Session | Password login, refresh, logout |\n| 03 Auth — Google SSO | URL + callback (manual browser step for `code`) |\n| 04 Users | Bearer-protected profile/settings |\n| 05 Internal | Service-account only |\n| 06 API Keys | Create/list/exchange/revoke API keys |\n| 99 Keycloak Helpers | Direct token calls for setup/debug |\n\n## Gateway (future)\nPublic routes via Traefik: `/api/auth/*`, `/api/users/*`\n\n## Dev identity host\n`https://am-dev.asrax.in/identity` (set `base_url` accordingly)."
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
@@ -59,7 +59,10 @@
     { "key": "google_redirect_uri", "value": "http://localhost:9000/callback" },
     { "key": "user_sub", "value": "" },
     { "key": "test_email", "value": "test.user@example.com" },
-    { "key": "test_password", "value": "TestPass123!" }
+    { "key": "test_password", "value": "TestPass123!" },
+    { "key": "api_key_id", "value": "" },
+    { "key": "api_key_secret", "value": "" },
+    { "key": "api_key_record_id", "value": "" }
   ],
   "item": [
     {
@@ -269,6 +272,116 @@
             },
             "url": "{{base_url}}/users/me/request-deletion",
             "description": "Initiates the 90-day account deletion process. Also publishes a Kafka event."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "06 API Keys",
+      "description": "User API keys for Call Asrax / MCP.\n1. Login (folder 02) so `access_token` is set.\n2. Create API Key — secret shown once; saved to `api_key_id` / `api_key_secret`.\n3. Exchange API Key — no Bearer required; saves `access_token` JWT for AI/MCP calls.\nNever send the raw secret as Authorization to fin-agent.",
+      "item": [
+        {
+          "name": "List API Keys",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/users/me/api-keys",
+            "description": "Lists keys for the authenticated user (no secrets)."
+          },
+          "response": []
+        },
+        {
+          "name": "Create API Key",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 201) return;",
+                  "const body = pm.response.json();",
+                  "if (body.key_id) {",
+                  "  pm.environment.set('api_key_id', body.key_id);",
+                  "  pm.collectionVariables.set('api_key_id', body.key_id);",
+                  "}",
+                  "if (body.secret) {",
+                  "  pm.environment.set('api_key_secret', body.secret);",
+                  "  pm.collectionVariables.set('api_key_secret', body.secret);",
+                  "}",
+                  "if (body.id) {",
+                  "  pm.environment.set('api_key_record_id', body.id);",
+                  "  pm.collectionVariables.set('api_key_record_id', body.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }]
+            },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman\",\n  \"scope\": \"ai.read\"\n}"
+            },
+            "url": "{{base_url}}/users/me/api-keys",
+            "description": "Creates a key. Secret is returned once and saved to env."
+          },
+          "response": []
+        },
+        {
+          "name": "Exchange API Key",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code !== 200) return;",
+                  "const body = pm.response.json();",
+                  "if (body.access_token) {",
+                  "  pm.environment.set('access_token', body.access_token);",
+                  "  pm.collectionVariables.set('access_token', body.access_token);",
+                  "}",
+                  "if (body.refresh_token) {",
+                  "  pm.environment.set('refresh_token', body.refresh_token);",
+                  "  pm.collectionVariables.set('refresh_token', body.refresh_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key_id\": \"{{api_key_id}}\",\n  \"secret\": \"{{api_key_secret}}\"\n}"
+            },
+            "url": "{{base_url}}/auth/api-key",
+            "description": "Exchanges key_id+secret for a user JWT. Use that JWT as Bearer for /ai and /mcp."
+          },
+          "response": []
+        },
+        {
+          "name": "Revoke API Key",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": "{{base_url}}/users/me/api-keys/{{api_key_record_id}}",
+            "description": "Revokes the key by record UUID. Exchange should then return 401."
           },
           "response": []
         }

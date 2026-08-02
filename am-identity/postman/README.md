@@ -61,6 +61,15 @@ Service listens on **http://localhost:8113**.
 1. `99 Keycloak Helpers` → Client Credentials (am-identity-service)
 2. `05 Internal` → Issue Service Token / Get Internal User
 
+### API Keys (Call Asrax / MCP JWT)
+
+1. Login so `access_token` is set (`02 Auth — Login & Session`)
+2. `06 API Keys` → Create API Key (saves `api_key_id`, `api_key_secret`, `api_key_record_id`)
+3. `06 API Keys` → Exchange API Key (saves user JWT into `access_token`)
+4. Use that JWT as `Authorization: Bearer` for fin-agent `/ai/...` or Java MCP `/mcp`
+
+Dev host example: set `base_url` to `https://am-dev.asrax.in/identity`.
+
 ## Auto-saved variables
 
 After login/refresh/Google callback, the collection test script sets:
