@@ -32,6 +32,8 @@ class IdentitySettings(BaseSettings):
     service_token_ttl: int = Field(default=300, alias="SERVICE_TOKEN_TTL")
 
     verify_ssl: bool = Field(default=True, alias="IDENTITY_VERIFY_SSL")
+    database_url: str = Field(default="", alias="DATABASE_URL")
+    database_pool_size: int = Field(default=5, alias="DATABASE_POOL_SIZE")
 
     # Branded auth mail / UI links — set per env in Vault (AUTH_UI_BASE_URL). No code default.
     auth_ui_base_url: str = Field(..., alias="AUTH_UI_BASE_URL")

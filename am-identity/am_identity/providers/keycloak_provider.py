@@ -239,6 +239,9 @@ class KeycloakIdentityProvider(IIdentityProvider):
             }
         )
 
+    async def issue_tokens_for_user(self, user_id: str) -> dict[str, Any]:
+        return await self._issue_tokens_for_user(user_id)
+
     async def _request_token(self, data: dict[str, str]) -> dict[str, Any]:
         async with httpx.AsyncClient(
             timeout=self._session_timeout, verify=self.settings.verify_ssl

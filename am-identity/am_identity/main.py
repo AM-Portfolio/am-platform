@@ -9,10 +9,12 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from am_identity.api.admin_router import router as admin_router
+from am_identity.api.api_key_router import router as api_key_router
 from am_identity.api.auth_router import router as auth_router
 from am_identity.api.internal_router import router as internal_router
 from am_identity.api.user_router import router as user_router
 from am_identity.core.config import get_settings
+from am_identity.core.database import close_database, initialize_database
 from am_platform_common import LoggingMiddleware, setup_logging
 
 # Load local .env into os.environ for background tasks
@@ -45,10 +47,14 @@ async def run_purge_scheduler():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await initialize_database(settings)
     if settings.app_env.lower() in ("dev", "local"):
         print("[BACKGROUND SCHEDULER] Starting dev/local background purge scheduler...")
         asyncio.create_task(run_purge_scheduler())
-    yield
+    try:
+        yield
+    finally:
+        await close_database()
 
 app = FastAPI(
     title="AM Identity Service",
@@ -84,6 +90,7 @@ async def health() -> dict[str, str]:
 
 app.include_router(auth_router)
 app.include_router(user_router)
+app.include_router(api_key_router)
 app.include_router(admin_router)
 app.include_router(internal_router)
 

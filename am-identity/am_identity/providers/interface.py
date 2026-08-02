@@ -59,6 +59,11 @@ class IIdentityProvider(ABC):
     async def authenticate_google_token(self, id_token: str) -> dict[str, Any]:
         raise NotImplementedError
 
+    @abstractmethod
+    async def issue_tokens_for_user(self, user_id: str) -> dict[str, Any]:
+        """Issue an OIDC session for an already authenticated Keycloak user."""
+        raise NotImplementedError
+
     # ── Admin / email helpers ───────────────────────────────────────────────
 
     @abstractmethod
