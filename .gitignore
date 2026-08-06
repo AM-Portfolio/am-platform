@@ -6,6 +6,8 @@
 .secrets.*.env
 secrets/
 **/.secrets/
+am-identity/scripts/.relay_*
+am-identity/scripts/.ngrok_*.log
 
 # Postman environments (contain credentials)
 postman/AM-Platform.dev.postman_environment.json

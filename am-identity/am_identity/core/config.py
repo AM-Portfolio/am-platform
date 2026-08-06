@@ -52,6 +52,8 @@ class IdentitySettings(BaseSettings):
     )
     smtp_ssl: bool = Field(default=True, alias="SMTP_SSL")
     smtp_starttls: bool = Field(default=False, alias="SMTP_STARTTLS")
+    smtp_http_relay_url: str = Field(default="", alias="SMTP_HTTP_RELAY_URL")
+    smtp_http_relay_token: str = Field(default="", alias="SMTP_HTTP_RELAY_TOKEN")
 
     kafka_enabled: bool = Field(default=False, alias="KAFKA_ENABLED")
     kafka_bootstrap_servers: str = Field(
@@ -106,6 +108,16 @@ class IdentitySettings(BaseSettings):
             "from_display_name": display or "Asrax Accounts",
             "ssl": ssl_raw.lower() in ("1", "true", "yes"),
             "starttls": starttls_raw.lower() in ("1", "true", "yes"),
+            "http_relay_url": pick(
+                "SMTP_HTTP_RELAY_URL",
+                "SMTP_HTTP_RELAY_URL",
+                self.smtp_http_relay_url,
+            ),
+            "http_relay_token": pick(
+                "SMTP_HTTP_RELAY_TOKEN",
+                "SMTP_HTTP_RELAY_TOKEN",
+                self.smtp_http_relay_token,
+            ),
         }
 
 
