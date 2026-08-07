@@ -1,4 +1,4 @@
-# Production Environment — am-subscription
+# Production Environment â€” am-subscription
 environment: prod
 replicaCount: 1
 
@@ -37,7 +37,7 @@ ingress:
   annotations:
     kubernetes.io/ingress.class: "traefik"
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-    # CORS only — service routes already include /subscriptions (do not strip).
+    # CORS only â€” service routes already include /subscriptions (do not strip).
     traefik.ingress.kubernetes.io/router.middlewares: >-
       am-apps-prod-global-cors@kubernetescrd
   hosts:
@@ -47,3 +47,7 @@ ingress:
           pathType: Prefix
         - path: /webhooks/provider
           pathType: Prefix
+
+global:
+  image:
+    tag: "30103761501"

@@ -1,4 +1,4 @@
-# Production Environment — am-identity
+# Production Environment â€” am-identity
 environment: prod
 replicaCount: 2
 
@@ -38,3 +38,7 @@ ingress:
       paths:
         - path: /identity
           pathType: Prefix
+
+global:
+  image:
+    tag: "30103761906"

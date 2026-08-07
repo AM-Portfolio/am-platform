@@ -1,0 +1,21 @@
+apiVersion: am.argocd/v1
+kind: ServiceDeploy
+service: am-notification
+enabled: true
+owners: platform
+source:
+  repo: am-platform
+  path: am-notification/argocd.yaml
+chart:
+  repoURL: https://github.com/AM-Portfolio/am-pipelines.git
+  path: helm/universal-chart
+  targetRevision: main
+helm:
+  releaseName: am-notification
+  valuesPath: am-notification/helm
+valuesRepoURL: https://github.com/AM-Portfolio/am-platform.git
+valuesTargetRevision: main
+envs:
+  prod:
+    enabled: true
+    namespace: am-apps-prod
