@@ -1,4 +1,4 @@
-# Production Environment — am-notification
+# Production Environment â€” am-notification
 environment: prod
 replicaCount: 1
 
@@ -39,7 +39,7 @@ ingress:
   annotations:
     kubernetes.io/ingress.class: "traefik"
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-    # CORS only — service routes already include /notifications (do not strip).
+    # CORS only â€” service routes already include /notifications (do not strip).
     traefik.ingress.kubernetes.io/router.middlewares: >-
       am-apps-prod-global-cors@kubernetescrd
   hosts:
@@ -49,3 +49,7 @@ ingress:
           pathType: Prefix
         - path: /webhooks/novu
           pathType: Prefix
+
+global:
+  image:
+    tag: "29410929898"

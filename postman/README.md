@@ -2,24 +2,49 @@
 
 Unified API tests for all thin-layer services in one collection.
 
-## Import
+## Prefer these environments (Asrax workspace)
+
+Use the shared ecosystem envs (created from `am_environment.defaults.json`):
+
+| Environment | Host |
+|-------------|------|
+| **AM — Local** | localhost per-service ports |
+| **AM — Dev** | `https://am-dev.asrax.in` |
+| **AM — Preprod** | `https://am-preprod.asrax.in` |
+| **AM — Prod** | `https://am.asrax.in` |
+
+Generate locally:
+
+```bash
+python postman/build_am_envs.py
+```
+
+Sync envs / normalize collections (Postman API key in `~/.am/credentials.env`):
+
+```bash
+python postman/sync_am_postman.py --envs-only
+python postman/normalize_collections.py
+```
+
+Legacy `AM Platform — *` and other older environments are kept; prefer **AM — *** day to day.
+
+## Import (platform collection)
 
 1. Postman → **Import**
 2. Select:
    - `AM-Platform.postman_collection.json`
-   - `AM-Platform.local.postman_environment.json` (local dev)
-   - `AM-Platform.preprod.postman_environment.json` (preprod gateway)
-3. Activate the environment that matches where services run
+   - `AM.local|dev|preprod|prod.postman_environment.json` (or use cloud **AM — ***)
+3. Activate the matching environment
 4. Paste secrets from `.secrets.env` (see table below)
 
-## Environments
+## Environments (platform module files)
 
 | File | When to use | Service base URLs |
 |------|-------------|-------------------|
-| **AM Platform — Local** | `npm run platform:dev` | `localhost:8113` / `8110` / `8111` |
-| **AM Platform — Preprod** | Deployed behind gateway | `https://am-dev.asrax.in/api` (all modules) |
+| **AM — Local** / Platform Local | `npm run platform:dev` | `localhost:8113` / `8110` / `8111` |
+| **AM — Dev/Preprod/Prod** | Gateway | `/identity`, `/subscriptions`, `/notifications` on the stage host |
 
-Preprod assumes Traefik routes `/api/auth/*`, `/api/subscriptions/*`, `/api/notifications/*` to platform pods. Adjust `environment.defaults.json` if your gateway paths differ.
+Adjust `am_environment.defaults.json` (shared) or `environment.defaults.json` (platform-only rebuild) if gateway paths differ.
 
 ## Auto-capture scripts
 
@@ -79,13 +104,19 @@ npm run platform:dev
 
 ## Regenerate
 
-After editing module collections or scripts:
+Shared AM envs:
+
+```bash
+python postman/build_am_envs.py
+```
+
+Platform collection (Identity/Subscription/Notification merge):
 
 ```bash
 python postman/build_platform_postman.py
 ```
 
-Edits to `environment.defaults.json` or `postman/scripts/*.js` are picked up on rebuild.
+Edits to `am_environment.defaults.json` / `environment.defaults.json` or `postman/scripts/*.js` are picked up on rebuild.
 
 ## Per-service collections (unchanged)
 
