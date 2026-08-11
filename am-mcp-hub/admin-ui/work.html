@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>AM Hub · Role activity</title>
+<link rel="stylesheet" href="/admin/assets/shell.css"/>
+<style>
+body { margin: 0; }
+.page { max-width: 1100px; margin: 0 auto; padding: 16px 20px 40px; }
+h1 { font-size: 22px; margin: 0 0 4px; }
+.sub { color: var(--muted); font-size: 13px; margin: 0 0 16px; }
+.grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;
+  margin-bottom: 16px;
+}
+.card {
+  border: 1px solid var(--line); border-radius: 12px; background: #fff; padding: 14px;
+}
+.card h2 { font-size: 13px; margin: 0 0 8px; color: var(--muted); font-weight: 650; text-transform: uppercase; letter-spacing: .02em; }
+.card .big { font-size: 28px; font-weight: 700; margin: 0 0 4px; }
+.card .hint { font-size: 12px; color: var(--muted); }
+.role {
+  cursor: pointer; border: 2px solid var(--line); transition: border-color .15s, box-shadow .15s;
+}
+.role:hover { border-color: var(--accent); }
+.role.active { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.role .name { font-size: 16px; font-weight: 700; margin: 0 0 4px; }
+.row { display: flex; justify-content: space-between; gap: 8px; font-size: 13px; padding: 4px 0; border-bottom: 1px solid #f4f4f5; }
+.row:last-child { border-bottom: 0; }
+.bar-wrap { background: #f4f4f5; border-radius: 6px; height: 8px; overflow: hidden; margin-top: 4px; }
+.bar { height: 100%; background: var(--accent); border-radius: 6px; }
+.pill {
+  display: inline-block; padding: 3px 8px; border-radius: 999px;
+  background: var(--accent-soft); font-size: 11px; margin: 0 4px 4px 0;
+}
+.list a {
+  display: block; text-decoration: none; color: inherit;
+  padding: 8px 0; border-bottom: 1px solid #f4f4f5; font-size: 13px;
+}
+.list a:hover { color: var(--accent); }
+.meta { color: var(--muted); font-size: 11px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.toolbar .btn, .toolbar a.btn {
+  border: 1px solid var(--line); background: #fff; border-radius: 8px;
+  padding: 6px 12px; font: inherit; font-size: 12px; text-decoration: none; color: inherit;
+}
+.err { color: var(--danger); padding: 12px; }
+.split2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 800px) { .split2 { grid-template-columns: 1fr; } }
+.detail-title { font-size: 18px; font-weight: 700; margin: 0 0 4px; }
+</style>
+</head>
+<body>
+<div class="hub-page">
+  <div class="page">
+    <h1>Role activity</h1>
+    <p class="sub">Org roles (Developer, QA, Management, HR): tasks from chats, tools executed, agents bound to each role.</p>
+    <div class="toolbar">
+      <button type="button" class="btn" id="reload">Reload</button>
+      <a class="btn" href="/agents/">Agents</a>
+      <a class="btn" href="/history/">Chat history</a>
+      <a class="btn" href="/tools/">Tools playground</a>
+    </div>
+    <div id="err" class="err" hidden></div>
+    <div id="most" class="grid"></div>
+    <h2 style="font-size:14px;margin:8px 0 10px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">Org profiles</h2>
+    <div id="roles" class="grid"></div>
+    <div id="detail" hidden>
+      <div class="card" style="margin-bottom:12px">
+        <div class="detail-title" id="dTitle"></div>
+        <div class="hint" id="dDesc"></div>
+        <div style="margin-top:8px" id="dTools"></div>
+      </div>
+      <div class="split2">
+        <div class="card">
+          <h2>Tools executed</h2>
+          <div class="hint" style="margin-bottom:8px">Hub audit · count of calls matching this role’s tools</div>
+          <div id="dExec"></div>
+        </div>
+        <div class="card">
+          <h2>Tasks from queries</h2>
+          <div class="hint" style="margin-bottom:8px">Local chats matching role keywords</div>
+          <div id="dTasks" class="list"></div>
+        </div>
+      </div>
+      <div class="split2" style="margin-top:12px">
+        <div class="card">
+          <h2>Agents on this profile</h2>
+          <div id="dAgents"></div>
+        </div>
+        <div class="card">
+          <h2>Recent matching tool calls</h2>
+          <div id="dRecent" class="list"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:16px">
+      <h2>All hub tool calls (cross-role)</h2>
+      <div id="topTools"></div>
+    </div>
+  </div>
+</div>
+<script src="/admin/assets/shell.js"></script>
+<script>
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function barRows(items, max) {
+  const m = max || Math.max(1, ...items.map(i => i.count || 0));
+  return items.map(i => {
+    const pct = Math.max(4, Math.round(100 * (i.count || 0) / m));
+    return `<div class="row"><span>${esc(i.label || i.name || i.id)}</span><strong>${esc(i.count)}</strong></div>
+      <div class="bar-wrap"><div class="bar" style="width:${pct}%"></div></div>`;
+  }).join('') || '<div class="hint">No executions yet for this role</div>';
+}
+
+let data = null;
+let selectedId = null;
+
+function selectRole(id) {
+  selectedId = id;
+  const roles = data?.org_profiles || [];
+  const p = roles.find(r => r.id === id) || roles[0];
+  if (!p) {
+    document.getElementById('detail').hidden = true;
+    return;
+  }
+  document.querySelectorAll('.role').forEach(el => {
+    el.classList.toggle('active', el.dataset.id === p.id);
+  });
+  document.getElementById('detail').hidden = false;
+  document.getElementById('dTitle').textContent = p.label + ' · activity';
+  document.getElementById('dDesc').textContent = p.description || '';
+  document.getElementById('dTools').innerHTML =
+    `<span class="meta">Allowed tools · </span>` +
+    (p.tools || []).map(t => `<span class="pill">${esc(t)}</span>`).join('') +
+    `<div class="hint" style="margin-top:6px">${esc(p.tool_call_total || 0)} matching calls · ${esc(p.task_count || 0)} query tasks · ${esc((p.agents||[]).length)} agents</div>`;
+
+  document.getElementById('dExec').innerHTML = barRows(p.tool_executions || []);
+  document.getElementById('dTasks').innerHTML = (p.tasks_from_queries || []).map(t => `
+    <a href="/history/?q=${encodeURIComponent(t.title || '')}">
+      <div>${esc(t.title)}</div>
+      <div class="meta">${esc(t.source || '')} · ${esc(t.updated_at || '')}</div>
+    </a>`).join('') || '<div class="hint">No matching chats yet. Ask in Cursor/Claude with this role’s topics.</div>';
+
+  document.getElementById('dAgents').innerHTML = (p.agents || []).map(a => `
+    <div class="row">
+      <span><strong>${esc(a.name)}</strong></span>
+      <span class="meta">${esc(a.skills_count)} skills · ${esc(a.tools_count)} MCP</span>
+    </div>`).join('') || '<div class="hint">No agents bound. Set profile under Agents.</div>';
+
+  document.getElementById('dRecent').innerHTML = (p.recent_tool_calls || []).map(e => `
+    <div class="row">
+      <span>${esc(e.tool_name || '—')}${e.integration_slug ? ' · ' + esc(e.integration_slug) : ''}</span>
+      <span class="meta">${e.ok ? 'ok' : 'fail'} · ${esc((e.created_at || '').replace('T', ' ').slice(0, 19))}</span>
+    </div>`).join('') || '<div class="hint">No recent matching calls</div>';
+}
+
+async function load() {
+  const err = document.getElementById('err');
+  err.hidden = true;
+  try {
+    const res = await fetch('/api/v1/work-summary');
+    if (!res.ok) throw new Error('work-summary HTTP ' + res.status);
+    data = await res.json();
+
+    document.getElementById('most').innerHTML = (data.most_work || []).map(m => `
+      <div class="card${m.profile_id ? ' role' : ''}" ${m.profile_id ? `data-id="${esc(m.profile_id)}" onclick="selectRole('${esc(m.profile_id)}')"` : ''}>
+        <h2>${esc(m.kind)}</h2>
+        <div class="big">${esc(m.count)}</div>
+        <div>${esc(m.label)}</div>
+        <div class="hint">${esc(m.hint || '')}</div>
+      </div>`).join('') || '<div class="card hint">No activity yet</div>';
+
+    const roles = data.org_profiles || [];
+    document.getElementById('roles').innerHTML = roles.map(p => `
+      <div class="card role" data-id="${esc(p.id)}" onclick="selectRole('${esc(p.id)}')">
+        <div class="name">${esc(p.label)}</div>
+        <div class="big">${esc(p.tool_call_total || 0)}</div>
+        <div class="hint">tool calls</div>
+        <div class="meta" style="margin-top:6px">${esc(p.task_count || 0)} tasks · ${esc((p.agents||[]).length)} agents</div>
+      </div>`).join('') || '<div class="card hint">No org profiles seeded</div>';
+
+    const tools = (data.audit?.top_tools || []).map(t => ({ name: t.name, count: t.count }));
+    document.getElementById('topTools').innerHTML =
+      `<div class="hint" style="margin-bottom:8px">${esc(data.audit?.total_calls || 0)} total hub calls</div>` +
+      barRows(tools);
+
+    const pick = selectedId && roles.some(r => r.id === selectedId)
+      ? selectedId
+      : (roles[0] && roles[0].id);
+    if (pick) selectRole(pick);
+  } catch (e) {
+    err.hidden = false;
+    err.textContent = String(e.message || e);
+  }
+}
+
+document.getElementById('reload').addEventListener('click', load);
+load();
+</script>
+</body>
+</html>

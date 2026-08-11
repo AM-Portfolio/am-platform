@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>AM MCP Hub Admin</title>
+  <link rel="stylesheet" href="/admin/assets/shell.css"/>
+  <style>
+    .tabs { display:flex; gap:0.35rem; flex-wrap:wrap; margin:0 0 1rem; }
+    .tabs button { opacity:0.75; }
+    .tabs button.active { opacity:1; background:var(--accent); border-color:var(--accent); color:#fff; }
+    .card {
+      background:#fff; border:1px solid var(--line); border-radius:10px;
+      padding:0.9rem 1rem; margin:0.6rem 0;
+    }
+    .row { display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; margin-top:0.5rem; }
+    .meta { color:var(--muted); font-size:0.85rem; }
+    .badge {
+      display:inline-block; padding:0.1rem 0.45rem; border-radius:999px;
+      font-size:0.72rem; background:#f4f4f5; color:var(--muted); border:1px solid var(--line);
+    }
+    .badge.on { background:#f0fdf4; color:var(--ok); border-color:#bbf7d0; }
+    .banner {
+      background:#f0fdf4; border:1px solid #bbf7d0; color:#166534;
+      padding:0.65rem 0.85rem; border-radius:10px; margin-bottom:0.85rem; font-size:0.9rem;
+    }
+    label { font-size:0.8rem; color:var(--muted); }
+    .hidden { display:none; }
+    .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; }
+    @media (max-width:800px) { .grid2 { grid-template-columns:1fr; } }
+    textarea { width:100%; min-height:220px; font-family:Consolas,"Cascadia Mono",monospace; font-size:0.85rem; }
+  </style>
+</head>
+<body>
+<div class="hub-page">
+  <header class="hub-page-head">
+    <h1>Integrations &amp; credentials</h1>
+    <p class="subhead">Local credential files on this machine only. Deleting the Docker app does not delete host credential folders.</p>
+    <div class="hub-toolbar">
+      <span class="pill on">local credentials only</span>
+      <input id="token" type="text" placeholder="Bearer (empty if HUB_DEV_BYPASS_AUTH=1)" style="flex:1;min-width:200px"/>
+      <a class="btn" href="/">Home</a>
+      <a class="btn" href="/tools/">Tools</a>
+      <a class="btn" id="inspectorLink" href="http://127.0.0.1:6274/" target="_blank" rel="noopener">Inspector</a>
+    </div>
+  </header>
+  <div class="hub-page-body">
+    <div class="banner">
+      Credentials stay on <strong>this machine</strong> (host folder bind-mount). Hub never uploads them.
+    </div>
+    <div class="tabs">
+      <button class="btn active" data-tab="onboard" type="button">Onboard</button>
+      <button class="btn" data-tab="creds" type="button">Credentials</button>
+      <button class="btn" data-tab="integrations" type="button">Integrations</button>
+    </div>
+    <section id="tab-onboard"></section>
+    <section id="tab-creds" class="hidden"></section>
+    <section id="tab-integrations" class="hidden"></section>
+  </div>
+  <footer class="hub-page-foot">Host credentials folder only. Nothing leaves this laptop.</footer>
+</div>
+<script>
+const tokenEl = document.getElementById('token');
+function headers() {
+  const h = { 'Accept': 'application/json', 'Content-Type': 'application/json' };
+  const t = tokenEl.value.trim();
+  if (t) h['Authorization'] = t.toLowerCase().startsWith('bearer ') ? t : `Bearer ${t}`;
+  return h;
+}
+async function api(path, opts={}) {
+  const r = await fetch(path, { ...opts, headers: { ...headers(), ...(opts.headers||{}) } });
+  const text = await r.text();
+  let body; try { body = JSON.parse(text); } catch { body = text; }
+  if (!r.ok) throw new Error(typeof body === 'object' ? (body.detail || JSON.stringify(body)) : text);
+  return body;
+}
+function showTab(name) {
+  document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('active', b.dataset.tab === name));
+  ['onboard','creds','integrations'].forEach(t => {
+    document.getElementById('tab-'+t).classList.toggle('hidden', t !== name);
+  });
+}
+document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => showTab(b.dataset.tab)));
+
+async function loadOnboard() {
+  const el = document.getElementById('tab-onboard');
+  el.innerHTML = '<p class="meta">Loading…</p>';
+  const data = await api('/api/v1/local-creds/onboard');
+  el.innerHTML = `
+    <p class="meta">Apply a sample → fill values → enable integration → open <a href="/tools/">Tools</a>. All files stay under the host credentials folder.</p>
+    ${data.items.map(item => `
+      <div class="card" data-slug="${item.slug}">
+        <div><strong>${item.title}</strong> <span class="badge">${item.slug}</span></div>
+        <ol class="meta">${item.steps.map(s => `<li>${s}</li>`).join('')}</ol>
+        <div class="row">
+          <button class="btn primary apply" data-sample="${item.sample}" type="button">Apply sample ${item.sample}</button>
+          <button class="btn enable" data-slug="${item.slug}" type="button">Enable integration</button>
+        </div>
+      </div>`).join('')}
+    <div class="row">
+      <a class="btn primary" href="/tools/">Open Tools (auto-list)</a>
+      <a class="btn" id="openInsp2" href="http://127.0.0.1:6274/" target="_blank" rel="noopener">Inspector (manual Connect)</a>
+    </div>
+  `;
+  el.querySelectorAll('.apply').forEach(btn => btn.addEventListener('click', async () => {
+    try {
+      const res = await api('/api/v1/local-creds/samples/apply', { method:'POST', body: JSON.stringify({ sample_id: btn.dataset.sample, overwrite: false }) });
+      alert(res.status === 'exists' ? `Already exists at ${res.target}. Open Credentials tab to edit, or apply with overwrite.` : `Wrote ${res.target}`);
+      await loadCreds();
+    } catch (e) { alert(e.message); }
+  }));
+  el.querySelectorAll('.enable').forEach(btn => btn.addEventListener('click', async () => {
+    const slug = btn.dataset.slug;
+    if (['asrax','observability','infra'].includes(slug)) {
+      alert('This sample only fills local credential files. Enable related integrations (github/vault/…) separately.');
+      return;
+    }
+    try {
+      await api('/api/v1/integrations/' + slug, { method:'PATCH', body: JSON.stringify({ enabled: true }) });
+      alert('Enabled ' + slug);
+      await loadIntegrations();
+    } catch (e) { alert(e.message); }
+  }));
+}
+
+let editingPath = 'credentials.env';
+async function loadCreds() {
+  const el = document.getElementById('tab-creds');
+  const st = await api('/api/v1/local-creds/status');
+  const samples = st.samples || [];
+  el.innerHTML = `
+    <div class="card">
+      <div class="meta">Store root: <code>${st.root}</code></div>
+      <div class="meta">${st.persist_note}</div>
+      <div class="row">
+        <button class="btn primary" id="reloadEnv" type="button">Auto-load into hub process</button>
+        <span class="badge">keys loaded: ${st.environ_keys_loaded}</span>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <strong>Your credential files</strong>
+        <div id="fileList"></div>
+      </div>
+      <div class="card">
+        <strong>Samples (fill locally)</strong>
+        <div id="sampleList"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="row">
+        <label>Editing <code id="editPath">${editingPath}</code></label>
+        <button class="btn primary" id="saveFile" type="button">Save (local disk)</button>
+      </div>
+      <textarea id="editor" spellcheck="false"></textarea>
+    </div>
+    <div class="card">
+      <strong>Upload secret file</strong>
+      <p class="meta">e.g. Google OAuth client JSON → stored under <code>secrets/</code> on the host only.</p>
+      <input type="file" id="secretFile"/>
+      <button class="btn" id="uploadSecret" type="button">Upload to local secrets/</button>
+    </div>
+  `;
+  const fileList = el.querySelector('#fileList');
+  fileList.innerHTML = (st.files||[]).map(f => `
+    <div class="row">
+      <button class="btn openf" data-path="${f.path}" type="button">${f.name}</button>
+      <span class="badge ${f.keys_set?'on':''}">${f.exists?`${f.keys_set}/${f.keys_total||'?'} keys`:'missing'}</span>
+    </div>`).join('') || '<p class="meta">No files yet — apply a sample.</p>';
+  const sampleList = el.querySelector('#sampleList');
+  sampleList.innerHTML = samples.map(s => `
+    <div class="row">
+      <button class="btn opens" data-id="${s.id}" type="button">${s.title}</button>
+      <button class="btn applys" data-id="${s.id}" type="button">Apply → ${s.target}</button>
+    </div>`).join('');
+
+  async function openPath(p) {
+    editingPath = p;
+    el.querySelector('#editPath').textContent = p;
+    const body = await api('/api/v1/local-creds/files/' + encodeURI(p));
+    el.querySelector('#editor').value = body.content || '';
+  }
+  fileList.querySelectorAll('.openf').forEach(b => b.addEventListener('click', () => openPath(b.dataset.path)));
+  sampleList.querySelectorAll('.opens').forEach(b => b.addEventListener('click', async () => {
+    const body = await api('/api/v1/local-creds/samples/' + encodeURI(b.dataset.id));
+    el.querySelector('#editor').value = body.content || '';
+    el.querySelector('#editPath').textContent = '(sample preview — Save writes to target path)';
+    editingPath = samples.find(s => s.id === b.dataset.id)?.target || editingPath;
+  }));
+  sampleList.querySelectorAll('.applys').forEach(b => b.addEventListener('click', async () => {
+    const res = await api('/api/v1/local-creds/samples/apply', { method:'POST', body: JSON.stringify({ sample_id: b.dataset.id, overwrite: false }) });
+    alert(JSON.stringify(res));
+    await loadCreds();
+  }));
+  el.querySelector('#saveFile').addEventListener('click', async () => {
+    await api('/api/v1/local-creds/files', { method:'PUT', body: JSON.stringify({ path: editingPath, content: el.querySelector('#editor').value }) });
+    alert('Saved locally: ' + editingPath);
+    await loadCreds();
+  });
+  el.querySelector('#reloadEnv').addEventListener('click', async () => {
+    const r = await api('/api/v1/local-creds/reload', { method:'POST', body:'{}' });
+    alert('Reloaded ' + r.keys_loaded + ' keys into hub process');
+    await loadCreds();
+  });
+  el.querySelector('#uploadSecret').addEventListener('click', async () => {
+    const f = el.querySelector('#secretFile').files[0];
+    if (!f) { alert('Choose a file'); return; }
+    const fd = new FormData();
+    fd.append('file', f);
+    const r = await fetch('/api/v1/local-creds/upload-secret', { method:'POST', headers: (() => { const h={}; const t=tokenEl.value.trim(); if(t) h['Authorization']=t.toLowerCase().startsWith('bearer ')?t:`Bearer ${t}`; return h; })(), body: fd });
+    const j = await r.json();
+    if (!r.ok) { alert(JSON.stringify(j)); return; }
+    alert('Stored locally at ' + j.path);
+  });
+  if ((st.files||[]).length) await openPath(st.files[0].path);
+}
+
+async function loadIntegrations() {
+  const el = document.getElementById('tab-integrations');
+  el.innerHTML = '<p class="meta">Loading…</p>';
+  const rows = await api('/api/v1/integrations');
+  el.innerHTML = rows.map(row => `
+    <div class="card" data-slug="${row.slug}">
+      <div><strong>${row.display_name}</strong>
+        <span class="badge ${row.enabled?'on':''}">${row.enabled?'enabled':'disabled'}</span>
+        <span class="badge">${row.adapter_type}</span></div>
+      <div class="meta">${row.description || ''}</div>
+      <div class="row">
+        <label>Vault path <input class="vault" value="${row.vault_path || ''}" style="min-width:260px" placeholder="optional Vault ref (not raw token)"/></label>
+        <label><input type="checkbox" class="en" ${row.enabled?'checked':''}/> Enabled</label>
+        <button class="btn save primary" type="button">Save</button>
+      </div>
+    </div>`).join('');
+  el.querySelectorAll('.save').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const card = btn.closest('.card');
+      const slug = card.dataset.slug;
+      await api(`/api/v1/integrations/${slug}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          enabled: card.querySelector('.en').checked,
+          vault_path: card.querySelector('.vault').value.trim() || null
+        })
+      });
+      await loadIntegrations();
+    });
+  });
+}
+
+async function boot() {
+  try {
+    const c = await api('/api/v1/ui-config');
+    if (c.inspector_url) {
+      document.getElementById('inspectorLink').href = c.inspector_url;
+      const o = document.getElementById('openInsp2');
+      if (o) o.href = c.inspector_url;
+    }
+  } catch (_) {}
+  await loadOnboard();
+  await loadCreds();
+  await loadIntegrations();
+  showTab('onboard');
+}
+boot().catch(e => alert(e.message));
+</script>
+<script src="/admin/assets/shell.js"></script>
+</body>
+</html>

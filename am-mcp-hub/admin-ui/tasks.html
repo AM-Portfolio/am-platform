@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>AM Hub · Tasks</title>
+<link rel="stylesheet" href="/admin/assets/shell.css"/>
+<style>
+body { margin: 0; }
+.page-wrap { display:flex; flex-direction:column; height:100%; min-height:0; flex:1; overflow:hidden; }
+.hub-page-head { flex:0 0 auto; padding:14px 20px 8px; }
+.hub-page-head h1 { font-size:20px; margin:0 0 2px; }
+.subhead { margin:0 0 8px; font-size:12px; color:var(--muted); }
+.hub-toolbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.hub-toolbar .btn, .actions button {
+  border:1px solid var(--line); background:#fff; border-radius:8px;
+  padding:6px 12px; font:inherit; font-size:12px; cursor:pointer;
+}
+.hub-toolbar .btn.primary, .actions button.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+.hub-split { flex:1; margin:0 12px 12px; display:flex; min-height:0; gap:0; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+.hub-list { width:280px; overflow:auto; background:#fafafa; border-right:1px solid var(--line); }
+.hub-list button { display:block; width:100%; text-align:left; border:0; border-bottom:1px solid var(--line); background:transparent; padding:10px 12px; cursor:pointer; font:inherit; }
+.hub-list button.active { background:var(--accent-soft); }
+.hub-list .title { font-size:12.5px; font-weight:600; }
+.hub-list .preview { font-size:11px; color:var(--muted); margin-top:2px; }
+.hub-detail { flex:1; overflow:auto; padding:14px 18px 28px; }
+.banner { margin:0 0 10px; padding:8px 10px; border-radius:8px; background:#dcfce7; color:#166534; font-size:12px; }
+.banner.err { background:#fee2e2; color:#991b1b; }
+.banner.warn { background:#fef3c7; color:#92400e; }
+.phases { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 12px; }
+.phase { padding:4px 10px; border-radius:999px; background:#f4f4f5; font-size:11px; }
+.phase.on { background:var(--accent-soft); color:#1d4ed8; font-weight:600; }
+.phase.done { background:#dcfce7; color:#166534; }
+.card { border:1px solid var(--line); border-radius:10px; padding:12px; margin:0 0 12px; background:#fafafa; }
+.card h3 { margin:0 0 8px; font-size:13px; }
+label { display:block; font-size:11px; color:var(--muted); margin:0 0 4px; }
+input.text, select.single, textarea {
+  width:100%; font:inherit; font-size:12px; border:1px solid var(--line); border-radius:8px; padding:6px 8px; background:#fff;
+}
+textarea { min-height:90px; font-family:Consolas,monospace; }
+.actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+.kv { font-size:12px; margin:4px 0; }
+.kv b { display:inline-block; min-width:110px; color:var(--muted); }
+.timeline { list-style:none; margin:0; padding:0; }
+.timeline li { border-left:2px solid var(--line); padding:0 0 12px 12px; margin:0 0 0 6px; font-size:12px; }
+.timeline .meta { color:var(--muted); font-size:11px; }
+.report { white-space:pre-wrap; font-family:Consolas,monospace; font-size:12px; background:#fff; border:1px solid var(--line); border-radius:8px; padding:10px; max-height:360px; overflow:auto; }
+.empty { color:var(--muted); padding:24px 8px; }
+.drawer { display:none; }
+.drawer.show { display:block; }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+  <header class="hub-page-head">
+    <h1>Tasks</h1>
+    <p class="subhead">Assign → analyze → IDE develop → review → test → report</p>
+    <div class="hub-toolbar">
+      <button type="button" class="btn primary" id="btnNew">New task</button>
+      <button type="button" class="btn" id="btnConns">Connections</button>
+      <button type="button" class="btn" id="btnReload">Reload</button>
+    </div>
+  </header>
+  <div class="hub-split">
+    <aside class="hub-list" id="list"></aside>
+    <section class="hub-detail" id="detail"><div class="empty">Select or create a task.</div></section>
+  </div>
+</div>
+<script src="/admin/assets/shell.js"></script>
+<script>
+const listEl = document.getElementById('list');
+const detailEl = document.getElementById('detail');
+let tasks = [];
+let connections = [];
+let activeId = null;
+let pollTimer = null;
+let creating = false;
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function api(path, opts) {
+  const res = await fetch(path, opts);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || data.code || ('HTTP ' + res.status));
+  return data;
+}
+
+function phaseClass(task, name) {
+  const cur = task.phase || 'idle';
+  const order = ['analyze','develop','review','test','report'];
+  const i = order.indexOf(name);
+  const j = order.indexOf(cur);
+  if (cur === name && task.status === 'running') return 'on';
+  if (j > i || task.status === 'done') return 'done';
+  return '';
+}
+
+function renderList() {
+  listEl.innerHTML = tasks.map(t => `
+    <button class="${t.id===activeId?'active':''}" data-id="${esc(t.id)}">
+      <div class="title">${esc(t.title)}</div>
+      <div class="preview">${esc(t.status)} · ${esc(t.phase)} · ${esc(t.assignee_id)}</div>
+    </button>`).join('') || '<div class="empty">No tasks yet.</div>';
+  listEl.querySelectorAll('button[data-id]').forEach(b => b.addEventListener('click', () => openTask(b.dataset.id)));
+}
+
+function showCreate() {
+  creating = true;
+  activeId = null;
+  renderList();
+  const connOpts = connections.map(c => `<option value="${esc(c.id)}">${esc(c.label||c.id)} (${esc(c.kind)})</option>`).join('');
+  detailEl.innerHTML = `
+    <div class="card">
+      <h3>New task</h3>
+      <label>Title</label><input class="text" id="title" placeholder="What should be done?"/>
+      <label style="margin-top:8px">Body</label><textarea id="body" placeholder="Acceptance criteria, paths, notes"></textarea>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+        <div><label>Assignee type</label>
+          <select class="single" id="atype"><option value="role">role</option><option value="agent">agent</option></select></div>
+        <div><label>Assignee id</label>
+          <input class="text" id="aid" value="developer" placeholder="developer | reviewer"/></div>
+      </div>
+      <label style="margin-top:8px">Connection</label>
+      <select class="single" id="conn">${connOpts}</select>
+      <div class="actions">
+        <button type="button" class="primary" id="btnCreate">Create</button>
+        <button type="button" id="btnCreateRun">Create & Assign & Run</button>
+      </div>
+    </div>`;
+  detailEl.querySelector('#btnCreate').onclick = () => createTask(false);
+  detailEl.querySelector('#btnCreateRun').onclick = () => createTask(true);
+}
+
+async function createTask(run) {
+  const title = detailEl.querySelector('#title').value.trim();
+  const body = detailEl.querySelector('#body').value;
+  const assignee_type = detailEl.querySelector('#atype').value;
+  const assignee_id = detailEl.querySelector('#aid').value.trim();
+  const connection_id = detailEl.querySelector('#conn').value;
+  const task = await api('/api/v1/asrax/tasks', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ title, body, assignee_type, assignee_id, connection_id }),
+  });
+  creating = false;
+  await boot(false);
+  await openTask(task.id);
+  if (run) await assignAndRun();
+}
+
+function renderDetail(task) {
+  const phases = ['analyze','develop','review','test','report'];
+  const steps = (task.steps||[]).slice().reverse();
+  const prompt = `/task-run ${task.id}`;
+  detailEl.innerHTML = `
+    <div id="msg" class="banner" hidden></div>
+    <h2 style="margin:0 0 4px;font-size:18px">${esc(task.title)}</h2>
+    <div class="kv"><b>Id</b> ${esc(task.id)}</div>
+    <div class="kv"><b>Status</b> ${esc(task.status)} · <b>Phase</b> ${esc(task.phase)}</div>
+    <div class="kv"><b>Assignee</b> ${esc(task.assignee_type)} / ${esc(task.assignee_id)}</div>
+    <div class="kv"><b>Suggested</b> ${esc(task.suggested_agent||'—')} · ${esc(task.suggested_profile||'—')}</div>
+    <div class="phases">${phases.map(p => `<span class="phase ${phaseClass(task,p)}">${p}</span>`).join('')}</div>
+    ${task.awaiting_host ? `<div class="banner warn">Awaiting host runner: <code>${esc(task.host_command||'')}</code></div>` : ''}
+    <div class="actions">
+      <button type="button" class="primary" id="btnRun">Assign & Run</button>
+      <button type="button" id="btnAnalyze">Analyze only</button>
+      <button type="button" id="btnCopy">Copy IDE prompt</button>
+      <button type="button" id="btnReport">Refresh report</button>
+      <button type="button" id="btnCancel">Cancel</button>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <h3>Request</h3>
+      <pre style="white-space:pre-wrap;margin:0;font-size:12px">${esc(task.body||'')}</pre>
+      <h3 style="margin-top:10px">Analysis</h3>
+      <pre style="white-space:pre-wrap;margin:0;font-size:12px">${esc(task.analyze_rationale||'(pending)')}</pre>
+    </div>
+    <div class="card">
+      <h3>Timeline</h3>
+      <ul class="timeline">${steps.map(s => `
+        <li>
+          <div><strong>${esc(s.kind)}</strong> ${esc(s.title)} ${s.tool_name?`<code>${esc(s.tool_name)}</code>`:''}</div>
+          <div class="meta">${esc(s.phase||'')} · ${esc(s.at||'')} · ok=${esc(s.ok)}</div>
+          ${s.detail?`<div>${esc(String(s.detail).slice(0,400))}</div>`:''}
+        </li>`).join('') || '<li class="empty">No steps yet.</li>'}</ul>
+    </div>
+    <div class="card">
+      <h3>Report</h3>
+      <div class="report" id="reportBox">${esc((task.report&&task.report.markdown)||task.result_summary||'(run pipeline to generate)')}</div>
+    </div>
+    <p class="subhead">IDE prompt: <code>${esc(prompt)}</code></p>`;
+  detailEl.querySelector('#btnRun').onclick = assignAndRun;
+  detailEl.querySelector('#btnAnalyze').onclick = analyzeOnly;
+  detailEl.querySelector('#btnCopy').onclick = () => { navigator.clipboard.writeText(prompt); flash('Copied ' + prompt, ''); };
+  detailEl.querySelector('#btnReport').onclick = refreshReport;
+  detailEl.querySelector('#btnCancel').onclick = cancelTask;
+  schedulePoll(task);
+}
+
+function flash(text, cls) {
+  const el = detailEl.querySelector('#msg');
+  if (!el) return;
+  el.hidden = false;
+  el.className = 'banner ' + (cls||'');
+  el.textContent = text;
+}
+
+async function openTask(id) {
+  creating = false;
+  activeId = id;
+  renderList();
+  const task = await api('/api/v1/asrax/tasks/' + encodeURIComponent(id));
+  renderDetail(task);
+}
+
+function schedulePoll(task) {
+  if (pollTimer) clearInterval(pollTimer);
+  if (!task || !['queued','running'].includes(task.status)) return;
+  pollTimer = setInterval(async () => {
+    if (!activeId) return;
+    try {
+      const t = await api('/api/v1/asrax/tasks/' + encodeURIComponent(activeId));
+      const idx = tasks.findIndex(x => x.id === t.id);
+      if (idx >= 0) tasks[idx] = t; else tasks.unshift(t);
+      renderList();
+      if (activeId === t.id && !creating) renderDetail(t);
+      if (!['queued','running'].includes(t.status) && pollTimer) clearInterval(pollTimer);
+    } catch (_) {}
+  }, 2000);
+}
+
+async function assignAndRun() {
+  if (!activeId) return;
+  try {
+    const data = await api('/api/v1/asrax/tasks/' + encodeURIComponent(activeId) + '/assign-and-run', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ connection_id: '' }),
+    });
+    flash('Pipeline started', '');
+    await openTask(activeId);
+  } catch (e) { flash(String(e.message||e), 'err'); }
+}
+
+async function analyzeOnly() {
+  if (!activeId) return;
+  try {
+    await api('/api/v1/asrax/tasks/' + encodeURIComponent(activeId) + '/analyze', { method:'POST' });
+    await openTask(activeId);
+  } catch (e) { flash(String(e.message||e), 'err'); }
+}
+
+async function refreshReport() {
+  if (!activeId) return;
+  const data = await api('/api/v1/asrax/tasks/' + encodeURIComponent(activeId) + '/report');
+  await openTask(activeId);
+  flash('Report refreshed', '');
+}
+
+async function cancelTask() {
+  if (!activeId) return;
+  await api('/api/v1/asrax/tasks/' + encodeURIComponent(activeId) + '/cancel', { method:'POST' });
+  await openTask(activeId);
+}
+
+function showConnections() {
+  const rows = connections.map(c => `
+    <tr>
+      <td>${esc(c.id)}</td><td>${esc(c.kind)}</td><td>${esc(c.model||c.ide||'')}</td>
+      <td>${esc(c.cwd||c.base_url||'')}</td>
+      <td>${c.last_ok_at?'ok':'—'}</td>
+      <td><button type="button" data-test="${esc(c.id)}">Test</button></td>
+    </tr>`).join('');
+  detailEl.innerHTML = `
+    <div class="card">
+      <h3>Connections</h3>
+      <p class="subhead">Onboard Cursor with cwd + CURSOR_API_KEY for Assign &amp; Run. LLM connections assist analyze.</p>
+      <table style="width:100%;border-collapse:collapse;font-size:12px;background:#fff">
+        <thead><tr><th>Id</th><th>Kind</th><th>Model/IDE</th><th>cwd/url</th><th>Test</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <h3 style="margin-top:14px">Upsert Cursor connection</h3>
+      <label>cwd (workspace absolute path)</label>
+      <input class="text" id="cwd" placeholder="A:\\InfraCode\\AM-Portfolio-grp\\am-platform"/>
+      <label style="margin-top:8px">Model</label>
+      <input class="text" id="model" value="composer-2.5"/>
+      <div class="actions">
+        <button type="button" class="primary" id="btnSaveCursor">Save cursor-local</button>
+        <button type="button" id="btnBack">Back</button>
+      </div>
+    </div>`;
+  detailEl.querySelectorAll('[data-test]').forEach(b => b.onclick = async () => {
+    try {
+      const r = await api('/api/v1/asrax/connections/' + encodeURIComponent(b.dataset.test) + '/test', { method:'POST' });
+      alert(r.ok ? 'OK' : (r.error||'failed'));
+      await loadConnections();
+      showConnections();
+    } catch (e) { alert(e.message||e); }
+  });
+  detailEl.querySelector('#btnSaveCursor').onclick = async () => {
+    await api('/api/v1/asrax/connections', {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        id:'cursor-local', label:'Cursor (local)', kind:'ide', ide:'cursor',
+        cwd: detailEl.querySelector('#cwd').value.trim(),
+        model: detailEl.querySelector('#model').value.trim(),
+        auth_env:'CURSOR_API_KEY', mcp_url:'http://127.0.0.1:8130/mcp', make_default:true,
+      }),
+    });
+    await loadConnections();
+    showConnections();
+  };
+  detailEl.querySelector('#btnBack').onclick = () => activeId ? openTask(activeId) : showCreate();
+}
+
+async function loadConnections() {
+  const data = await api('/api/v1/asrax/connections');
+  connections = data.connections || [];
+}
+
+async function boot(openFirst) {
+  await loadConnections();
+  const data = await api('/api/v1/asrax/tasks');
+  tasks = data.tasks || [];
+  renderList();
+  if (openFirst && tasks[0]) openTask(tasks[0].id);
+}
+
+document.getElementById('btnNew').onclick = showCreate;
+document.getElementById('btnConns').onclick = showConnections;
+document.getElementById('btnReload').onclick = () => boot(false);
+boot(true);
+</script>
+</body>
+</html>

@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>AM MCP Hub · Home</title>
+  <link rel="stylesheet" href="/admin/assets/shell.css"/>
+  <style>
+    .home-tiles {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+      margin: 16px 0;
+    }
+    @media (max-width: 1100px) {
+      .home-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 640px) {
+      .home-tiles { grid-template-columns: 1fr; }
+    }
+    .home-tile {
+      display: block;
+      text-decoration: none;
+      color: inherit;
+      background: var(--panel, #fff);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 14px 16px;
+      transition: border-color .12s ease, box-shadow .12s ease;
+    }
+    .home-tile:hover {
+      border-color: #93c5fd;
+      box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
+    }
+    .home-tile .k {
+      font-size: 12px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-weight: 600;
+    }
+    .home-tile .v {
+      font-size: 28px;
+      font-weight: 700;
+      line-height: 1.15;
+      margin: 6px 0 4px;
+    }
+    .home-tile .s { font-size: 13px; color: var(--muted); }
+    .home-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 900px) {
+      .home-grid { grid-template-columns: 1fr; }
+    }
+    .mix-bar {
+      display: flex;
+      height: 12px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: #f1f5f9;
+      margin: 12px 0 10px;
+    }
+    .mix-bar span { display: block; height: 100%; min-width: 2px; }
+    .mix-legend { display: flex; flex-wrap: wrap; gap: 8px; }
+    .recent-list { list-style: none; margin: 0; padding: 0; }
+    .recent-list li { border-top: 1px solid var(--line); }
+    .recent-list li:first-child { border-top: 0; }
+    .recent-list a {
+      display: block;
+      padding: 10px 0;
+      text-decoration: none;
+      color: inherit;
+    }
+    .recent-list a:hover .rt { color: var(--accent); }
+    .recent-list .rt { font-weight: 600; }
+    .recent-list .rm { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .home-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .home-actions a.hub-chip { text-decoration: none; }
+    .home-muted { color: var(--muted); font-size: 13px; }
+    .home-err { color: #b91c1c; margin: 12px 0; }
+    dialog {
+      border: 1px solid var(--line); border-radius: 12px; background: #fff;
+      color: var(--text); padding: 1rem 1.1rem; max-width: 28rem; width: calc(100% - 2rem);
+    }
+    dialog::backdrop { background: rgba(0,0,0,0.35); }
+  </style>
+</head>
+<body>
+  <div class="hub-page">
+    <header class="hub-page-head">
+      <h1>Home</h1>
+      <p class="subhead">Laptop workspace summary. Counts stay on this machine; nothing is uploaded.</p>
+      <div class="hub-toolbar" id="statusStrip">
+        <span class="pill" id="hubPill">hub…</span>
+        <span class="pill" id="gwsPill">google…</span>
+        <span class="pill" id="inspectPill">inspect…</span>
+        <span class="pill" id="idePill">ide helper…</span>
+        <button class="btn" type="button" id="syncLocalBtn">Sync to…</button>
+      </div>
+      <p id="syncErr" style="min-height:1.1em;margin:0;font-size:0.85rem;color:var(--muted)"></p>
+    </header>
+
+    <div class="hub-page-body">
+      <p class="home-muted" id="loadState">Loading summary…</p>
+      <p class="home-err" id="err" hidden></p>
+
+      <div class="home-tiles" id="tiles" hidden></div>
+
+      <div class="home-grid" id="mainGrid" hidden>
+        <section class="hub-panel">
+          <div class="hub-row" style="border:0;padding-bottom:0">
+            <div>
+              <div class="label">Chat source mix</div>
+              <div class="desc" id="chatTotal">Conversations in local vault</div>
+            </div>
+            <div class="ctrl"><a class="btn" href="/history/">History</a></div>
+          </div>
+          <div class="mix-bar" id="mixBar" aria-hidden="true"></div>
+          <div class="mix-legend hub-chips" id="mixLegend"></div>
+        </section>
+
+        <section class="hub-panel">
+          <div class="hub-row" style="border:0;padding-bottom:0">
+            <div>
+              <div class="label">Marketplace</div>
+              <div class="desc" id="marketSnap">MCP health on this laptop</div>
+            </div>
+            <div class="ctrl"><a class="btn primary" href="/marketplace/">Open</a></div>
+          </div>
+          <p class="home-muted" id="marketHint" style="margin-top:12px"></p>
+        </section>
+      </div>
+
+      <section class="hub-panel" id="recentPanel" hidden>
+        <div class="hub-row" style="border:0;padding-bottom:0">
+          <div>
+            <div class="label">Recent chats</div>
+            <div class="desc">Latest from local chat-memory</div>
+          </div>
+          <div class="ctrl"><a class="btn" href="/history/">Open all</a></div>
+        </div>
+        <ul class="recent-list" id="recentList"></ul>
+      </section>
+
+      <div class="home-actions" id="quickActions" hidden></div>
+    </div>
+    <footer class="hub-page-foot">Laptop-local vault only. Skills, chat, and IDE configs stay on this machine.</footer>
+  </div>
+
+  <dialog id="syncLocalDialog">
+    <form method="dialog" id="syncLocalForm">
+      <h2 style="margin:0 0 0.35rem;font-size:1.05rem">Sync to local IDEs</h2>
+      <p style="margin:0 0 0.75rem;color:var(--muted);font-size:0.85rem;line-height:1.45">
+        Writes enabled MCPs into IDE / LLM MCP configs on this computer.
+      </p>
+      <div id="syncIdeList" style="display:flex;flex-direction:column;gap:0.45rem;margin:0.5rem 0 0.85rem"></div>
+      <label style="display:flex;align-items:center;gap:0.45rem;font-size:0.85rem;color:var(--muted);margin:0 0 0.75rem">
+        <input type="checkbox" id="syncForce"/> Overwrite existing managed entries
+      </label>
+      <p style="min-height:1.1em;margin:0 0 0.5rem;color:#b91c1c;font-size:0.85rem" id="syncDlgErr"></p>
+      <div style="display:flex;gap:0.5rem;justify-content:flex-end">
+        <button class="btn primary" value="sync" id="syncLocalConfirm" type="submit">Sync selected</button>
+        <button class="btn" value="cancel" type="submit">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="/admin/assets/shell.js"></script>
+  <script>
+  const COLORS = ['#2563eb','#059669','#d97706','#7c3aed','#db2777','#0891b2','#4b5563','#ea580c'];
+  let localIdeTargets = [];
+
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
+  }
+  function escapeAttr(s) {
+    return esc(s).replace(/'/g, '&#39;');
+  }
+
+  function setPill(el, label, ok) {
+    el.textContent = label;
+    el.classList.toggle('on', ok === true);
+    el.classList.toggle('warn', ok === null || ok === undefined);
+    el.classList.toggle('off', ok === false);
+  }
+
+  async function openSyncLocalDialog() {
+    const list = document.getElementById('syncIdeList');
+    const err = document.getElementById('syncDlgErr');
+    err.textContent = '';
+    let targets = localIdeTargets || [];
+    if (!targets.length) {
+      try {
+        const data = await (await fetch('/api/v1/marketplace')).json();
+        targets = data.local_ide_targets || [];
+        localIdeTargets = targets;
+        if (data.ide_sync_hint) err.textContent = data.ide_sync_hint;
+      } catch (e) {
+        err.textContent = String(e.message || e);
+      }
+    }
+    if (!targets.length) {
+      list.innerHTML =
+        '<p style="margin:0;color:var(--muted);font-size:0.85rem">No local IDE helper data. Start <code>am ai probe-server</code> on this computer, then reopen.</p>';
+    } else {
+      list.innerHTML = targets.map((t) => {
+        const id = escapeAttr(t.id || '');
+        const label = escapeAttr(t.label || t.id || '');
+        const path = escapeAttr(t.path || '');
+        const detected = !!t.detected;
+        const count = Number(t.server_count || 0);
+        const status = detected ? `${count} servers` : 'not detected on this PC';
+        return `
+          <label style="display:flex;gap:0.55rem;align-items:flex-start;padding:0.55rem 0.65rem;border:1px solid var(--line);border-radius:10px;background:#fafafa">
+            <input type="checkbox" name="ide" value="${id}" ${detected ? 'checked' : ''}/>
+            <span style="display:block;line-height:1.35">
+              <strong>${label}</strong>
+              <span style="display:block;color:var(--muted);font-size:0.75rem">${status}${path ? ' · ' + path : ''}</span>
+            </span>
+          </label>`;
+      }).join('');
+    }
+    document.getElementById('syncLocalDialog').showModal();
+  }
+
+  async function syncToLocalIdes(ev) {
+    const submitter = ev && ev.submitter;
+    if (submitter && submitter.value === 'cancel') return;
+    if (ev) ev.preventDefault();
+    const err = document.getElementById('syncDlgErr');
+    const pageErr = document.getElementById('syncErr');
+    const btn = document.getElementById('syncLocalConfirm');
+    const ides = Array.from(document.querySelectorAll('#syncIdeList input[name="ide"]:checked'))
+      .map((el) => el.value)
+      .filter(Boolean);
+    if (!ides.length) {
+      err.textContent = 'Select at least one local IDE / LLM on this computer.';
+      return;
+    }
+    err.textContent = '';
+    btn.disabled = true;
+    const label = btn.textContent;
+    btn.textContent = 'Syncing…';
+    try {
+      const res = await fetch('/api/v1/marketplace/mcp-sync', {
+        method: 'POST',
+        headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          force: !!document.getElementById('syncForce').checked,
+          ides,
+          scope: 'local',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || (data.ok === false && data.error)) throw new Error(data.error || JSON.stringify(data));
+      const n = (data.desired || data.servers || []).length;
+      const synced = (data.targets || []).filter((t) => t && !t.skipped_target).map((t) => t.ide);
+      pageErr.style.color = 'var(--ok)';
+      pageErr.textContent =
+        `Local sync: ${n} servers → ${synced.join(', ') || ides.join(', ')}. Reload those apps.`;
+      document.getElementById('syncLocalDialog').close();
+    } catch (e) {
+      err.textContent = String(e.message || e);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = label || 'Sync selected';
+    }
+  }
+
+  function render(data) {
+    const g = data.google || {};
+    const m = data.marketplace || {};
+    const mc = m.counts || {};
+    const ax = (data.asrax && data.asrax.counts) || {};
+    const chat = data.chat || {};
+    const links = data.links || {};
+    const inspect = m.inspect_report || {};
+    localIdeTargets = m.local_ide_targets || [];
+
+    setPill(document.getElementById('hubPill'), data.hub && data.hub.ok ? 'hub ok' : 'hub down', !!(data.hub && data.hub.ok));
+    const gOk = g.upstream_ok;
+    const gLabel = g.oauth_configured
+      ? (gOk === true ? 'google ok' : gOk === false ? 'google down' : 'google oauth · upstream ?')
+      : 'google oauth missing';
+    setPill(document.getElementById('gwsPill'), gLabel, g.oauth_configured && gOk === true);
+    setPill(
+      document.getElementById('inspectPill'),
+      inspect.present ? `inspect ${inspect.ok || 0}/${inspect.total || 0}` : 'inspect missing',
+      !!inspect.present
+    );
+    const ideOk = m.ide_helper;
+    setPill(
+      document.getElementById('idePill'),
+      ideOk ? 'ide helper ok' : 'ide helper off',
+      ideOk === true ? true : ideOk === false ? false : null
+    );
+
+    const tiles = document.getElementById('tiles');
+    tiles.innerHTML = `
+      <a class="home-tile" href="${esc(links.marketplace || '/marketplace/')}">
+        <div class="k">MCPs</div>
+        <div class="v">${esc(mc.total ?? 0)}</div>
+        <div class="s">${esc(mc.connected ?? 0)} connected · ${esc(mc.disconnected ?? 0)} down · ${esc(mc.unknown ?? 0)} unknown</div>
+      </a>
+      <a class="home-tile" href="${esc(links.skills || '/skills/')}">
+        <div class="k">Skills</div>
+        <div class="v">${esc(ax.skills||0)}</div>
+        <div class="s">browse · New skill on page</div>
+      </a>
+      <a class="home-tile" href="${esc(links.rules || '/rules/')}">
+        <div class="k">Rules</div>
+        <div class="v">${esc(ax.rules||0)}</div>
+        <div class="s">browse · New rule on page</div>
+      </a>
+      <a class="home-tile" href="${esc(links.hooks || '/hooks/')}">
+        <div class="k">Hooks</div>
+        <div class="v">${esc(ax.hooks||0)}</div>
+        <div class="s">browse · New hook on page</div>
+      </a>
+      <a class="home-tile" href="/agents/">
+        <div class="k">Agents</div>
+        <div class="v">${esc(ax.agents||0)}</div>
+        <div class="s">role packs · MCP access · apply brief</div>
+      </a>
+      <a class="home-tile" href="/tasks/">
+        <div class="k">Tasks</div>
+        <div class="v">pipeline</div>
+        <div class="s">assign · IDE develop · review · report</div>
+      </a>
+      <a class="home-tile" href="/work/">
+        <div class="k">Role activity</div>
+        <div class="v">${esc(chat.total ?? 0)}</div>
+        <div class="s">tools · chats · agents per org role</div>
+      </a>
+      <a class="home-tile" href="${esc(links.history || '/history/')}">
+        <div class="k">Chat vault</div>
+        <div class="v">${esc(chat.total ?? 0)}</div>
+        <div class="s">${esc((chat.sources||[]).length)} sources on this laptop</div>
+      </a>
+      <a class="home-tile" href="${esc(links.tools || '/tools/?scope=all')}">
+        <div class="k">Tools</div>
+        <div class="v">${esc(mc.probed_tools ?? mc.hub_tools ?? 0)}</div>
+        <div class="s">${esc(mc.hub_tools ?? 0)} hub-callable · ${esc(mc.probed_tools ?? 0)} probed · playground</div>
+      </a>`;
+    tiles.hidden = false;
+
+    const sources = chat.sources || [];
+    const total = chat.total || sources.reduce((a, s) => a + (s.count || 0), 0) || 0;
+    document.getElementById('chatTotal').textContent = total
+      ? `${total} conversations in local vault`
+      : 'No chats indexed yet. Run am chat ingest-all on this laptop.';
+    const bar = document.getElementById('mixBar');
+    const legend = document.getElementById('mixLegend');
+    if (!sources.length) {
+      bar.innerHTML = '';
+      legend.innerHTML = '<span class="home-muted">No source breakdown yet.</span>';
+    } else {
+      bar.innerHTML = sources.map((s, i) => {
+        const pct = total ? Math.max(2, Math.round(100 * (s.count || 0) / total)) : 0;
+        return `<span style="width:${pct}%;background:${COLORS[i % COLORS.length]}" title="${esc(s.source)}: ${esc(s.count)}"></span>`;
+      }).join('');
+      legend.innerHTML = sources.map((s, i) =>
+        `<a class="hub-chip" href="/history/?source=${encodeURIComponent(s.source)}" style="border-color:${COLORS[i % COLORS.length]}33">${esc(s.source)}<span class="n">${esc(s.count)}</span></a>`
+      ).join('');
+    }
+
+    const need = mc.needs_config ?? 0;
+    document.getElementById('marketSnap').textContent =
+      `${mc.configured ?? 0} configured · ${need} need secrets · ${mc.connected ?? 0} probed ok`;
+    document.getElementById('marketHint').textContent = m.ide_sync_hint
+      || (inspect.present
+        ? `Inspect report ${inspect.ok || 0}/${inspect.total || 0} ok${inspect.path ? ' · ' + inspect.path : ''}`
+        : 'No inspect report yet. Run am ai inspect --all on this laptop.');
+
+    const recent = chat.recent || [];
+    const recentList = document.getElementById('recentList');
+    if (!recent.length) {
+      recentList.innerHTML = '<li class="home-muted" style="padding:10px 0">No recent chats.</li>';
+    } else {
+      recentList.innerHTML = recent.map(r => {
+        const src = encodeURIComponent(r.source || '');
+        return `<li><a href="/history/?source=${src}">
+          <div class="rt">${esc(r.title || r.id)}</div>
+          <div class="rm">${esc(r.source)} · ${esc(r.updated_at || r.created_at || '')}</div>
+        </a></li>`;
+      }).join('');
+    }
+    document.getElementById('recentPanel').hidden = false;
+    document.getElementById('mainGrid').hidden = false;
+
+    const actions = [
+      ['Marketplace', links.marketplace || '/marketplace/'],
+      ['Tools playground', links.tools || '/tools/?scope=all'],
+      ['Hub tools only', links.tools_hub || '/tools/?scope=hub'],
+      ['History', links.history || '/history/'],
+      ['Skills', links.skills || '/skills/'],
+      ['Rules', links.rules || '/rules/'],
+      ['Hooks', links.hooks || '/hooks/'],
+      ['Agents', '/agents/'],
+      ['Catalog', links.catalog || '/catalog/'],
+      ['Google', links.google || '/google/'],
+      ['Inspector', links.inspector_url || 'http://127.0.0.1:6274/'],
+    ];
+    const qa = document.getElementById('quickActions');
+    qa.innerHTML = actions.map(([label, href], i) => {
+      const blank = label === 'Inspector' ? ' target="_blank" rel="noopener"' : '';
+      return `<a class="hub-chip${i===0?' active':''}" href="${esc(href)}"${blank}>${esc(label)}</a>`;
+    }).join('');
+    qa.hidden = false;
+  }
+
+  async function boot() {
+    const load = document.getElementById('loadState');
+    const err = document.getElementById('err');
+    document.getElementById('syncLocalBtn').addEventListener('click', openSyncLocalDialog);
+    document.getElementById('syncLocalForm').addEventListener('submit', syncToLocalIdes);
+    try {
+      const res = await fetch('/api/v1/home-summary');
+      if (!res.ok) throw new Error('home-summary ' + res.status);
+      const data = await res.json();
+      load.hidden = true;
+      render(data);
+    } catch (e) {
+      load.hidden = true;
+      err.hidden = false;
+      err.textContent = 'Could not load workspace summary: ' + (e.message || e);
+    }
+  }
+  boot();
+  </script>
+</body>
+</html>
