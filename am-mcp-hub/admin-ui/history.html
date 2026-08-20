@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>AM Hub · Chat history</title>
+<link rel="stylesheet" href="/admin/assets/shell.css"/>
+<style>
+body { margin: 0; }
+.page-wrap { display: flex; flex-direction: column; height: 100%; min-height: 0; flex: 1; overflow: hidden; }
+.page-wrap .hub-page-head { flex: 0 0 auto; padding: 16px 24px 8px; max-width: none; }
+.page-wrap .hub-page-head h1 { font-size: 22px; margin: 0 0 4px; }
+.page-wrap .hub-page-head .subhead { margin: 0 0 10px; }
+.page-wrap .hub-toolbar { margin-bottom: 8px; }
+.page-wrap .hub-split { flex: 1; margin: 0 16px 16px; min-height: 0; }
+.hub-list .load-more {
+  display: block; width: 100%; text-align: center; padding: 10px;
+  border: 0; border-top: 1px solid var(--line); background: #fff;
+  color: var(--accent); cursor: pointer; font: inherit; font-size: 13px;
+}
+.hub-list .load-more:hover { background: #f0f0f2; }
+.msg .body { color: var(--text); }
+.msg .body h1,.msg .body h2,.msg .body h3,.msg .body h4 {
+  margin: 0.9em 0 0.35em; line-height: 1.25; font-weight: 650;
+}
+.msg .body h1 { font-size: 1.35em; }
+.msg .body h2 { font-size: 1.2em; }
+.msg .body h3 { font-size: 1.08em; }
+.msg .body p { margin: 0.55em 0; }
+.msg .body ul, .msg .body ol { margin: 0.45em 0; padding-left: 1.4em; }
+.msg .body a { color: var(--accent); text-decoration: none; }
+.msg .body a:hover { text-decoration: underline; }
+.msg .body code {
+  font-family: Consolas, "Cascadia Mono", monospace; font-size: 0.92em;
+  background: #f4f4f5; border: 1px solid var(--line); border-radius: 4px; padding: 0.05em 0.35em;
+}
+.msg .body pre {
+  background: #f4f4f5; border: 1px solid var(--line); border-radius: 8px;
+  padding: 10px 12px; overflow: auto; margin: 0.7em 0;
+}
+.msg .body pre code { background: none; border: 0; padding: 0; }
+.msg .body blockquote {
+  margin: 0.6em 0; padding: 0.2em 0 0.2em 0.9em; border-left: 3px solid var(--line); color: var(--muted);
+}
+.msg .body hr { border: 0; border-top: 1px solid var(--line); margin: 1em 0; }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+  <header class="hub-page-head">
+    <h1>Chat history</h1>
+    <p class="subhead" id="count">Unified vault across Cursor, Gemini, Claude, Codex</p>
+    <div class="hub-toolbar">
+      <input id="q" type="search" placeholder="Search history…" />
+      <select id="profile"><option value="">all profiles</option></select>
+    </div>
+    <div class="hub-chips" id="sourceChips"></div>
+  </header>
+  <div class="hub-split">
+    <aside class="hub-list" id="list"></aside>
+    <section class="hub-detail empty" id="thread">Select a chat</section>
+  </div>
+</div>
+<script src="/admin/assets/shell.js"></script>
+<script src="/admin/assets/md.js"></script>
+<script>
+const { esc, mdToHtml } = HubMd;
+const listEl = document.getElementById('list');
+const threadEl = document.getElementById('thread');
+const qEl = document.getElementById('q');
+const profileEl = document.getElementById('profile');
+const chipsEl = document.getElementById('sourceChips');
+const countEl = document.getElementById('count');
+const PAGE = 50;
+let activeId = null;
+let activeSource = '';
+let timer = null;
+let items = [];
+let offset = 0;
+let hasMore = false;
+let loading = false;
+const KNOWN = ['cursor','gemini','codex','claude','chatgpt','deepseek','qwen','grok','perplexity'];
+
+(function applySourceQuery() {
+  const src = (new URLSearchParams(location.search).get('source') || '').trim();
+  if (src) activeSource = src;
+})();
+
+function renderChips(sources) {
+  const byName = Object.fromEntries((sources||[]).map(s => [s.source, s.count]));
+  const names = [...new Set([...KNOWN, ...Object.keys(byName)])];
+  const parts = [
+    `<button class="hub-chip ${activeSource===''?'active':''}" data-source="">All</button>`];
+  for (const name of names) {
+    const n = byName[name];
+    if (n === undefined && !['cursor','gemini','codex','claude'].includes(name)) continue;
+    const count = n === undefined ? 0 : n;
+    parts.push(`<button class="hub-chip ${activeSource===name?'active':''}" data-source="${esc(name)}">${esc(name)}<span class="n">${count}</span></button>`);
+  }
+  chipsEl.innerHTML = parts.join('');
+  chipsEl.querySelectorAll('button[data-source]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeSource = btn.dataset.source || '';
+      const url = new URL(location.href);
+      if (activeSource) url.searchParams.set('source', activeSource);
+      else url.searchParams.delete('source');
+      history.replaceState(null, '', url);
+      loadList(true);
+    });
+  });
+}
+
+async function loadMeta() {
+  const res = await fetch('/api/v1/asrax/chat/sources');
+  const data = await res.json();
+  renderChips(data.sources || []);
+}
+
+function paintList() {
+  countEl.textContent = items.length + (hasMore ? '+' : '') + ' chats';
+  const profiles = new Set();
+  const rows = items.map(item => {
+    profiles.add(item.profile_id);
+    const cls = item.id === activeId ? 'active' : '';
+    return `<button class="${cls}" data-id="${esc(item.id)}">
+      <div class="title">${esc(item.title)}</div>
+      <div class="preview">${esc(item.preview || '')}</div>
+      <div class="tags">${esc(item.source)} · ${esc(item.profile_id)} · ${item.message_count || 0} msgs</div>
+    </button>`;
+  }).join('') || '<div style="padding:16px;color:var(--muted)">No chats for this filter. Run am chat ingest-all or import exports.</div>';
+  const more = hasMore
+    ? `<button type="button" class="load-more" id="loadMoreBtn">${loading ? 'Loading…' : 'Load more'}</button>`
+    : '';
+  listEl.innerHTML = rows + more;
+  const keepProfile = profileEl.value;
+  profileEl.innerHTML = '<option value="">all profiles</option>' + [...profiles].sort().map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+  profileEl.value = keepProfile;
+  listEl.querySelectorAll('button[data-id]').forEach(btn => {
+    btn.addEventListener('click', () => openChat(btn.dataset.id));
+  });
+  const moreBtn = document.getElementById('loadMoreBtn');
+  if (moreBtn) moreBtn.addEventListener('click', () => loadList(false));
+}
+
+async function loadList(reset) {
+  if (loading) return;
+  if (reset) {
+    offset = 0;
+    items = [];
+  }
+  loading = true;
+  paintList();
+  try {
+    const params = new URLSearchParams();
+    if (qEl.value.trim()) params.set('q', qEl.value.trim());
+    if (activeSource) params.set('source', activeSource);
+    if (profileEl.value) params.set('profile', profileEl.value);
+    params.set('limit', String(PAGE));
+    params.set('offset', String(offset));
+    if (offset === 0) params.set('include_sources', '1');
+    else params.set('include_sources', '0');
+    const res = await fetch('/api/v1/asrax/chat/list?' + params.toString());
+    const data = await res.json();
+    const batch = data.items || [];
+    items = reset ? batch : items.concat(batch);
+    hasMore = batch.length >= PAGE;
+    offset = items.length;
+    if (data.sources) renderChips(data.sources);
+    else if (reset) loadMeta();
+  } finally {
+    loading = false;
+    paintList();
+  }
+}
+
+async function openChat(id) {
+  activeId = id;
+  [...listEl.querySelectorAll('button[data-id]')].forEach(b => b.classList.toggle('active', b.dataset.id === id));
+  threadEl.classList.remove('empty');
+  threadEl.innerHTML = 'Loading…';
+  const res = await fetch('/api/v1/asrax/chat/conversation?id=' + encodeURIComponent(id));
+  if (!res.ok) {
+    threadEl.innerHTML = 'Not found';
+    return;
+  }
+  const c = await res.json();
+  const msgs = (c.messages || []).map(m => {
+    const role = esc(m.role || 'assistant');
+    return `<div class="msg ${role}"><div class="role">${role}</div><div class="body">${mdToHtml(m.content || '')}</div></div>`;
+  }).join('');
+  threadEl.innerHTML = `<div class="detail-head">
+    <h2>${esc(c.title)}</h2>
+    <div class="meta">${esc(c.source)} / ${esc(c.profile_id)} / ${esc(c.machine_id)} · id ${esc(c.id)}</div>
+  </div>${msgs || '<div class="meta">No messages</div>'}`;
+}
+
+function schedule() {
+  clearTimeout(timer);
+  timer = setTimeout(() => loadList(true), 200);
+}
+qEl.addEventListener('input', schedule);
+profileEl.addEventListener('change', () => loadList(true));
+loadList(true);
+</script>
+</body>
+</html>

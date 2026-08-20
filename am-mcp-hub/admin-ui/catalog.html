@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>AM MCP Hub · Tool catalog</title>
+  <link rel="stylesheet" href="/admin/assets/shell.css"/>
+  <style>
+    .cat-table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+    .cat-table th, .cat-table td { text-align: left; padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--line); font-size: 0.88rem; vertical-align: top; }
+    .cat-table th { color: var(--muted); font-weight: 600; background: #fafafa; }
+    .cat-table tr:last-child td { border-bottom: none; }
+    .cat-table tr.fail-row { background: #fef2f2; }
+    .num { font-variant-numeric: tabular-nums; font-weight: 650; }
+    .err-short { color: #dc2626; font-size: 0.8rem; line-height: 1.35; max-width: 28rem; }
+    .ok-detail { color: var(--muted); font-size: 0.8rem; }
+    .actions { white-space: nowrap; }
+    .actions .btn { margin-right: 0.3rem; }
+    dialog {
+      border: 1px solid var(--line); border-radius: 12px; background: #fff;
+      color: var(--text); padding: 1rem 1.1rem; max-width: 40rem; width: calc(100% - 2rem);
+    }
+    dialog::backdrop { background: rgba(0,0,0,0.35); }
+    dialog .list { max-height: 22rem; overflow: auto; margin: 0.5rem 0 0; padding: 0; list-style: none; }
+    dialog .list li { padding: 0.35rem 0; border-bottom: 1px solid var(--line); font-family: Consolas, monospace; font-size: 0.85rem; }
+    #errDialogBody { max-height: 18rem; overflow: auto; white-space: pre-wrap; word-break: break-word; font-size: 0.82rem; }
+    .banner-soft {
+      background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534;
+      padding: 0.65rem 0.85rem; border-radius: 10px; margin-bottom: 0.85rem; font-size: 0.88rem; line-height: 1.45;
+    }
+    .banner-warn {
+      background: #fffbeb; border: 1px solid #fde68a; color: #92400e;
+      padding: 0.65rem 0.85rem; border-radius: 10px; margin-bottom: 0.85rem; font-size: 0.88rem;
+    }
+    .banner-fail {
+      background: #fef2f2; border: 1px solid #fecaca; color: #991b1b;
+      padding: 0.65rem 0.85rem; border-radius: 10px; margin-bottom: 0.85rem; font-size: 0.88rem;
+    }
+  </style>
+</head>
+<body>
+<div class="hub-page">
+  <header class="hub-page-head">
+    <h1>Tool catalog</h1>
+    <p class="subhead">Host MCP probe results from this laptop. Sync enabled MCPs into local IDEs.</p>
+    <div class="hub-toolbar">
+      <span class="pill" id="countPill">loading…</span>
+      <span class="pill off" id="failPill" hidden>0 failed</span>
+      <span class="pill warn" id="idePill" hidden>IDE status unknown</span>
+      <a class="btn primary" href="/marketplace/">Marketplace</a>
+      <button class="btn" type="button" id="syncLocalBtn">Sync locally…</button>
+    </div>
+  </header>
+  <div class="hub-page-body">
+    <div class="banner-soft" id="banner">
+      <strong>ok/fail</strong> = last probe.
+      <strong>In IDE</strong> = listed in a local client MCP config (needs probe-server).
+    </div>
+    <p id="syncErr" style="min-height:1.2em;margin:0 0 0.75rem;font-size:0.85rem;color:var(--muted)"></p>
+    <div class="banner-warn" id="ideBanner" hidden></div>
+    <div class="banner-fail" id="failBanner" hidden></div>
+    <div class="hub-toolbar">
+      <input type="search" id="filter" placeholder="Filter MCP…" autocomplete="off"/>
+      <button class="btn" type="button" id="onlyFail">Failed</button>
+      <button class="btn" type="button" id="onlyOk">OK</button>
+      <button class="btn" type="button" id="showAll">All</button>
+      <select id="ideFilter">
+        <option value="all">IDE: all</option>
+        <option value="in">In IDE</option>
+        <option value="out">Not in IDE</option>
+      </select>
+    </div>
+    <div id="empty" class="home-muted" hidden style="padding:12px 0;color:var(--muted)">No inspect report found. Run <code>am ai inspect --all</code> on this laptop.</div>
+    <table class="cat-table" id="tbl" hidden>
+      <thead>
+        <tr><th>MCP</th><th>Tools</th><th>Status</th><th>Detail</th><th></th></tr>
+      </thead>
+      <tbody id="body"></tbody>
+    </table>
+  </div>
+  <footer class="hub-page-foot">Laptop-local inspect report and IDE configs only. Nothing uploaded.</footer>
+</div>
+
+<dialog id="syncLocalDialog">
+  <form method="dialog" id="syncLocalForm">
+    <h2 style="margin:0 0 0.35rem;font-size:1.05rem">Sync locally to this computer</h2>
+    <p style="margin:0 0 0.75rem;color:var(--muted);font-size:0.85rem;line-height:1.45">
+      Writes enabled MCPs into local IDE / LLM MCP configs on this machine.
+    </p>
+    <div id="syncIdeList" style="display:flex;flex-direction:column;gap:0.45rem;margin:0.5rem 0 0.85rem"></div>
+    <label style="display:flex;align-items:center;gap:0.45rem;font-size:0.85rem;color:var(--muted);margin:0 0 0.75rem">
+      <input type="checkbox" id="syncForce"/> Overwrite existing managed entries
+    </label>
+    <p class="err-short" id="syncDlgErr" style="min-height:1.1em;margin:0 0 0.5rem"></p>
+    <div style="display:flex;gap:0.5rem;justify-content:flex-end">
+      <button class="btn primary" value="sync" id="syncLocalConfirm" type="submit">Sync selected</button>
+      <button class="btn" value="cancel" type="submit">Cancel</button>
+    </div>
+  </form>
+</dialog>
+<dialog id="toolsDialog">
+  <h2 id="dlgTitle">Tools</h2>
+  <p id="dlgMeta" style="margin:0;color:var(--muted);font-size:0.85rem"></p>
+  <ol class="list" id="dlgList"></ol>
+  <div style="margin-top:0.85rem;text-align:right">
+    <button class="btn primary" type="button" id="dlgClose">Close</button>
+  </div>
+</dialog>
+<dialog id="errDialog">
+  <h2 id="errDlgTitle">Error</h2>
+  <pre id="errDialogBody"></pre>
+  <div style="margin-top:0.85rem;text-align:right">
+    <button class="btn primary" type="button" id="errDlgClose">Close</button>
+  </div>
+</dialog>
+
+<script src="/admin/assets/shell.js"></script>
+<script>
+let rows = [];
+let inCursorByName = {};
+let localIdeTargets = [];
+let ideHelperUp = false;
+let mode = 'all';
+let ideMode = 'all';
+let syncing = false;
+
+function escapeAttr(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+function esc(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function shortErr(text) {
+  const t = String(text || '').replace(/\s+/g, ' ').trim();
+  if (!t) return 'failed';
+  const first = t.split(/[|\n]/)[0].trim();
+  return first.length > 120 ? first.slice(0, 117) + '…' : first;
+}
+
+async function openSyncLocalDialog() {
+  const list = document.getElementById('syncIdeList');
+  const err = document.getElementById('syncDlgErr');
+  err.textContent = '';
+  let targets = localIdeTargets || [];
+  if (!targets.length) {
+    try {
+      const data = await (await fetch('/api/v1/marketplace')).json();
+      targets = data.local_ide_targets || [];
+      localIdeTargets = targets;
+      if (data.ide_sync_hint) err.textContent = data.ide_sync_hint;
+    } catch (e) {
+      err.textContent = String(e.message || e);
+    }
+  }
+  if (!targets.length) {
+    list.innerHTML = '<p style="margin:0;color:var(--muted);font-size:0.85rem">Start <code>am ai probe-server</code> on this computer, then reopen.</p>';
+  } else {
+    list.innerHTML = targets.map((t) => {
+      const id = escapeAttr(t.id || '');
+      const label = escapeAttr(t.label || t.id || '');
+      const path = escapeAttr(t.path || '');
+      const detected = !!t.detected;
+      const count = Number(t.server_count || 0);
+      const status = detected ? `${count} servers` : 'not detected on this PC';
+      return `<label style="display:flex;gap:0.55rem;align-items:flex-start;padding:0.55rem 0.65rem;border:1px solid var(--line);border-radius:10px;background:#fff">
+        <input type="checkbox" name="ide" value="${id}" ${detected ? 'checked' : ''}/>
+        <span><strong>${label}</strong><span style="display:block;color:var(--muted);font-size:0.75rem">${status}${path ? ' · ' + path : ''}</span></span>
+      </label>`;
+    }).join('');
+  }
+  document.getElementById('syncLocalDialog').showModal();
+}
+
+async function syncToLocalIdes(ev) {
+  const submitter = ev && ev.submitter;
+  if (submitter && submitter.value === 'cancel') return;
+  if (ev) ev.preventDefault();
+  if (syncing) return;
+  const err = document.getElementById('syncDlgErr');
+  const pageErr = document.getElementById('syncErr');
+  const btn = document.getElementById('syncLocalConfirm');
+  const ides = Array.from(document.querySelectorAll('#syncIdeList input[name="ide"]:checked'))
+    .map((el) => el.value).filter(Boolean);
+  if (!ides.length) {
+    err.textContent = 'Select at least one local IDE / LLM on this computer.';
+    return;
+  }
+  syncing = true;
+  btn.disabled = true;
+  const label = btn.textContent;
+  btn.textContent = 'Syncing…';
+  err.textContent = '';
+  try {
+    const res = await (await fetch('/api/v1/marketplace/mcp-sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        force: !!document.getElementById('syncForce').checked,
+        ides,
+        scope: 'local',
+      }),
+    })).json();
+    if (!res.ok && res.error) throw new Error(res.error);
+    const n = (res.desired || res.servers || []).length;
+    const synced = (res.targets || []).filter((t) => t && !t.skipped_target).map((t) => t.ide);
+    pageErr.style.color = 'var(--ok)';
+    pageErr.textContent = `Local sync: ${n} servers → ${synced.join(', ') || ides.join(', ')}. Reload those apps.`;
+    document.getElementById('syncLocalDialog').close();
+    await boot(false);
+  } catch (e) {
+    err.textContent = String(e.message || e);
+  } finally {
+    syncing = false;
+    btn.disabled = false;
+    btn.textContent = label || 'Sync selected';
+  }
+}
+
+function openTools(r) {
+  const name = encodeURIComponent(r.name || '');
+  location.href = '/tools/?mcp=' + name + '&scope=all';
+}
+
+function openError(r) {
+  document.getElementById('errDlgTitle').textContent = (r.name || 'MCP') + ' · error';
+  const full = [r.fail_hint, r.error].filter(Boolean).join('\n\n') || 'failed';
+  document.getElementById('errDialogBody').textContent = full;
+  document.getElementById('errDialog').showModal();
+}
+
+function inCursorLabel(name) {
+  if (!ideHelperUp) return '';
+  const v = inCursorByName[name];
+  if (v === true) return '<span class="pill on">In IDE</span>';
+  if (v === false) return '<span class="pill warn">Not in IDE</span>';
+  return '';
+}
+
+function render() {
+  const q = (document.getElementById('filter').value || '').trim().toLowerCase();
+  const body = document.getElementById('body');
+  body.innerHTML = '';
+  const filtered = rows.filter((r) => {
+    if (mode === 'ok' && !r.ok) return false;
+    if (mode === 'fail' && r.ok) return false;
+    if (ideHelperUp && ideMode === 'in' && inCursorByName[r.name] !== true) return false;
+    if (ideHelperUp && ideMode === 'out' && inCursorByName[r.name] !== false) return false;
+    if (!q) return true;
+    const blob = [r.name, r.server, r.error, r.fail_hint, ...(r.tool_names || [])].join(' ').toLowerCase();
+    return blob.includes(q);
+  });
+  for (const r of filtered) {
+    const tr = document.createElement('tr');
+    if (!r.ok) tr.className = 'fail-row';
+    const ok = !!r.ok;
+    tr.innerHTML = `
+      <td></td>
+      <td class="num"></td>
+      <td>
+        <span class="pill ${ok ? 'on' : 'off'}">${ok ? 'probed' : 'fail'}</span>
+        ${inCursorLabel(r.name)}
+      </td>
+      <td class="detail-cell"></td>
+      <td class="actions">
+        <button class="btn refresh" type="button">Refresh</button>
+        <button class="btn primary view" type="button">View tools</button>
+      </td>`;
+    tr.children[0].textContent = r.name || '';
+    tr.children[1].textContent = String(r.tools ?? 0);
+    const detail = tr.querySelector('.detail-cell');
+    if (ok) {
+      detail.innerHTML = `<div class="ok-detail">${esc((r.tool_names && r.tool_names.length)
+        ? `${r.tool_names.length} names — View tools`
+        : (r.server || 'Click View tools'))}</div>`;
+    } else {
+      const short = shortErr(r.fail_hint || r.error);
+      detail.innerHTML = `<div class="err-short">${esc(short)}</div>
+        <button class="btn" type="button" style="margin-top:0.35rem;padding:4px 8px;font-size:12px" data-err>View error</button>`;
+      detail.querySelector('[data-err]').addEventListener('click', () => openError(r));
+    }
+    tr.querySelector('.view').addEventListener('click', () => openTools(r));
+    tr.querySelector('.refresh').addEventListener('click', () => refreshRow(r, tr.querySelector('.refresh')));
+    body.appendChild(tr);
+  }
+}
+
+let refreshing = false;
+async function refreshRow(r, btn) {
+  if (!r || refreshing) return;
+  refreshing = true;
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '…';
+  try {
+    const res = await (await fetch('/api/v1/marketplace/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ slug: r.name, live: true }),
+    })).json();
+    if (res.report_row) {
+      const idx = rows.findIndex((x) => x.name === r.name);
+      if (idx >= 0) rows[idx] = res.report_row;
+      else rows.push(res.report_row);
+      rows.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+    } else {
+      await boot(false);
+      return;
+    }
+    updateSummary();
+    render();
+  } catch (e) {
+    alert(String(e.message || e));
+  } finally {
+    refreshing = false;
+    btn.disabled = false;
+    btn.textContent = label || 'Refresh';
+  }
+}
+
+function updateSummary() {
+  const ok = rows.filter((r) => r.ok).length;
+  const fail = rows.length - ok;
+  const tools = rows.reduce((n, r) => n + (Number(r.tools) || 0), 0);
+  const inCur = Object.values(inCursorByName).filter((v) => v === true).length;
+  document.getElementById('countPill').textContent = ideHelperUp
+    ? `${ok}/${rows.length} probed · ${tools} tools · ${inCur} in local IDEs`
+    : `${ok}/${rows.length} probed · ${tools} tools`;
+  const failPill = document.getElementById('failPill');
+  failPill.hidden = fail === 0;
+  failPill.textContent = `${fail} failed`;
+  const idePill = document.getElementById('idePill');
+  const ideBanner = document.getElementById('ideBanner');
+  if (!ideHelperUp) {
+    idePill.hidden = false;
+    idePill.textContent = 'IDE status unknown';
+    ideBanner.hidden = false;
+    ideBanner.textContent = 'IDE status unknown — start am ai probe-server (or use Sync locally after the helper is up).';
+  } else {
+    idePill.hidden = true;
+    ideBanner.hidden = true;
+  }
+  const failBanner = document.getElementById('failBanner');
+  if (fail > 0) {
+    failBanner.hidden = false;
+    const fails = rows.filter((r) => !r.ok);
+    failBanner.innerHTML = '<strong>Failed probes:</strong> ' + fails.map((r) =>
+      `<code>${esc(r.name)}</code>`
+    ).join(', ');
+  } else {
+    failBanner.hidden = true;
+  }
+}
+
+async function boot(bind = true) {
+  const [marketRes, reportRes] = await Promise.all([
+    fetch('/api/v1/marketplace'),
+    fetch('/api/v1/inspect-report'),
+  ]);
+  const data = await marketRes.json();
+  const report = reportRes.ok ? await reportRes.json() : (data.inspect_report || {});
+  rows = Array.isArray(report.results)
+    ? report.results.slice().sort((a, b) => String(a.name).localeCompare(String(b.name)))
+    : [];
+  inCursorByName = {};
+  localIdeTargets = data.local_ide_targets || [];
+  const counts = data.counts || {};
+  ideHelperUp = counts.ide_helper === true || counts.cursor_helper === true;
+  for (const it of (data.items || [])) {
+    const flag = (it.in_ide !== undefined) ? it.in_ide : it.in_cursor;
+    if (it && it.slug != null) inCursorByName[it.slug] = flag;
+    if (it && it.name != null) inCursorByName[it.name] = flag;
+  }
+  if (!ideHelperUp) {
+    // treat all null as helper down
+    const vals = Object.values(inCursorByName);
+    if (vals.length && vals.every((v) => v === null || v === undefined)) ideHelperUp = false;
+    else if (vals.some((v) => v === true || v === false)) ideHelperUp = true;
+  }
+  if (data.ide_sync_hint || data.cursor_sync_hint) {
+    const syncErr = document.getElementById('syncErr');
+    syncErr.style.color = 'var(--warn, #ca8a04)';
+    syncErr.textContent = data.ide_sync_hint || data.cursor_sync_hint;
+  }
+  updateSummary();
+  if (report.path && bind) {
+    document.getElementById('banner').innerHTML += ` Report: <code>${esc(report.path)}</code>`;
+  }
+  document.getElementById('empty').hidden = rows.length > 0;
+  document.getElementById('tbl').hidden = rows.length === 0;
+  if (bind) {
+    const q0 = (new URLSearchParams(location.search).get('q') || '').trim();
+    if (q0) document.getElementById('filter').value = q0;
+    document.getElementById('filter').addEventListener('input', render);
+    document.getElementById('onlyFail').addEventListener('click', () => { mode = 'fail'; render(); });
+    document.getElementById('onlyOk').addEventListener('click', () => { mode = 'ok'; render(); });
+    document.getElementById('showAll').addEventListener('click', () => { mode = 'all'; render(); });
+    document.getElementById('ideFilter').addEventListener('change', (e) => { ideMode = e.target.value; render(); });
+    document.getElementById('dlgClose').addEventListener('click', () => document.getElementById('toolsDialog').close());
+    document.getElementById('errDlgClose').addEventListener('click', () => document.getElementById('errDialog').close());
+    document.getElementById('syncLocalBtn').addEventListener('click', openSyncLocalDialog);
+    document.getElementById('syncLocalForm').addEventListener('submit', syncToLocalIdes);
+  }
+  render();
+}
+boot().catch((e) => {
+  document.getElementById('countPill').textContent = 'error';
+  document.getElementById('empty').hidden = false;
+  document.getElementById('empty').textContent = String(e.message || e);
+});
+</script>
+</body>
+</html>

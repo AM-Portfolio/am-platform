@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>AM Hub · Library</title>
+<link rel="stylesheet" href="/admin/assets/shell.css"/>
+<style>
+body { margin: 0; }
+.page-wrap {
+  display: flex; flex-direction: column; height: 100%; min-height: 0;
+  flex: 1; overflow: hidden;
+}
+.page-wrap .hub-page-head {
+  flex: 0 0 auto; padding: 14px 20px 8px; max-width: none;
+}
+.page-wrap .hub-page-head h1 { font-size: 20px; margin: 0 0 2px; }
+.page-wrap .hub-page-head .subhead { margin: 0 0 8px; font-size: 12px; }
+.page-wrap .hub-toolbar { margin-bottom: 0; gap: 8px; flex-wrap: wrap; }
+.page-wrap .hub-toolbar input[type="search"] { min-width: 140px; padding: 6px 8px; }
+.page-wrap .hub-toolbar select { padding: 6px 8px; font: inherit; font-size: 12px; }
+.page-wrap .hub-split {
+  flex: 1; margin: 0 12px 12px; max-width: none; min-height: 0;
+}
+.page-wrap .hub-list { width: 280px; }
+.page-wrap .hub-list button { padding: 8px 12px; }
+.page-wrap .hub-list .title { margin-bottom: 2px; font-size: 12.5px; }
+.page-wrap .hub-list .preview {
+  -webkit-line-clamp: 1; font-size: 11.5px;
+}
+.page-wrap .hub-list .tags { margin-top: 2px; font-size: 10px; color: var(--muted); }
+.page-wrap .hub-detail { padding: 14px 18px 28px; }
+.page-wrap .hub-detail .detail-head {
+  margin-bottom: 10px; padding-bottom: 8px;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+}
+.page-wrap .hub-detail .detail-head h2 { margin: 0; font-size: 16px; flex: 1 1 auto; }
+.page-wrap .hub-detail .meta {
+  font-family: Consolas, "Cascadia Mono", monospace; font-size: 11px;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  flex: 1 1 100%;
+}
+.page-wrap .view-toggle { display: inline-flex; gap: 4px; margin: 0; }
+.page-wrap .view-toggle .hub-chip { padding: 3px 8px; font-size: 11px; }
+.hub-detail .body ul, .hub-detail .body ol { margin: 0.4em 0 0.4em 1.25em; padding: 0; }
+.hub-detail .body li { margin: 0.2em 0; }
+.hub-detail .body blockquote {
+  margin: 0.6em 0; padding: 0.35em 0.75em; border-left: 3px solid #93c5fd;
+  color: var(--muted); background: var(--accent-soft);
+}
+.hub-detail .body hr { border: 0; border-top: 1px solid var(--border); margin: 1em 0; }
+.hub-detail .body h4 { margin: 0.9em 0 0.35em; }
+.edit-banner {
+  margin: 0 0 10px; padding: 8px 10px; border-radius: 8px;
+  background: #fef3c7; color: #92400e; font-size: 12px;
+}
+.edit-banner.err { background: #fee2e2; color: #991b1b; }
+.edit-banner.ok { background: #dcfce7; color: #166534; }
+.edit-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.edit-actions button, .hub-toolbar .btn {
+  border: 1px solid var(--line); background: #fff; border-radius: 8px;
+  padding: 5px 10px; font: inherit; font-size: 12px; cursor: pointer;
+}
+.edit-actions button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.edit-actions button.danger { color: var(--danger); }
+.edit-area {
+  width: 100%; min-height: 420px; font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 12.5px; line-height: 1.45; border: 1px solid var(--line);
+  border-radius: 8px; padding: 10px; resize: vertical;
+}
+.profile-strip {
+  margin: 0 0 12px; padding: 10px; border: 1px solid var(--line);
+  border-radius: 10px; background: #fafafa; font-size: 12px;
+}
+.profile-strip .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; margin-top: 8px; }
+.profile-strip label { color: var(--muted); display: block; font-size: 11px; margin-bottom: 4px; }
+.profile-strip .hint { color: var(--muted); font-size: 11px; }
+.profile-strip .field { flex: 1 1 220px; min-width: 200px; }
+.profile-strip select.multi {
+  width: 100%; min-height: 110px; font: inherit; font-size: 12px;
+  border: 1px solid var(--line); border-radius: 8px; padding: 4px;
+  background: #fff;
+}
+.profile-strip select.single {
+  width: 100%; font: inherit; font-size: 12px;
+  border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: #fff;
+}
+.profile-strip .pack-preview {
+  margin-top: 8px; padding: 8px; background: #fff; border: 1px solid var(--line);
+  border-radius: 8px; font-size: 11px; color: var(--muted);
+}
+.profile-strip .pack-preview strong { color: var(--text); }
+.pill { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); font-size: 11px; margin: 0 4px 4px 0; }
+.missing { background: #fef3c7; color: #92400e; }
+.foot-note { margin: 8px 12px 0; font-size: 11px; color: var(--muted); }
+.create-panel {
+  border: 1px solid var(--line); border-radius: 10px; padding: 14px;
+  background: #fafafa; max-width: 720px;
+}
+.create-panel h2 { margin: 0 0 6px; font-size: 16px; }
+.create-panel .hint { color: var(--muted); font-size: 12px; margin: 0 0 12px; }
+.create-panel .field { margin: 0 0 10px; }
+.create-panel .field-label {
+  display: block; font-size: 11px; color: var(--muted); margin: 0 0 4px;
+}
+.create-panel input.text, .create-panel textarea.edit-area {
+  width: 100%; font: inherit; font-size: 12.5px;
+  border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; background: #fff;
+}
+.create-panel textarea.edit-area { min-height: 220px; font-family: Consolas, "Cascadia Mono", monospace; }
+.create-panel .row-check { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; font-size: 12px; }
+.create-panel .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.create-panel .actions button {
+  border: 1px solid var(--line); background: #fff; border-radius: 8px;
+  padding: 6px 12px; font: inherit; font-size: 12px; cursor: pointer;
+}
+.create-panel .actions button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.hub-toolbar .btn.primary {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+}
+</style>
+</head>
+<body>
+<div class="page-wrap">
+  <header class="hub-page-head">
+    <h1 id="pageTitle">Library</h1>
+    <p class="subhead" id="count">Browse asrax catalog items</p>
+    <div class="hub-toolbar">
+      <div class="hub-chips" id="kindChips" style="margin:0">
+        <a class="hub-chip" data-kind="skills" href="/skills/?embed=1">Skills</a>
+        <a class="hub-chip" data-kind="rules" href="/rules/?embed=1">Rules</a>
+        <a class="hub-chip" data-kind="hooks" href="/hooks/?embed=1">Hooks</a>
+        <a class="hub-chip" data-kind="agents" href="/agents/?embed=1">Agents</a>
+      </div>
+      <input id="q" type="search" placeholder="Filter…" />
+      <select id="ownerFilter"><option value="">Owner: all</option></select>
+      <select id="extraFilter" hidden></select>
+      <button type="button" class="btn primary" id="btnNew">New</button>
+    </div>
+    <div id="agentMakerBanner" class="profile-strip" hidden style="margin:10px 0 0">
+      <strong>Agents</strong>
+      <span class="hint" id="agentMakerHint"> — pick an agent on the left, then assign Dev / QA / Admin, add or drop skills &amp; MCP tools, Preview brief, Apply to IDE.</span>
+      <div class="row hub-chips" id="agentMakerProfileChips" style="margin-top:6px"></div>
+    </div>
+  </header>
+  <div class="hub-split">
+    <aside class="hub-list" id="list"></aside>
+    <section class="hub-detail empty" id="detail">Select an item</section>
+  </div>
+  <p class="foot-note">Writes stay on this laptop (~/.asrax via hub mount). If Save fails with file_locked, close the file in the IDE first; Force may still fail under Docker Desktop locks.</p>
+</div>
+<script src="/admin/assets/shell.js"></script>
+<script src="/admin/assets/md.js"></script>
+<script>
+const HubMdSafe = (typeof HubMd !== 'undefined' && HubMd) ? HubMd : {
+  esc: (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),
+  mdToHtml: (s) => '<pre><code>' + String(s ?? '').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])) + '</code></pre>',
+  codeHtml: (s) => '<pre><code>' + String(s ?? '').replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])) + '</code></pre>',
+};
+const { esc, mdToHtml, codeHtml } = HubMdSafe;
+
+const KIND = (location.pathname.replaceAll('/', '') || 'skills').toLowerCase();
+const CFG = {
+  skills: { title: 'Skills', list: '/api/v1/asrax/skills', key: 'skills', id: 'name', detail: n => '/api/v1/asrax/skills/' + encodeURIComponent(n) },
+  rules:  { title: 'Rules',  list: '/api/v1/asrax/rules',  key: 'rules',  id: 'rel',  detail: n => '/api/v1/asrax/rules/' + encodeURIComponent(n) },
+  hooks:  { title: 'Hooks',  list: '/api/v1/asrax/hooks',  key: 'hooks', id: 'name', detail: n => '/api/v1/asrax/hooks/' + encodeURIComponent(n) },
+  agents: { title: 'Agents', list: '/api/v1/asrax/agents', key: 'agents', id: 'rel',  detail: n => '/api/v1/asrax/agents/' + encodeURIComponent(n) },
+};
+const cfg = CFG[KIND] || CFG.skills;
+const NEW_LABEL = { skills: 'New skill', rules: 'New rule', hooks: 'New hook', agents: 'New agent' };
+document.title = 'AM Hub · ' + cfg.title;
+document.getElementById('pageTitle').textContent = cfg.title;
+document.getElementById('btnNew').textContent = NEW_LABEL[KIND] || 'New';
+if (KIND === 'agents') {
+  document.getElementById('count').textContent = 'Assign profiles, skills, and tools to agents on this laptop';
+  const ban = document.getElementById('agentMakerBanner');
+  if (ban) ban.hidden = false;
+} else {
+  document.getElementById('count').textContent =
+    'Browse and add ' + cfg.key + ' under ~/.asrax from this page';
+}
+document.querySelectorAll('.hub-chip[data-kind]').forEach(a => a.classList.toggle('active', a.dataset.kind === KIND));
+
+const listEl = document.getElementById('list');
+const detailEl = document.getElementById('detail');
+const qEl = document.getElementById('q');
+const countEl = document.getElementById('count');
+const ownerEl = document.getElementById('ownerFilter');
+const extraEl = document.getElementById('extraFilter');
+const VIEW_KEY = 'hub-library-view:' + KIND;
+let items = [];
+let active = null;
+let activeBody = '';
+let activeMeta = {};
+let editMode = false;
+let createMode = false;
+let dirty = false;
+let banner = null;
+let profiles = [];
+let binding = null;
+let skillCatalog = []; // {id, label, description}
+let mcpCatalog = [];   // {id, label, kind}
+let ruleCatalog = [];  // {id, label, always_apply}
+let viewMode = sessionStorage.getItem(VIEW_KEY) || (KIND === 'hooks' ? 'text' : 'md');
+
+function filteredItems() {
+  const q = qEl.value.trim().toLowerCase();
+  const owner = ownerEl.value;
+  const extra = extraEl.value;
+  return items.filter(s => {
+    const hay = [s.name, s.rel, s.description, s.path, s.preview, (s.tags || []).join(' ')].filter(Boolean).join(' ').toLowerCase();
+    if (q && !hay.includes(q)) return false;
+    if (owner && (s.owner || '') !== owner) return false;
+    if (KIND === 'rules' && extra === 'always' && s.always_apply !== true) return false;
+    if (KIND === 'rules' && extra === 'scoped' && s.always_apply === true) return false;
+    if (KIND === 'hooks' && extra && !(s.name || '').toLowerCase().endsWith(extra)) return false;
+    if (KIND === 'agents' && extra === 'readonly' && !s.readonly) return false;
+    if (KIND === 'agents' && extra && extra !== 'readonly' && (s.profile_hint || '') !== extra) return false;
+    return true;
+  });
+}
+
+function renderList() {
+  const filtered = filteredItems();
+  if (!createMode) {
+    countEl.textContent = filtered.length + ' ' + cfg.key + ' on asrax mounts (laptop-local)';
+  }
+  listEl.innerHTML = filtered.map(s => {
+    const id = s[cfg.id] || s.name;
+    const cls = id === active && !createMode ? 'active' : '';
+    const title = s.rel || s.name;
+    const preview = s.description || s.preview || '';
+    const tags = [];
+    if (s.owner) tags.push(s.owner);
+    if (s.always_apply === true) tags.push('always');
+    if (s.readonly) tags.push('readonly');
+    if (s.profile_hint) tags.push(s.profile_hint);
+    (s.tags || []).forEach(t => tags.push(t));
+    return `<button class="${cls}" data-id="${esc(id)}">
+      <div class="title">${esc(title)}</div>
+      <div class="preview">${esc(preview)}</div>
+      ${tags.length ? `<div class="tags">${esc(tags.join(' · '))}</div>` : ''}
+    </button>`;
+  }).join('') || `<div style="padding:16px;color:var(--muted)">No ${cfg.key} yet. Click <strong>${esc(NEW_LABEL[KIND] || 'New')}</strong> to add one.</div>`;
+  listEl.querySelectorAll('button[data-id]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if ((dirty || createMode) && !confirm('Discard unsaved form?')) return;
+      dirty = false;
+      editMode = false;
+      createMode = false;
+      banner = null;
+      openItem(btn.dataset.id);
+    });
+  });
+}
+
+function fillFilters() {
+  const owners = [...new Set(items.map(i => i.owner).filter(Boolean))].sort();
+  ownerEl.innerHTML = '<option value="">Owner: all</option>' + owners.map(o => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
+  if (KIND === 'rules') {
+    extraEl.hidden = false;
+    extraEl.innerHTML = '<option value="">Scope: all</option><option value="always">alwaysApply</option><option value="scoped">glob-scoped</option>';
+  } else if (KIND === 'hooks') {
+    extraEl.hidden = false;
+    extraEl.innerHTML = '<option value="">Ext: all</option><option value=".py">.py</option><option value=".md">.md</option><option value=".json">.json</option>';
+  } else if (KIND === 'agents') {
+    extraEl.hidden = false;
+    const profilesHints = [...new Set(items.map(i => i.profile_hint).filter(Boolean))].sort();
+    extraEl.innerHTML = '<option value="">Profile: all</option><option value="readonly">readonly</option>' +
+      profilesHints.map(p => `<option value="${esc(p)}">${esc(p)}</option>`).join('');
+  } else {
+    extraEl.hidden = true;
+    extraEl.innerHTML = '';
+  }
+}
+
+function bodyHtml() {
+  if (viewMode === 'text') return codeHtml(activeBody);
+  const isCode = /\.(py|json|example)$/i.test(activeMeta.path || '');
+  if (isCode && KIND === 'hooks') return codeHtml(activeBody);
+  return mdToHtml(activeBody);
+}
+
+function bannerHtml() {
+  if (!banner) return '';
+  return `<div class="edit-banner ${banner.cls || ''}">${esc(banner.text)}</div>`;
+}
+
+function optionList(items, selected, valueKey) {
+  const sel = new Set(selected || []);
+  return items.map(it => {
+    const id = it.id;
+    const label = it.label || it.id;
+    const extra = it.description ? ` — ${it.description}` : (it.kind ? ` (${it.kind})` : '');
+    const picked = sel.has(id) ? ' selected' : '';
+    return `<option value="${esc(id)}"${picked}>${esc(label)}${esc(extra)}</option>`;
+  }).join('');
+}
+
+function selectedValues(sel) {
+  if (!sel) return [];
+  return [...sel.selectedOptions].map(o => o.value).filter(Boolean);
+}
+
+function profilePackPreview(profileId) {
+  const p = profiles.find(x => x.id === profileId);
+  if (!p) return '<div class="pack-preview">No profile selected. Choose Admin, Dev, or QA above.</div>';
+  const skills = (p.skills || []).map(s => `<span class="pill">${esc(s)}</span>`).join('') || '<span class="hint">none</span>';
+  const tools = (p.tools || []).map(t => `<span class="pill">${esc(t)}</span>`).join('') || '<span class="hint">none</span>';
+  const miss = (p.skills_missing || []).map(s => `<span class="pill missing">${esc(s)}</span>`).join('');
+  return `<div class="pack-preview">
+    <strong>${esc(p.label || p.id)}</strong> <span class="hint">id: ${esc(p.id)}</span><br/>
+    ${esc(p.description || '')}<br/>
+    <div style="margin-top:6px"><strong>Pack skills</strong> ${skills}${miss}</div>
+    <div style="margin-top:4px"><strong>Pack MCP tools</strong> ${tools}</div>
+    <div style="margin-top:4px"><strong>Rules mode</strong> ${esc(p.rules_mode || 'catalog')} · <strong>model hint</strong> ${esc(p.model_hint || 'small')} (docs only)</div>
+  </div>`;
+}
+
+function agentStripHtml() {
+  if (KIND !== 'agents' || !active) return '';
+  const b = binding || { profile: '', skills_add: [], skills_drop: [], tools_add: [], tools_drop: [], rules_mode: 'inherit', notes: '' };
+  const profileOpts = [
+    `<option value="">— none —</option>`,
+    ...profiles.map(p => {
+      const sel = b.profile === p.id ? ' selected' : '';
+      return `<option value="${esc(p.id)}"${sel}>${esc(p.label || p.id)} (id: ${esc(p.id)})</option>`;
+    }),
+  ].join('');
+  const rulesOpts = [
+    { v: 'inherit', t: 'Inherit from profile' },
+    { v: 'catalog', t: 'Catalog — use full asrax rules' },
+    { v: 'advisory', t: 'Advisory — soft guidance only' },
+    { v: 'override_off', t: 'Override off — prefer effective brief in IDE' },
+  ].map(o => `<option value="${o.v}"${b.rules_mode===o.v?' selected':''}>${o.t}</option>`).join('');
+
+  return `<div class="profile-strip" id="profileStrip">
+    <strong>Agents · ${(esc(activeMeta.name || active))}</strong>
+    <div class="hint" style="margin-top:4px">Pick a profile pack, then optionally add/drop skills and MCP tools. Hold Ctrl (Windows) to multi-select. IDs are the values saved to ~/.asrax.</div>
+    <div class="row">
+      <div class="field">
+        <label for="profileSelect">Profile pack</label>
+        <select id="profileSelect" class="single">${profileOpts}</select>
+      </div>
+      <div class="field">
+        <label for="rulesMode">Rules access</label>
+        <select id="rulesMode" class="single">${rulesOpts}</select>
+      </div>
+    </div>
+    ${profilePackPreview(b.profile)}
+    <div class="row">
+      <div class="field">
+        <label for="skillsAdd">Add skills <span class="hint">(name = id)</span></label>
+        <select id="skillsAdd" class="multi" multiple size="7">${optionList(skillCatalog, b.skills_add)}</select>
+      </div>
+      <div class="field">
+        <label for="skillsDrop">Drop skills from pack</label>
+        <select id="skillsDrop" class="multi" multiple size="7">${optionList(skillCatalog, b.skills_drop)}</select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label for="toolsAdd">Add MCP tools / servers <span class="hint">(slug = id)</span></label>
+        <select id="toolsAdd" class="multi" multiple size="7">${optionList(mcpCatalog, b.tools_add)}</select>
+      </div>
+      <div class="field">
+        <label for="toolsDrop">Drop MCP tools from pack</label>
+        <select id="toolsDrop" class="multi" multiple size="7">${optionList(mcpCatalog, b.tools_drop)}</select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field" style="flex:1 1 100%">
+        <label>Catalog rules on this laptop <span class="hint">(read-only list; mode above controls how they apply)</span></label>
+        <div style="max-height:90px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:6px;background:#fff">
+          ${ruleCatalog.length
+            ? ruleCatalog.map(r => `<span class="pill" title="${esc(r.id)}">${esc(r.label)}${r.always_apply ? ' · always' : ''}</span>`).join('')
+            : '<span class="hint">No rules loaded</span>'}
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <button type="button" class="primary" id="btnSaveBinding">Save binding</button>
+      <button type="button" id="btnPreviewBrief">Preview brief</button>
+      <button type="button" id="btnApplyBrief">Apply to IDE</button>
+      <span class="hint">Ctrl+click to select multiple in the lists</span>
+    </div>
+    <pre id="briefOut" style="display:none;white-space:pre-wrap;margin-top:8px;font-size:11px"></pre>
+  </div>`;
+}
+
+function renderDetail() {
+  if (!active) return;
+  const title = activeMeta.rel || activeMeta.name || active;
+  detailEl.classList.remove('empty');
+  const editBtn = editMode
+    ? `<div class="edit-actions">
+        <button type="button" class="primary" id="btnSave">Save</button>
+        <button type="button" id="btnForce">Force update</button>
+        <button type="button" id="btnCancelEdit">Cancel</button>
+        <button type="button" class="danger" id="btnDelete">Delete</button>
+      </div>`
+    : `<div class="edit-actions">
+        <button type="button" id="btnEdit">Edit</button>
+        <button type="button" class="danger" id="btnDelete">Delete</button>
+      </div>`;
+  const body = editMode
+    ? `<textarea class="edit-area" id="editor">${esc(activeBody)}</textarea>`
+    : `<div class="body">${bodyHtml()}</div>`;
+  detailEl.innerHTML = `${bannerHtml()}${agentStripHtml()}<div class="detail-head">
+    <h2>${esc(title)}</h2>
+    <div class="view-toggle hub-chips" role="group" aria-label="View mode">
+      <button type="button" class="hub-chip ${viewMode === 'md' ? 'active' : ''}" data-view="md">MD</button>
+      <button type="button" class="hub-chip ${viewMode === 'text' ? 'active' : ''}" data-view="text">Text</button>
+    </div>
+    ${editBtn}
+    <div class="meta" title="${esc(activeMeta.path || '')}">${esc(activeMeta.path || '')}${activeMeta.mtime != null ? ' · mtime ' + activeMeta.mtime : ''}</div>
+  </div>${body}`;
+  detailEl.querySelectorAll('[data-view]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      viewMode = btn.dataset.view === 'text' ? 'text' : 'md';
+      sessionStorage.setItem(VIEW_KEY, viewMode);
+      if (!editMode) renderDetail();
+    });
+  });
+  const editor = detailEl.querySelector('#editor');
+  if (editor) editor.addEventListener('input', () => { dirty = true; });
+  const be = detailEl.querySelector('#btnEdit');
+  if (be) be.addEventListener('click', () => { editMode = true; banner = null; renderDetail(); });
+  const bc = detailEl.querySelector('#btnCancelEdit');
+  if (bc) bc.addEventListener('click', () => {
+    if (dirty && !confirm('Discard unsaved edits?')) return;
+    dirty = false; editMode = false; banner = null; openItem(active);
+  });
+  const bs = detailEl.querySelector('#btnSave');
+  if (bs) bs.addEventListener('click', () => saveItem(false));
+  const bf = detailEl.querySelector('#btnForce');
+  if (bf) bf.addEventListener('click', () => saveItem(true));
+  const bd = detailEl.querySelector('#btnDelete');
+  if (bd) bd.addEventListener('click', deleteItem);
+  wireAgentStrip();
+}
+
+function csv(el) {
+  return (el?.value || '').split(',').map(s => s.trim()).filter(Boolean);
+}
+
+function wireAgentStrip() {
+  const strip = detailEl.querySelector('#profileStrip');
+  if (!strip) return;
+  const profileSel = strip.querySelector('#profileSelect');
+  if (profileSel) {
+    profileSel.addEventListener('change', () => {
+      binding = binding || {};
+      binding.profile = profileSel.value || '';
+      binding.skills_add = selectedValues(strip.querySelector('#skillsAdd'));
+      binding.skills_drop = selectedValues(strip.querySelector('#skillsDrop'));
+      binding.tools_add = selectedValues(strip.querySelector('#toolsAdd'));
+      binding.tools_drop = selectedValues(strip.querySelector('#toolsDrop'));
+      binding.rules_mode = strip.querySelector('#rulesMode')?.value || 'inherit';
+      renderDetail();
+    });
+  }
+  const saveB = strip.querySelector('#btnSaveBinding');
+  if (saveB) saveB.addEventListener('click', saveBinding);
+  const prev = strip.querySelector('#btnPreviewBrief');
+  if (prev) prev.addEventListener('click', () => loadEffective(false));
+  const apply = strip.querySelector('#btnApplyBrief');
+  if (apply) apply.addEventListener('click', () => loadEffective(true));
+}
+
+async function saveBinding() {
+  const agentName = (activeMeta.name || active || '').replace(/\.mdc?$/, '');
+  const payload = {
+    agent: agentName,
+    profile: detailEl.querySelector('#profileSelect')?.value || (binding && binding.profile) || '',
+    skills_add: selectedValues(detailEl.querySelector('#skillsAdd')),
+    skills_drop: selectedValues(detailEl.querySelector('#skillsDrop')),
+    tools_add: selectedValues(detailEl.querySelector('#toolsAdd')),
+    tools_drop: selectedValues(detailEl.querySelector('#toolsDrop')),
+    rules_mode: detailEl.querySelector('#rulesMode')?.value || 'inherit',
+    notes: '',
+  };
+  const res = await fetch('/api/v1/asrax/agent-bindings/' + encodeURIComponent(agentName), {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    banner = { cls: 'err', text: data.detail || data.code || 'binding save failed' };
+    renderDetail();
+    return;
+  }
+  binding = data;
+  banner = {
+    cls: 'ok',
+    text: `Saved · profile=${payload.profile || 'none'} · +skills ${payload.skills_add.length} · -skills ${payload.skills_drop.length} · +tools ${payload.tools_add.length} · -tools ${payload.tools_drop.length}`,
+  };
+  renderDetail();
+}
+
+async function loadEffective(apply) {
+  const agentName = (activeMeta.name || active || '').replace(/\.mdc?$/, '');
+  const url = apply
+    ? '/api/v1/asrax/agent-bindings/' + encodeURIComponent(agentName) + '/apply'
+    : '/api/v1/asrax/agent-bindings/' + encodeURIComponent(agentName) + '/effective';
+  const res = await fetch(url, { method: apply ? 'POST' : 'GET' });
+  const data = await res.json().catch(() => ({}));
+  const out = detailEl.querySelector('#briefOut');
+  if (out) {
+    out.style.display = 'block';
+    if (apply) {
+      out.textContent = JSON.stringify({
+        applied: data.applied, skipped: data.skipped, next_steps: data.next_steps,
+        host_path_hint: data.host_path_hint, brief: data.effective?.brief || data.brief,
+      }, null, 2);
+      banner = { cls: res.ok ? 'ok' : 'err', text: res.ok ? 'Applied. Reload Cursor.' : (data.detail || 'apply failed') };
+    } else {
+      out.textContent = data.brief || JSON.stringify(data, null, 2);
+    }
+  }
+}
+
+async function parseErr(res) {
+  const data = await res.json().catch(() => ({}));
+  const parts = [data.code, data.detail, data.hint].filter(Boolean);
+  return { data, text: parts.join(' — ') || ('HTTP ' + res.status) };
+}
+
+async function saveItem(force) {
+  const editor = detailEl.querySelector('#editor');
+  const text = editor ? editor.value : activeBody;
+  const payload = { force: !!force, expected_mtime: activeMeta.mtime ?? null };
+  let url = cfg.detail(active);
+  let method = 'PUT';
+  if (KIND === 'hooks') payload.content = text;
+  else if (KIND === 'skills') { payload.body = text; payload.raw = text; }
+  else { payload.body = text; payload.raw = text; }
+  const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  if (!res.ok) {
+    const err = await parseErr(res);
+    banner = {
+      cls: 'err',
+      text: err.text + (err.data.code === 'file_locked'
+        ? ' Close the IDE tab on the host path, then Force update, or save under a new name.'
+        : ''),
+    };
+    renderDetail();
+    return;
+  }
+  dirty = false;
+  editMode = false;
+  banner = { cls: 'ok', text: 'Saved to ~/.asrax (laptop)' };
+  await boot(false);
+  await openItem(active);
+}
+
+async function deleteItem() {
+  if (!confirm('Delete this item from ~/.asrax?')) return;
+  const url = cfg.detail(active) + '?confirm=1';
+  const res = await fetch(url, { method: 'DELETE' });
+  if (!res.ok) {
+    const err = await parseErr(res);
+    banner = { cls: 'err', text: err.text };
+    renderDetail();
+    return;
+  }
+  dirty = false;
+  editMode = false;
+  active = null;
+  banner = { cls: 'ok', text: 'Deleted (laptop-local)' };
+  await boot(true);
+}
+
+async function createNew() {
+  if (dirty && !confirm('Discard unsaved edits?')) return;
+  dirty = false;
+  editMode = false;
+  createMode = true;
+  active = null;
+  banner = null;
+  renderList();
+  renderCreateForm();
+}
+
+function renderCreateForm() {
+  detailEl.classList.remove('empty');
+  let fields = '';
+  if (KIND === 'skills') {
+    fields = `
+      <div class="field">
+        <label class="field-label" for="createName">Skill name (folder id)</label>
+        <input class="text" id="createName" placeholder="am-my-skill" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label class="field-label" for="createDesc">Description (when Cursor should use this)</label>
+        <input class="text" id="createDesc" placeholder="Use when…" />
+      </div>
+      <div class="field">
+        <label class="field-label" for="createOwner">Owner</label>
+        <input class="text" id="createOwner" value="platform" />
+      </div>
+      <div class="field">
+        <label class="field-label" for="createBody">Body (Markdown)</label>
+        <textarea class="edit-area" id="createBody"># Skill
+
+Describe steps the agent should follow.
+</textarea>
+      </div>`;
+  } else if (KIND === 'rules') {
+    fields = `
+      <div class="field">
+        <label class="field-label" for="createRel">Relative path under rules/</label>
+        <input class="text" id="createRel" placeholder="local/my-rule.mdc" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label class="field-label" for="createDesc">Description</label>
+        <input class="text" id="createDesc" placeholder="Short rule summary" />
+      </div>
+      <div class="row-check">
+        <input type="checkbox" id="createAlways" />
+        <label for="createAlways">alwaysApply (Cursor always-on rule)</label>
+      </div>
+      <div class="field">
+        <label class="field-label" for="createGlobs">Globs (optional, comma-separated)</label>
+        <input class="text" id="createGlobs" placeholder="**/*.py,**/*.ts" />
+      </div>
+      <div class="field">
+        <label class="field-label" for="createBody">Body (Markdown)</label>
+        <textarea class="edit-area" id="createBody"># Rule
+
+Guidance for the agent.
+</textarea>
+      </div>`;
+  } else if (KIND === 'hooks') {
+    fields = `
+      <div class="field">
+        <label class="field-label" for="createName">Hook filename</label>
+        <input class="text" id="createName" placeholder="my-hook.py" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label class="field-label" for="createBody">Content</label>
+        <textarea class="edit-area" id="createBody"># hook script
+</textarea>
+      </div>`;
+  } else if (KIND === 'agents') {
+    fields = `
+      <div class="field">
+        <label class="field-label" for="createRel">Agent filename</label>
+        <input class="text" id="createRel" placeholder="my-agent.md" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label class="field-label" for="createDesc">Description</label>
+        <input class="text" id="createDesc" placeholder="When to use this agent" />
+      </div>
+      <div class="field">
+        <label class="field-label" for="createBody">Body (Markdown + frontmatter)</label>
+        <textarea class="edit-area" id="createBody">---
+name: my-agent
+description: 
+model: inherit
+---
+
+# Agent
+
+Instructions for this subagent.
+</textarea>
+      </div>`;
+  } else {
+    detailEl.innerHTML = '<div class="empty">Create not supported for this page.</div>';
+    return;
+  }
+
+  detailEl.innerHTML = `${bannerHtml()}
+    <div class="create-panel">
+      <h2>${esc(NEW_LABEL[KIND] || 'New')}</h2>
+      <p class="hint">Writes to ~/.asrax via the hub mount. After create, Reload Cursor so the IDE picks it up.</p>
+      ${fields}
+      <div class="actions">
+        <button type="button" class="primary" id="btnCreateSubmit">Create</button>
+        <button type="button" id="btnCreateCancel">Cancel</button>
+      </div>
+    </div>`;
+
+  detailEl.querySelectorAll('#createName,#createRel,#createDesc,#createOwner,#createGlobs,#createBody,#createAlways')
+    .forEach(el => el && el.addEventListener('input', () => { dirty = true; }));
+  detailEl.querySelector('#btnCreateSubmit').addEventListener('click', submitCreate);
+  detailEl.querySelector('#btnCreateCancel').addEventListener('click', () => {
+    if (dirty && !confirm('Discard new item?')) return;
+    dirty = false;
+    createMode = false;
+    banner = null;
+    detailEl.classList.add('empty');
+    detailEl.textContent = 'Select an item';
+    renderList();
+    if (items.length) openItem(items[0][cfg.id] || items[0].name);
+  });
+  const focusEl = detailEl.querySelector('#createName') || detailEl.querySelector('#createRel');
+  if (focusEl) focusEl.focus();
+}
+
+async function submitCreate() {
+  let url = '';
+  let body = {};
+  let openId = '';
+
+  function fail(text) {
+    banner = { cls: 'err', text };
+    let el = detailEl.querySelector('.edit-banner');
+    if (!el) {
+      el = document.createElement('div');
+      detailEl.insertBefore(el, detailEl.firstChild);
+    }
+    el.className = 'edit-banner err';
+    el.textContent = text;
+  }
+
+  if (KIND === 'skills') {
+    const name = (detailEl.querySelector('#createName')?.value || '').trim();
+    if (!name) { fail('Skill name is required'); return; }
+    url = '/api/v1/asrax/skills';
+    body = {
+      name,
+      description: (detailEl.querySelector('#createDesc')?.value || '').trim() || name,
+      owner: (detailEl.querySelector('#createOwner')?.value || '').trim() || 'platform',
+      body: detailEl.querySelector('#createBody')?.value || '',
+      force: false,
+    };
+    openId = name;
+  } else if (KIND === 'rules') {
+    const rel = (detailEl.querySelector('#createRel')?.value || '').trim();
+    if (!rel) { fail('Rule path is required'); return; }
+    url = '/api/v1/asrax/rules';
+    body = {
+      rel,
+      description: (detailEl.querySelector('#createDesc')?.value || '').trim() || rel,
+      always_apply: !!detailEl.querySelector('#createAlways')?.checked,
+      globs: (detailEl.querySelector('#createGlobs')?.value || '').trim() || null,
+      body: detailEl.querySelector('#createBody')?.value || '',
+      force: false,
+    };
+    openId = rel;
+  } else if (KIND === 'hooks') {
+    const name = (detailEl.querySelector('#createName')?.value || '').trim();
+    if (!name) { fail('Hook filename is required'); return; }
+    url = '/api/v1/asrax/hooks';
+    body = {
+      name,
+      content: detailEl.querySelector('#createBody')?.value || '',
+      force: false,
+    };
+    openId = name;
+  } else if (KIND === 'agents') {
+    const rel = (detailEl.querySelector('#createRel')?.value || '').trim();
+    if (!rel) { fail('Agent filename is required'); return; }
+    let text = detailEl.querySelector('#createBody')?.value || '';
+    const desc = (detailEl.querySelector('#createDesc')?.value || '').trim();
+    if (desc && text.includes('description:')) {
+      text = text.replace(/description:\s*.*/, 'description: ' + desc);
+    }
+    url = '/api/v1/asrax/agents';
+    body = { rel, body: text, force: false };
+    openId = rel;
+  }
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    fail((await parseErr(res)).text);
+    return;
+  }
+  const data = await res.json().catch(() => ({}));
+  dirty = false;
+  createMode = false;
+  banner = { cls: 'ok', text: 'Created under ~/.asrax' };
+  await boot(false);
+  const id = data.rel || data.name || openId;
+  await openItem(id);
+  editMode = true;
+  renderDetail();
+}
+
+async function loadProfiles() {
+  const hint = document.getElementById('agentMakerHint');
+  const chips = document.getElementById('agentMakerProfileChips');
+  try {
+    const res = await fetch('/api/v1/asrax/profiles');
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      profiles = [];
+      if (hint) hint.textContent = ' — profiles failed to load (HTTP ' + res.status + '): ' + (err.detail || err.code || '');
+      if (chips) chips.innerHTML = '';
+      return false;
+    }
+    const data = await res.json();
+    profiles = data.profiles || [];
+    if (hint) {
+      hint.textContent = profiles.length
+        ? ` — ${profiles.length} packs: ${profiles.map(p => `${p.label || p.id} [${p.id}]`).join(', ')}. Pick an agent on the left.`
+        : ' — no profile packs found under ~/.asrax/profiles';
+    }
+    if (chips) {
+      chips.innerHTML = profiles.map(p =>
+        `<span class="pill" title="id: ${esc(p.id)}">${esc(p.label || p.id)} · ${esc(p.id)}</span>`
+      ).join('') || '<span class="hint">none</span>';
+    }
+    return true;
+  } catch (e) {
+    profiles = [];
+    if (hint) hint.textContent = ' — profiles request error: ' + String(e && e.message || e);
+    return false;
+  }
+}
+
+async function loadCatalogOptions() {
+  const [skillsRes, rulesRes, marketRes] = await Promise.all([
+    fetch('/api/v1/asrax/skills'),
+    fetch('/api/v1/asrax/rules'),
+    fetch('/api/v1/marketplace?lean=1'),
+  ]);
+  if (skillsRes.ok) {
+    const data = await skillsRes.json();
+    skillCatalog = (data.skills || []).map(s => ({
+      id: s.name,
+      label: s.name,
+      description: (s.description || '').slice(0, 80),
+    }));
+  }
+  if (rulesRes.ok) {
+    const data = await rulesRes.json();
+    ruleCatalog = (data.rules || []).map(r => ({
+      id: r.rel || r.name,
+      label: r.rel || r.name,
+      always_apply: r.always_apply === true,
+    }));
+  }
+  if (marketRes.ok) {
+    const data = await marketRes.json();
+    const by = new Map();
+    for (const item of data.items || []) {
+      const id = item.slug || item.name;
+      if (!id || by.has(id)) continue;
+      by.set(id, {
+        id,
+        label: item.name && item.name !== id ? `${item.name} [${id}]` : id,
+        kind: item.kind || '',
+        description: item.kind || '',
+      });
+    }
+    mcpCatalog = [...by.values()].sort((a, b) => a.id.localeCompare(b.id));
+  }
+}
+
+async function openItem(id) {
+  createMode = false;
+  active = id;
+  renderList();
+  detailEl.classList.remove('empty');
+  detailEl.innerHTML = 'Loading…';
+  const res = await fetch(cfg.detail(id));
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    detailEl.innerHTML = esc(err.detail || 'not found');
+    return;
+  }
+  const data = await res.json();
+  activeMeta = data;
+  activeBody = data.raw || data.body || data.content || '';
+  if (KIND === 'agents') {
+    const agentName = (data.name || id || '').replace(/\.mdc?$/, '');
+    if (!profiles.length) await loadProfiles();
+    const bRes = await fetch('/api/v1/asrax/agent-bindings/' + encodeURIComponent(agentName));
+    binding = bRes.ok ? await bRes.json().catch(() => null) : null;
+    if (!bRes.ok) banner = { cls: 'err', text: 'Binding load failed (HTTP ' + bRes.status + ')' };
+  }
+  renderDetail();
+}
+
+async function boot(openFirst) {
+  try {
+    if (KIND === 'agents') await Promise.all([loadProfiles(), loadCatalogOptions()]);
+    const res = await fetch(cfg.list);
+    if (!res.ok) {
+      countEl.textContent = 'Failed to load ' + cfg.key + ' (HTTP ' + res.status + ')';
+      listEl.innerHTML = `<div style="padding:16px;color:var(--danger)">Could not load list. <a href="${esc(cfg.list)}">${esc(cfg.list)}</a></div>`;
+      return;
+    }
+    const data = await res.json();
+    items = data[cfg.key] || [];
+    fillFilters();
+    renderList();
+    if ((openFirst || !active) && items.length) {
+      const first = items[0];
+      const id = first[cfg.id] || first.name;
+      if (id) openItem(id);
+    } else if (active) {
+      renderList();
+    }
+  } catch (e) {
+    countEl.textContent = 'Load error';
+    listEl.innerHTML = `<div style="padding:16px;color:var(--danger)">${esc(String(e && e.message || e))}</div>`;
+  }
+}
+qEl.addEventListener('input', renderList);
+ownerEl.addEventListener('change', renderList);
+extraEl.addEventListener('change', renderList);
+document.getElementById('btnNew').addEventListener('click', createNew);
+window.addEventListener('beforeunload', (e) => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+boot(true);
+</script>
+</body>
+</html>

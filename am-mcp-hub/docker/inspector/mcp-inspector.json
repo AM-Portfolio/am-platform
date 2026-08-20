@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "asrax-hub": {
+      "type": "sse",
+      "url": "http://hub:8130/sse"
+    },
+    "google-workspace": {
+      "type": "streamable-http",
+      "url": "http://hub:8130/google/mcp"
+    }
+  }
+}

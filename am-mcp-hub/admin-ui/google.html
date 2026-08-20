@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>AM MCP Hub · Google Workspace</title>
+  <link rel="stylesheet" href="/admin/assets/shell.css"/>
+</head>
+<body>
+<div class="hub-page">
+  <header class="hub-page-head">
+    <h1>Google Workspace</h1>
+    <p class="subhead">Local OAuth and upstream workspace-mcp status on this laptop.</p>
+    <div class="hub-toolbar">
+      <span class="pill" id="healthPill">checking…</span>
+      <span class="pill" id="oauthPill">oauth…</span>
+      <a class="btn" href="/marketplace/">Marketplace</a>
+      <a class="btn" href="/tools/">Hub tools</a>
+    </div>
+  </header>
+  <div class="hub-page-body">
+    <div class="hub-panel" style="padding:14px 16px;margin-bottom:14px">
+      <code>http://127.0.0.1:8000/</code> is workspace-mcp health JSON, not a product UI.
+      Use this page. MCP wire: <code>http://127.0.0.1:8130/google/mcp</code>.
+    </div>
+    <div class="hub-panel" style="padding:16px;margin-bottom:14px">
+      <div class="label" style="font-weight:600;margin-bottom:6px">Status</div>
+      <p id="statusLine" style="margin:0 0 8px;color:var(--muted)">Loading…</p>
+      <pre id="statusBody">—</pre>
+      <div class="hub-toolbar" style="margin:10px 0 0">
+        <button class="btn" id="refreshBtn" type="button">Refresh</button>
+        <button class="btn primary" id="probeToolsBtn" type="button">Probe tools/list</button>
+      </div>
+    </div>
+    <div class="hub-panel" style="padding:16px;margin-bottom:14px">
+      <div class="label" style="font-weight:600;margin-bottom:6px">Configure OAuth (local only)</div>
+      <ol style="margin:0;padding-left:1.2em;color:var(--muted);line-height:1.5;font-size:13px">
+        <li>Create a Google Cloud OAuth client.</li>
+        <li>Put client id/secret in <code>credentials.d/google.env</code> or Admin → Credentials.</li>
+        <li>Redirect URI: <code>http://127.0.0.1:8000/oauth2callback</code></li>
+        <li>Recreate the <code>google-workspace</code> compose service after changing env.</li>
+      </ol>
+      <div class="hub-toolbar" style="margin:12px 0 0">
+        <a class="btn" href="/admin/">Admin / Credentials</a>
+        <a class="btn" href="/marketplace/">Marketplace → Google</a>
+      </div>
+    </div>
+    <div class="hub-panel" style="padding:16px">
+      <div class="label" style="font-weight:600;margin-bottom:6px">Debug</div>
+      <p style="margin:0;color:var(--muted);font-size:13px;line-height:1.45">
+        Prefer Hub tools (same-origin). Inspector needs proxy token
+        <code id="tokenHint">am-local-inspector</code>, transport streamable-http,
+        URL <code>http://hub:8130/google/mcp</code>.
+      </p>
+      <div class="hub-toolbar" style="margin:12px 0 0">
+        <a class="btn primary" href="/tools/">Open Tools</a>
+        <a class="btn" id="inspectorLink" href="http://127.0.0.1:6274/" target="_blank" rel="noopener">Open Inspector</a>
+      </div>
+      <pre id="toolsOut" style="margin-top:12px">—</pre>
+    </div>
+  </div>
+  <footer class="hub-page-foot">Credentials stay on this laptop mount. Nothing uploaded.</footer>
+</div>
+<script src="/admin/assets/shell.js"></script>
+<script>
+async function api(path, opts = {}) {
+  const r = await fetch(path, {
+    ...opts,
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...(opts.headers || {}) },
+  });
+  const text = await r.text();
+  let body; try { body = JSON.parse(text); } catch { body = text; }
+  if (!r.ok) throw new Error(typeof body === 'object' ? JSON.stringify(body) : text);
+  return body;
+}
+function setPill(id, ok, text) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.classList.toggle('on', !!ok);
+  el.classList.toggle('off', ok === false);
+  el.classList.toggle('warn', ok === null);
+}
+async function loadStatus() {
+  document.getElementById('statusLine').textContent = 'Loading…';
+  try {
+    const s = await api('/api/v1/google/status');
+    const ok = !!(s.upstream && s.upstream.ok);
+    setPill('healthPill', ok, ok ? 'upstream ok' : 'upstream down');
+    const oauthOk = !!(s.oauth && s.oauth.configured);
+    setPill('oauthPill', oauthOk ? true : null, oauthOk ? 'oauth configured' : 'oauth missing');
+    document.getElementById('statusLine').textContent = ok
+      ? `workspace-mcp reachable via ${s.upstream.url}`
+      : 'workspace-mcp not reachable';
+    document.getElementById('statusBody').textContent = JSON.stringify(s, null, 2);
+    if (s.google_inspector_url) document.getElementById('inspectorLink').href = s.google_inspector_url;
+    if (s.inspector_proxy_token) document.getElementById('tokenHint').textContent = s.inspector_proxy_token;
+  } catch (e) {
+    setPill('healthPill', false, 'error');
+    document.getElementById('statusLine').textContent = String(e.message || e);
+  }
+}
+async function probeTools() {
+  const out = document.getElementById('toolsOut');
+  out.textContent = 'Probing /google/mcp tools/list…';
+  try {
+    const init = await fetch('/google/mcp', {
+      method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0', id: 1, method: 'initialize',
+        params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'am-google-ui', version: '0.1.0' } },
+      }),
+    });
+    const sid = init.headers.get('mcp-session-id') || '';
+    const initBody = await init.json();
+    const listed = await fetch('/google/mcp', {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json', 'Content-Type': 'application/json',
+        ...(sid ? { 'mcp-session-id': sid } : {}),
+      },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} }),
+    });
+    const listBody = await listed.json();
+    const tools = (listBody.result && listBody.result.tools) || [];
+    out.textContent = JSON.stringify({
+      initialize_ok: !!initBody.result,
+      server: initBody.result && initBody.result.serverInfo,
+      tool_count: tools.length,
+      sample: tools.slice(0, 12).map((t) => t.name),
+    }, null, 2);
+  } catch (e) {
+    out.textContent = String(e.message || e);
+  }
+}
+document.getElementById('refreshBtn').addEventListener('click', loadStatus);
+document.getElementById('probeToolsBtn').addEventListener('click', probeTools);
+loadStatus();
+</script>
+</body>
+</html>

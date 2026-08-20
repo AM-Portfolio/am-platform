@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>AM Hub · Agents</title>
+<link rel="stylesheet" href="/admin/assets/shell.css"/>
+<style>
+body { margin: 0; }
+.page-wrap {
+  display: flex; flex-direction: column; height: 100%; min-height: 0;
+  flex: 1; overflow: hidden;
+}
+.page-wrap .hub-page-head {
+  flex: 0 0 auto; padding: 14px 20px 8px; max-width: none;
+}
+.page-wrap .hub-page-head h1 { font-size: 20px; margin: 0 0 2px; }
+.page-wrap .hub-page-head .subhead { margin: 0 0 8px; font-size: 12px; }
+.page-wrap .hub-toolbar { margin-bottom: 0; gap: 8px; flex-wrap: wrap; }
+.page-wrap .hub-toolbar input[type="search"] { min-width: 140px; padding: 6px 8px; }
+.page-wrap .hub-split {
+  flex: 1; margin: 0 12px 12px; max-width: none; min-height: 0;
+}
+.page-wrap .hub-list { width: 260px; }
+.page-wrap .hub-list button { padding: 8px 12px; width: 100%; text-align: left; }
+.page-wrap .hub-list .title { margin-bottom: 2px; font-size: 12.5px; }
+.page-wrap .hub-list .preview {
+  -webkit-line-clamp: 1; font-size: 11.5px; color: var(--muted);
+  display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden;
+}
+.page-wrap .hub-detail { padding: 14px 18px 28px; overflow: auto; }
+.mode-tabs { display: inline-flex; gap: 4px; margin: 0 0 12px; }
+.mode-tabs .hub-chip { padding: 6px 12px; font-size: 12px; }
+.panel { display: none; }
+.panel.active { display: block; }
+.top-panel { display: none; height: 100%; }
+.top-panel.active { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.banner {
+  margin: 0 0 10px; padding: 8px 10px; border-radius: 8px;
+  background: #dcfce7; color: #166534; font-size: 12px;
+}
+.banner.err { background: #fee2e2; color: #991b1b; }
+.banner.warn { background: #fef3c7; color: #92400e; }
+.grid2 {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+}
+@media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+.card-block {
+  border: 1px solid var(--line); border-radius: 10px; padding: 12px;
+  background: #fafafa; margin-bottom: 12px;
+}
+.card-block h3 { margin: 0 0 8px; font-size: 13px; }
+.card-block .hint { color: var(--muted); font-size: 11px; margin: 0 0 8px; }
+label.field-label { display: block; font-size: 11px; color: var(--muted); margin: 0 0 4px; }
+select.single, select.multi, input.text {
+  width: 100%; font: inherit; font-size: 12px;
+  border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; background: #fff;
+}
+select.multi { min-height: 130px; }
+.pill {
+  display: inline-block; padding: 3px 8px; border-radius: 999px;
+  background: var(--accent-soft); font-size: 11px; margin: 0 4px 4px 0;
+}
+.pill.muted { background: #f4f4f5; color: var(--muted); }
+.pill.missing { background: #fef3c7; color: #92400e; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+.actions button, .hub-toolbar .btn {
+  border: 1px solid var(--line); background: #fff; border-radius: 8px;
+  padding: 6px 12px; font: inherit; font-size: 12px; cursor: pointer;
+}
+.actions button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.actions button:disabled, .hub-toolbar .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.kv { font-size: 12px; margin: 4px 0; }
+.kv b { display: inline-block; min-width: 110px; color: var(--muted); font-weight: 600; }
+.brief {
+  white-space: pre-wrap; font-family: Consolas, "Cascadia Mono", monospace;
+  font-size: 11.5px; background: #fff; border: 1px solid var(--line);
+  border-radius: 8px; padding: 10px; max-height: 280px; overflow: auto;
+}
+.empty { color: var(--muted); padding: 24px 8px; }
+.foot-note { margin: 0 12px 10px; font-size: 11px; color: var(--muted); }
+.full-pane { flex: 1; overflow: auto; padding: 0 12px 12px; }
+table.env-matrix { width: 100%; border-collapse: collapse; font-size: 12px; background: #fff; }
+table.env-matrix th, table.env-matrix td {
+  border: 1px solid var(--line); padding: 6px 8px; text-align: left;
+}
+table.env-matrix th { background: #f4f4f5; }
+.roles-line { font-size: 11px; color: var(--muted); margin: 0 0 6px; }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+  <header class="hub-page-head">
+    <h1>Agents</h1>
+    <p class="subhead" id="subhead">Role packs, bindings, and per-env MCP access</p>
+    <p class="roles-line" id="rolesLine">Roles: …</p>
+    <div class="hub-toolbar">
+      <div class="hub-chips" style="margin:0" id="topTabs">
+        <button type="button" class="hub-chip active" data-top="agents">Agents</button>
+        <button type="button" class="hub-chip" data-top="profiles">Profiles</button>
+        <button type="button" class="hub-chip" data-top="mcp">MCP access</button>
+      </div>
+      <input id="q" type="search" placeholder="Filter agents…" />
+      <button type="button" class="btn" id="btnSeed">Seed defaults</button>
+      <button type="button" class="btn" id="btnNew">New agent</button>
+      <button type="button" class="btn" id="btnReload">Reload</button>
+    </div>
+  </header>
+
+  <div id="topAgents" class="top-panel active">
+    <div class="hub-split">
+      <aside class="hub-list" id="list"></aside>
+      <section class="hub-detail" id="detail">
+        <div class="empty" id="emptyState">Select an agent on the left, or click New agent.</div>
+        <div id="workspace" hidden>
+          <div class="mode-tabs hub-chips" role="tablist">
+            <button type="button" class="hub-chip active" data-mode="view">View access</button>
+            <button type="button" class="hub-chip" data-mode="build">Build / update</button>
+          </div>
+          <div id="msg" class="banner" hidden></div>
+
+          <div id="panelView" class="panel active">
+            <div class="card-block">
+              <h3 id="viewTitle">Agent</h3>
+              <div class="hint" id="viewPath"></div>
+              <div class="kv"><b>Role pack</b> <span id="viewProfile">—</span></div>
+              <div class="kv"><b>Rules mode</b> <span id="viewRules">—</span></div>
+              <div class="kv"><b>Model hint</b> <span id="viewModel">—</span> <span class="hint">(docs only)</span></div>
+            </div>
+            <div class="grid2">
+              <div class="card-block">
+                <h3>Effective skills</h3>
+                <div class="hint">Resolved = pack + add − drop</div>
+                <div id="viewSkills"></div>
+              </div>
+              <div class="card-block">
+                <h3>Effective MCP tools</h3>
+                <div class="hint">Server / tool slugs this agent should use</div>
+                <div id="viewTools"></div>
+              </div>
+            </div>
+            <div class="card-block">
+              <h3>Preferred sub-agents</h3>
+              <div class="hint">From role pack agents_default</div>
+              <div id="viewAgentsDefault"></div>
+            </div>
+            <div class="card-block">
+              <h3>Catalog rules on laptop</h3>
+              <div id="viewRulesList"></div>
+            </div>
+            <div class="card-block">
+              <h3>Effective brief</h3>
+              <pre class="brief" id="viewBrief">(load an agent)</pre>
+            </div>
+            <div class="actions">
+              <button type="button" class="primary" id="btnGotoBuild">Edit in Build tab</button>
+              <button type="button" id="btnApplyView">Apply to IDE</button>
+            </div>
+          </div>
+
+          <div id="panelBuild" class="panel">
+            <div class="card-block">
+              <h3 id="buildTitle">Build binding</h3>
+              <div class="hint">Role packs are not deploy envs. Use MCP access tab for dev/preprod/prod.</div>
+              <div class="grid2" style="margin-top:8px">
+                <div>
+                  <label class="field-label" for="profileSelect">Role pack</label>
+                  <select id="profileSelect" class="single"></select>
+                </div>
+                <div>
+                  <label class="field-label" for="rulesMode">Rules access</label>
+                  <select id="rulesMode" class="single">
+                    <option value="inherit">Inherit from profile</option>
+                    <option value="catalog">Catalog — full asrax rules</option>
+                    <option value="advisory">Advisory — soft guidance</option>
+                    <option value="override_off">Override off — prefer effective brief</option>
+                  </select>
+                </div>
+              </div>
+              <div id="packPreview" class="hint" style="margin-top:8px"></div>
+            </div>
+            <div class="grid2">
+              <div class="card-block">
+                <h3>Add skills</h3>
+                <select id="skillsAdd" class="multi" multiple size="8"></select>
+              </div>
+              <div class="card-block">
+                <h3>Drop skills from pack</h3>
+                <select id="skillsDrop" class="multi" multiple size="8"></select>
+              </div>
+            </div>
+            <div class="grid2">
+              <div class="card-block">
+                <h3>Add MCP tools / servers</h3>
+                <select id="toolsAdd" class="multi" multiple size="8"></select>
+              </div>
+              <div class="card-block">
+                <h3>Drop MCP tools from pack</h3>
+                <select id="toolsDrop" class="multi" multiple size="8"></select>
+              </div>
+            </div>
+            <div class="actions">
+              <button type="button" class="primary" id="btnSave">Save binding</button>
+              <button type="button" id="btnPreview">Preview brief</button>
+              <button type="button" id="btnApply">Save + Apply to IDE</button>
+              <button type="button" id="btnGotoView">Back to View</button>
+            </div>
+            <pre class="brief" id="buildBrief" hidden></pre>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <div id="topProfiles" class="top-panel">
+    <div class="full-pane">
+      <div id="msgProfiles" class="banner" hidden></div>
+      <div class="card-block">
+        <h3>Edit role pack</h3>
+        <div class="hint">dev / qa / admin are role packs (skills + MCP + preferred sub-agents), not deploy environments.</div>
+        <div class="grid2">
+          <div>
+            <label class="field-label" for="packSelect">Pack</label>
+            <select id="packSelect" class="single"></select>
+          </div>
+          <div>
+            <label class="field-label" for="packLabel">Label</label>
+            <input id="packLabel" class="text" type="text"/>
+          </div>
+        </div>
+        <label class="field-label" for="packDesc" style="margin-top:8px">Description</label>
+        <input id="packDesc" class="text" type="text"/>
+        <div class="grid2" style="margin-top:10px">
+          <div>
+            <label class="field-label" for="packSkills">Skills</label>
+            <select id="packSkills" class="multi" multiple size="10"></select>
+          </div>
+          <div>
+            <label class="field-label" for="packTools">MCP tools</label>
+            <select id="packTools" class="multi" multiple size="10"></select>
+          </div>
+        </div>
+        <label class="field-label" for="packAgents" style="margin-top:8px">Preferred sub-agents</label>
+        <select id="packAgents" class="multi" multiple size="6"></select>
+        <div class="actions">
+          <button type="button" class="primary" id="btnSavePack">Save pack</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="topMcp" class="top-panel">
+    <div class="full-pane">
+      <div id="msgMcp" class="banner" hidden></div>
+      <div class="card-block">
+        <h3>MCP access by deploy env</h3>
+        <div class="hint">Enabled / Write per MCP for the selected env. Saving mirrors that column into mcp-controls.env for IDE sync. Set AM_AGENT_ENV to match.</div>
+        <div class="hub-chips" id="envChips" style="margin:8px 0"></div>
+        <div class="actions" style="margin-top:0">
+          <button type="button" class="primary" id="btnSaveMcp">Save matrix</button>
+        </div>
+      </div>
+      <div style="overflow:auto">
+        <table class="env-matrix" id="mcpTable">
+          <thead>
+            <tr><th>MCP</th><th>Enabled</th><th>Write</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <p class="foot-note">Laptop-local (~/.asrax). Role packs ≠ deploy envs. Viewers cannot Save.</p>
+</div>
+<script src="/admin/assets/shell.js"></script>
+<script>
+const HubMdSafe = (typeof HubMd !== 'undefined' && HubMd) ? HubMd : {
+  esc: (s) => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),
+};
+const { esc } = HubMdSafe;
+
+const listEl = document.getElementById('list');
+const qEl = document.getElementById('q');
+const subhead = document.getElementById('subhead');
+const rolesLine = document.getElementById('rolesLine');
+const emptyState = document.getElementById('emptyState');
+const workspace = document.getElementById('workspace');
+const msgEl = document.getElementById('msg');
+
+let agents = [];
+let active = null;
+let activeMeta = null;
+let binding = null;
+let effective = null;
+let mode = 'view';
+let topTab = 'agents';
+let profiles = [];
+let skillCatalog = [];
+let mcpCatalog = [];
+let ruleCatalog = [];
+let agentCatalog = [];
+let roles = [];
+let canWriteCatalog = false;
+let canWriteEnv = false;
+let activeEnv = 'dev';
+let mcpMatrix = {};
+
+function showMsg(el, text, cls) {
+  if (!el) return;
+  if (!text) { el.hidden = true; return; }
+  el.hidden = false;
+  el.className = 'banner' + (cls ? ' ' + cls : '');
+  el.textContent = text;
+}
+
+function selectedValues(sel) {
+  if (!sel) return [];
+  return [...sel.selectedOptions].map(o => o.value).filter(Boolean);
+}
+
+function fillMulti(sel, items, selected) {
+  const set = new Set(selected || []);
+  sel.innerHTML = items.map(it => {
+    const picked = set.has(it.id) ? ' selected' : '';
+    const desc = it.description ? ` — ${it.description}` : '';
+    return `<option value="${esc(it.id)}"${picked}>${esc(it.label)}${esc(desc)}</option>`;
+  }).join('');
+}
+
+function pills(ids, catalog, emptyText) {
+  if (!ids || !ids.length) return `<span class="pill muted">${esc(emptyText || 'none')}</span>`;
+  const by = new Map(catalog.map(c => [c.id, c]));
+  return ids.map(id => {
+    const c = by.get(id);
+    const label = c ? c.label : id;
+    return `<span class="pill" title="id: ${esc(id)}">${esc(label)}</span>`;
+  }).join('');
+}
+
+function applyWriteGates() {
+  canWriteCatalog = roles.includes('platform_admin');
+  canWriteEnv = canWriteCatalog || roles.includes('env_writer:' + activeEnv);
+  document.getElementById('btnSave').disabled = !canWriteCatalog;
+  document.getElementById('btnApply').disabled = !canWriteCatalog;
+  document.getElementById('btnApplyView').disabled = !canWriteCatalog;
+  document.getElementById('btnPreview').disabled = !canWriteCatalog;
+  document.getElementById('btnSeed').disabled = !canWriteCatalog;
+  document.getElementById('btnNew').disabled = !canWriteCatalog;
+  document.getElementById('btnSavePack').disabled = !canWriteCatalog;
+  document.getElementById('btnSaveMcp').disabled = !canWriteEnv;
+  document.querySelectorAll('#mcpTable input[type=checkbox]').forEach(cb => {
+    cb.disabled = !canWriteEnv;
+  });
+}
+
+function setTop(tab) {
+  topTab = tab;
+  document.querySelectorAll('#topTabs [data-top]').forEach(b => b.classList.toggle('active', b.dataset.top === tab));
+  document.getElementById('topAgents').classList.toggle('active', tab === 'agents');
+  document.getElementById('topProfiles').classList.toggle('active', tab === 'profiles');
+  document.getElementById('topMcp').classList.toggle('active', tab === 'mcp');
+  qEl.style.display = tab === 'agents' ? '' : 'none';
+  if (tab === 'profiles') renderPackEditor();
+  if (tab === 'mcp') renderMcpTable();
+}
+
+function setMode(next) {
+  mode = next === 'build' ? 'build' : 'view';
+  document.querySelectorAll('[data-mode]').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+  document.getElementById('panelView').classList.toggle('active', mode === 'view');
+  document.getElementById('panelBuild').classList.toggle('active', mode === 'build');
+  if (mode === 'build') prefillBuild();
+  if (mode === 'view') renderView();
+}
+
+function agentId(metaOrRel) {
+  if (!metaOrRel) return '';
+  if (typeof metaOrRel === 'string') return metaOrRel.replace(/\.mdc?$/i, '');
+  return String(metaOrRel.name || metaOrRel.rel || '').replace(/\.mdc?$/i, '');
+}
+
+function profileById(id) {
+  return profiles.find(p => p.id === id) || null;
+}
+
+function updatePackPreview() {
+  const id = document.getElementById('profileSelect').value;
+  const p = profileById(id);
+  const el = document.getElementById('packPreview');
+  if (!p) {
+    el.textContent = 'No pack selected — agent starts empty; use Add lists only.';
+    return;
+  }
+  el.innerHTML = `<strong>${esc(p.label)}</strong> <span class="hint">[id: ${esc(p.id)}]</span> — ${esc(p.description || '')}<br/>
+    Pack skills: ${(p.skills || []).map(s => `<span class="pill">${esc(s)}</span>`).join('') || '<span class="pill muted">none</span>'}
+    ${(p.skills_missing || []).map(s => `<span class="pill missing">missing ${esc(s)}</span>`).join('')}
+    <br/>Pack MCP: ${(p.tools || []).map(t => `<span class="pill">${esc(t)}</span>`).join('') || '<span class="pill muted">none</span>'}
+    ${(p.tools_missing || []).map(t => `<span class="pill missing">missing ${esc(t)}</span>`).join('')}
+    <br/>Sub-agents: ${(p.agents_default || []).map(a => `<span class="pill">${esc(a)}</span>`).join('') || '<span class="pill muted">none</span>'}`;
+}
+
+function prefillBuild() {
+  const b = binding || { profile: '', skills_add: [], skills_drop: [], tools_add: [], tools_drop: [], rules_mode: 'inherit' };
+  const name = agentId(activeMeta || active);
+  document.getElementById('buildTitle').textContent = name ? `Build / update · ${name}` : 'Build / update';
+  const ps = document.getElementById('profileSelect');
+  ps.innerHTML = `<option value="">— none —</option>` + profiles.map(p => {
+    const sel = b.profile === p.id ? ' selected' : '';
+    return `<option value="${esc(p.id)}"${sel}>${esc(p.label || p.id)} [${esc(p.id)}]</option>`;
+  }).join('');
+  document.getElementById('rulesMode').value = b.rules_mode || 'inherit';
+  fillMulti(document.getElementById('skillsAdd'), skillCatalog, b.skills_add);
+  fillMulti(document.getElementById('skillsDrop'), skillCatalog, b.skills_drop);
+  fillMulti(document.getElementById('toolsAdd'), mcpCatalog, b.tools_add);
+  fillMulti(document.getElementById('toolsDrop'), mcpCatalog, b.tools_drop);
+  updatePackPreview();
+  document.getElementById('buildBrief').hidden = true;
+}
+
+function renderView() {
+  const name = agentId(activeMeta || active);
+  document.getElementById('viewTitle').textContent = name || 'Agent';
+  document.getElementById('viewPath').textContent = activeMeta?.path || '';
+  const p = profileById(binding?.profile || effective?.profile || '');
+  document.getElementById('viewProfile').innerHTML = p
+    ? `<span class="pill">${esc(p.label)}</span> <span class="hint">[${esc(p.id)}]</span>`
+    : (binding?.profile ? esc(binding.profile) : '<span class="pill muted">unassigned</span>');
+  document.getElementById('viewRules').textContent = effective?.rules_mode || binding?.rules_mode || '—';
+  document.getElementById('viewModel').textContent = effective?.model_hint || p?.model_hint || 'small';
+  document.getElementById('viewSkills').innerHTML = pills(effective?.skills || [], skillCatalog, 'no skills');
+  document.getElementById('viewTools').innerHTML = pills(effective?.tools || [], mcpCatalog, 'no MCP tools');
+  document.getElementById('viewAgentsDefault').innerHTML = pills(effective?.agents_default || p?.agents_default || [], agentCatalog, 'none');
+  document.getElementById('viewRulesList').innerHTML = ruleCatalog.length
+    ? ruleCatalog.map(r => `<span class="pill${r.always_apply ? '' : ' muted'}" title="${esc(r.id)}">${esc(r.label)}${r.always_apply ? ' · always' : ''}</span>`).join('')
+    : '<span class="pill muted">No rules on mount</span>';
+  document.getElementById('viewBrief').textContent = effective?.brief || '(no brief yet — use Build → Preview or Apply)';
+}
+
+function renderList() {
+  const q = qEl.value.trim().toLowerCase();
+  const filtered = agents.filter(a => {
+    const hay = [a.name, a.rel, a.description, a.preview, a.profile_hint].filter(Boolean).join(' ').toLowerCase();
+    return !q || hay.includes(q);
+  });
+  const unbound = filtered.filter(a => {
+    const id = agentId(a.rel || a.name);
+    return !a.profile_hint;
+  }).length;
+  subhead.textContent = `${filtered.length} agents · role packs + bindings` + (unbound ? ` · ${unbound} without profile hint` : '');
+  listEl.innerHTML = filtered.map(a => {
+    const id = a.rel || a.name;
+    const cls = id === active ? 'active' : '';
+    const hint = a.profile_hint ? ` · ${a.profile_hint}` : ' · unbound';
+    return `<button type="button" class="${cls}" data-id="${esc(id)}">
+      <div class="title">${esc(a.rel || a.name)}</div>
+      <div class="preview">${esc((a.description || a.preview || '') + hint)}</div>
+    </button>`;
+  }).join('') || '<div class="empty">No agents found.</div>';
+  listEl.querySelectorAll('button[data-id]').forEach(btn => {
+    btn.addEventListener('click', () => openAgent(btn.dataset.id));
+  });
+}
+
+function renderPackEditor() {
+  const sel = document.getElementById('packSelect');
+  const cur = sel.value || (profiles[0] && profiles[0].id) || '';
+  sel.innerHTML = profiles.map(p => `<option value="${esc(p.id)}">${esc(p.label)} [${esc(p.id)}]</option>`).join('');
+  if (cur) sel.value = cur;
+  const p = profileById(sel.value);
+  if (!p) return;
+  document.getElementById('packLabel').value = p.label || '';
+  document.getElementById('packDesc').value = p.description || '';
+  fillMulti(document.getElementById('packSkills'), skillCatalog, p.skills || []);
+  fillMulti(document.getElementById('packTools'), mcpCatalog, p.tools || []);
+  fillMulti(document.getElementById('packAgents'), agentCatalog, p.agents_default || []);
+}
+
+function renderEnvChips() {
+  const envs = ['dev', 'preprod', 'prod'];
+  const el = document.getElementById('envChips');
+  el.innerHTML = envs.map(e => `<button type="button" class="hub-chip ${e === activeEnv ? 'active' : ''}" data-env="${e}">${e}</button>`).join('');
+  el.querySelectorAll('[data-env]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeEnv = btn.dataset.env;
+      renderEnvChips();
+      renderMcpTable();
+      applyWriteGates();
+    });
+  });
+}
+
+function renderMcpTable() {
+  renderEnvChips();
+  const tbody = document.querySelector('#mcpTable tbody');
+  const rows = mcpCatalog.length ? mcpCatalog : Object.keys(mcpMatrix).map(id => ({ id, label: id }));
+  tbody.innerHTML = rows.map(m => {
+    const cell = (mcpMatrix[m.id] && mcpMatrix[m.id][activeEnv]) || { enabled: false, write: false };
+    return `<tr data-slug="${esc(m.id)}">
+      <td>${esc(m.label || m.id)}</td>
+      <td><input type="checkbox" data-field="enabled" ${cell.enabled ? 'checked' : ''}/></td>
+      <td><input type="checkbox" data-field="write" ${cell.write ? 'checked' : ''}/></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="3">No MCP servers found</td></tr>';
+  applyWriteGates();
+}
+
+function collectMcpMatrixFromUi() {
+  const out = JSON.parse(JSON.stringify(mcpMatrix || {}));
+  document.querySelectorAll('#mcpTable tbody tr[data-slug]').forEach(tr => {
+    const slug = tr.dataset.slug;
+    if (!out[slug]) out[slug] = { dev: {enabled:false,write:false}, preprod:{enabled:false,write:false}, prod:{enabled:false,write:false} };
+    if (!out[slug][activeEnv]) out[slug][activeEnv] = { enabled: false, write: false };
+    out[slug][activeEnv] = {
+      enabled: !!tr.querySelector('[data-field=enabled]')?.checked,
+      write: !!tr.querySelector('[data-field=write]')?.checked,
+    };
+  });
+  return out;
+}
+
+async function loadCatalogs() {
+  const res = await fetch('/api/v1/asrax/agents-bootstrap');
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || 'agents-bootstrap HTTP ' + res.status);
+  }
+  const d = await res.json();
+  roles = d.roles || [];
+  rolesLine.textContent = `Roles: ${(roles.length ? roles : ['viewer']).join(', ')} · subject ${d.subject || ''}`;
+  profiles = d.profiles || [];
+  agents = d.agents || [];
+  skillCatalog = d.skills || [];
+  ruleCatalog = d.rules || [];
+  mcpCatalog = (d.mcp || []).map(m => ({
+    id: m.id,
+    label: m.label || m.id,
+    description: m.description || '',
+  }));
+  agentCatalog = agents.map(a => ({
+    id: agentId(a.rel || a.name),
+    label: a.rel || a.name,
+    description: (a.description || '').slice(0, 80),
+  }));
+  const env = d.mcp_env_access || {};
+  activeEnv = env.active_env || 'dev';
+  mcpMatrix = env.matrix || {};
+  applyWriteGates();
+}
+
+async function openAgent(rel) {
+  active = rel;
+  renderList();
+  emptyState.hidden = true;
+  workspace.hidden = false;
+  showMsg(msgEl, 'Loading…');
+  const name = agentId(rel);
+  const res = await fetch('/api/v1/asrax/agent-workspace/' + encodeURIComponent(name));
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    showMsg(msgEl, data.detail || 'Agent not found', 'err');
+    return;
+  }
+  activeMeta = data.agent || { rel, name };
+  binding = data.binding || { agent: name, profile: '', skills_add: [], skills_drop: [], tools_add: [], tools_drop: [], rules_mode: 'inherit' };
+  effective = data.effective || null;
+  const unbound = !binding.profile;
+  showMsg(msgEl, unbound ? `Loaded ${name} — no pack assigned; Seed defaults or Build` : `Loaded ${name}`, unbound ? 'warn' : '');
+  setMode(mode);
+}
+
+function collectPayload() {
+  const name = agentId(activeMeta || active);
+  return {
+    agent: name,
+    profile: document.getElementById('profileSelect').value || '',
+    skills_add: selectedValues(document.getElementById('skillsAdd')),
+    skills_drop: selectedValues(document.getElementById('skillsDrop')),
+    tools_add: selectedValues(document.getElementById('toolsAdd')),
+    tools_drop: selectedValues(document.getElementById('toolsDrop')),
+    rules_mode: document.getElementById('rulesMode').value || 'inherit',
+    notes: '',
+  };
+}
+
+async function saveBinding(thenApply) {
+  if (!canWriteCatalog) { showMsg(msgEl, 'Read-only: requires platform_admin', 'err'); return false; }
+  const payload = collectPayload();
+  const res = await fetch('/api/v1/asrax/agent-bindings/' + encodeURIComponent(payload.agent), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    showMsg(msgEl, data.detail || data.code || 'Save failed', 'err');
+    return false;
+  }
+  binding = data;
+  showMsg(msgEl, `Saved binding for ${payload.agent}`, '');
+  if (thenApply) return applyIde();
+  const ws = await fetch('/api/v1/asrax/agent-workspace/' + encodeURIComponent(payload.agent));
+  if (ws.ok) {
+    const w = await ws.json();
+    effective = w.effective || null;
+    binding = w.binding || binding;
+  }
+  return true;
+}
+
+async function previewBrief() {
+  await saveBinding(false);
+  const name = agentId(activeMeta || active);
+  const res = await fetch('/api/v1/asrax/agent-bindings/' + encodeURIComponent(name) + '/effective');
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) { showMsg(msgEl, data.detail || 'Preview failed', 'err'); return; }
+  effective = data;
+  const el = document.getElementById('buildBrief');
+  el.hidden = false;
+  el.textContent = data.brief || JSON.stringify(data, null, 2);
+  showMsg(msgEl, 'Brief preview updated (binding saved)', '');
+}
+
+async function applyIde() {
+  if (!canWriteCatalog) { showMsg(msgEl, 'Read-only: requires platform_admin', 'err'); return false; }
+  const name = agentId(activeMeta || active);
+  const res = await fetch('/api/v1/asrax/agent-bindings/' + encodeURIComponent(name) + '/apply', { method: 'POST' });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) { showMsg(msgEl, data.detail || 'Apply failed', 'err'); return false; }
+  effective = data.effective || effective;
+  showMsg(msgEl, `Applied to IDE. ${(data.next_steps || []).join(' · ')}`, '');
+  return true;
+}
+
+async function seedDefaults() {
+  if (!canWriteCatalog) { showMsg(msgEl, 'Read-only: requires platform_admin', 'err'); return; }
+  const res = await fetch('/api/v1/asrax/agent-bindings/seed', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ force: false }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) { showMsg(msgEl, data.detail || 'Seed failed', 'err'); return; }
+  showMsg(msgEl, `Seeded created=${(data.created||[]).length} updated=${(data.updated||[]).length} skipped=${(data.skipped||[]).length}`, '');
+  await boot();
+}
+
+async function savePack() {
+  if (!canWriteCatalog) { showMsg(document.getElementById('msgProfiles'), 'requires platform_admin', 'err'); return; }
+  const id = document.getElementById('packSelect').value;
+  const payload = {
+    id,
+    label: document.getElementById('packLabel').value || id,
+    description: document.getElementById('packDesc').value || '',
+    skills: selectedValues(document.getElementById('packSkills')),
+    tools: selectedValues(document.getElementById('packTools')),
+    agents_default: selectedValues(document.getElementById('packAgents')),
+    rules_mode: 'catalog',
+    model_hint: 'small',
+  };
+  const res = await fetch('/api/v1/asrax/profiles/' + encodeURIComponent(id), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    showMsg(document.getElementById('msgProfiles'), data.detail || 'Save pack failed', 'err');
+    return;
+  }
+  const idx = profiles.findIndex(p => p.id === id);
+  if (idx >= 0) profiles[idx] = data; else profiles.push(data);
+  showMsg(document.getElementById('msgProfiles'), `Saved role pack ${id}`, '');
+  renderPackEditor();
+}
+
+async function saveMcpMatrix() {
+  if (!canWriteEnv) { showMsg(document.getElementById('msgMcp'), 'requires platform_admin or env_writer:' + activeEnv, 'err'); return; }
+  const matrix = collectMcpMatrixFromUi();
+  const res = await fetch('/api/v1/asrax/mcp-env-access', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ active_env: activeEnv, matrix, apply_active: true }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    showMsg(document.getElementById('msgMcp'), data.detail || 'Save MCP access failed', 'err');
+    return;
+  }
+  mcpMatrix = data.matrix || matrix;
+  activeEnv = data.active_env || activeEnv;
+  showMsg(document.getElementById('msgMcp'), `Saved MCP access for ${activeEnv} (mirrored to mcp-controls.env)`, '');
+  renderMcpTable();
+}
+
+async function createAgent() {
+  if (!canWriteCatalog) return;
+  const rel = prompt('New agent filename (example: my-helper.md)');
+  if (!rel) return;
+  const stem = rel.replace(/\.mdc?$/i, '');
+  const body = {
+    rel,
+    body: `---\nname: ${stem}\ndescription: \nprofile: \n---\n\n# ${stem}\n\n`,
+    force: false,
+  };
+  const res = await fetch('/api/v1/asrax/agents', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) { showMsg(msgEl, data.detail || data.code || 'Create failed', 'err'); return; }
+  await boot();
+  await openAgent(data.rel || rel);
+  setMode('build');
+  showMsg(msgEl, `Created ${data.rel || rel} — pick a role pack and save`, 'warn');
+}
+
+async function boot() {
+  try {
+    showMsg(msgEl, 'Loading catalogs…');
+    await loadCatalogs();
+    renderList();
+    renderPackEditor();
+    if (topTab === 'mcp') renderMcpTable();
+    emptyState.hidden = false;
+    workspace.hidden = true;
+    emptyState.textContent = agents.length
+      ? 'Select an agent on the left, or click New agent.'
+      : 'No agents on asrax yet. Click New agent or Seed defaults.';
+    showMsg(msgEl, '');
+    if (active) await openAgent(active);
+  } catch (e) {
+    showMsg(msgEl, String(e.message || e), 'err');
+  }
+}
+
+document.querySelectorAll('#topTabs [data-top]').forEach(btn => {
+  btn.addEventListener('click', () => setTop(btn.dataset.top));
+});
+document.querySelectorAll('[data-mode]').forEach(btn => {
+  btn.addEventListener('click', () => setMode(btn.dataset.mode));
+});
+document.getElementById('btnGotoBuild').addEventListener('click', () => setMode('build'));
+document.getElementById('btnGotoView').addEventListener('click', () => setMode('view'));
+document.getElementById('btnSave').addEventListener('click', () => saveBinding(false));
+document.getElementById('btnPreview').addEventListener('click', () => previewBrief());
+document.getElementById('btnApply').addEventListener('click', async () => {
+  await saveBinding(false);
+  await applyIde();
+  setMode('view');
+});
+document.getElementById('btnApplyView').addEventListener('click', () => applyIde());
+document.getElementById('profileSelect').addEventListener('change', updatePackPreview);
+document.getElementById('btnNew').addEventListener('click', createAgent);
+document.getElementById('btnSeed').addEventListener('click', seedDefaults);
+document.getElementById('btnReload').addEventListener('click', () => boot());
+document.getElementById('btnSavePack').addEventListener('click', savePack);
+document.getElementById('btnSaveMcp').addEventListener('click', saveMcpMatrix);
+document.getElementById('packSelect').addEventListener('change', renderPackEditor);
+qEl.addEventListener('input', renderList);
+
+boot();
+</script>
+</body>
+</html>
