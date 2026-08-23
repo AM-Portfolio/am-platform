@@ -442,12 +442,18 @@ async def list_tools_rest(
 
 
 def _public_base(request: Request) -> str:
-    """URL Inspector's proxy (docker network) should call back to."""
+    """URL clients should call back to (include ingress path prefix when set)."""
+    from am_mcp_hub.core.config import get_settings
+
+    configured = (get_settings().public_base_url or "").strip().rstrip("/")
+    if configured:
+        return configured
     # Prefer docker service DNS for in-compose Inspector.
     forwarded = (request.headers.get("x-forwarded-host") or "").strip()
     if forwarded:
         proto = (request.headers.get("x-forwarded-proto") or "http").strip()
-        return f"{proto}://{forwarded}".rstrip("/")
+        prefix = (request.headers.get("x-forwarded-prefix") or "").strip().rstrip("/")
+        return f"{proto}://{forwarded}{prefix}".rstrip("/")
     host = (request.headers.get("host") or "").strip()
     if host.startswith("hub:") or host.startswith("127.0.0.1") or host.startswith("localhost"):
         return str(request.base_url).rstrip("/")

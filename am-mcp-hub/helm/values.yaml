@@ -1,0 +1,60 @@
+# Base Helm values for am-mcp-hub (universal-chart)
+global:
+  image:
+    registry: ghcr.io/am-portfolio
+    pullPolicy: Always
+    imagePullSecrets:
+      - name: regcred
+  vault:
+    enabled: false
+    role: "am-backend-role"
+    authPath: "auth/kubernetes"
+    serviceAccountName: "am-backend-sa"
+
+image:
+  repository: am-mcp-hub
+
+replicaCount: 1
+language: python
+port: 8130
+service:
+  port: 8130
+entrypoint: "exec uvicorn am_mcp_hub.main:app --host 0.0.0.0 --port 8130"
+
+security:
+  automountServiceAccountToken: true
+
+config: {}
+
+env:
+  APP_ENV: production
+  APP_NAME: am-mcp-hub
+  APP_PORT: "8130"
+  LOG_LEVEL: INFO
+  TZ: Asia/Kolkata
+  DATABASE_URL: "sqlite+aiosqlite:////tmp/mcp_hub.db"
+  IDENTITY_URL: "http://am-identity-dev:8080"
+  HUB_DEV_BYPASS_AUTH: "0"
+
+probes:
+  port: 8130
+  startup:
+    path: /health
+    failureThreshold: 30
+    periodSeconds: 10
+  liveness:
+    path: /health
+  readiness:
+    path: /health
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+ingress:
+  enabled: true
+  className: "traefik"

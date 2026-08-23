@@ -36,6 +36,8 @@ class HubSettings(BaseSettings):
     google_workspace_mcp_url: str = "http://127.0.0.1:8000/mcp"
     # Host-facing URL for Inspector / Cursor (prefer hub proxy)
     google_workspace_mcp_public_url: str = "http://127.0.0.1:8130/google/mcp"
+    # Public origin+prefix for SSE endpoint events (e.g. https://am-dev.asrax.in/hub)
+    public_base_url: str = ""
     # Official MCP Inspector UI (compose service or local npx)
     inspector_public_url: str = "http://127.0.0.1:6274/"
     # Must match inspector service MCP_PROXY_AUTH_TOKEN (local compose only).

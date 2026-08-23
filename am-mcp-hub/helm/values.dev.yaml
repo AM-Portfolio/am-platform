@@ -1,0 +1,42 @@
+# Dev — am-mcp-hub on nonprod VPS (am-apps-dev)
+environment: dev
+replicaCount: 1
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+vault:
+  enabled: false
+
+ingress:
+  enabled: true
+  className: "traefik"
+  annotations:
+    kubernetes.io/ingress.class: "traefik"
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.middlewares: >-
+      am-apps-dev-dev-global-cors@kubernetescrd,
+      am-apps-dev-dev-strip-prefix@kubernetescrd
+  hosts:
+    - host: am-dev.asrax.in
+      paths:
+        - path: /hub
+          pathType: Prefix
+
+env:
+  APP_ENV: dev
+  LOG_LEVEL: DEBUG
+  # Temporary until Vault secrets + Postgres are wired; auth still accepts Bearer.
+  HUB_DEV_BYPASS_AUTH: "1"
+  DATABASE_URL: "sqlite+aiosqlite:////tmp/mcp_hub.db"
+  IDENTITY_URL: "http://am-identity-dev.am-apps-dev.svc.cluster.local:8080"
+  DEFAULT_ORG_SLUG: asrax
+  LOCAL_CREDS_DIR: "/tmp/local-creds"
+  LAPTOP_ASRAX_DIR: "/tmp/laptop-asrax"
+  LAPTOP_AM_DIR: "/tmp/laptop-am"
+  PUBLIC_BASE_URL: "https://am-dev.asrax.in/hub"

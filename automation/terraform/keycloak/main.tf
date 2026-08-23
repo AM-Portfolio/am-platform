@@ -749,6 +749,7 @@ resource "keycloak_oidc_google_identity_provider" "google_idp" {
   client_secret = var.google_client_secret
 
   default_scopes               = "openid profile email"
+  # DEV cluster uses copy "first broker login auto-link" (auto-link by email).
   first_broker_login_flow_alias = "first broker login"
 }
 

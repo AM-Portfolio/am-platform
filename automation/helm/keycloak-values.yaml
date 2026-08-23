@@ -3,8 +3,12 @@ httpRelativePath: "/auth/"
 proxyHeaders: "xforwarded"
 
 extraEnvVars:
+  # Google IdP broker URL is built from this host. Must match Google Cloud
+  # authorized redirect: https://auth.asrax.in/auth/realms/<realm>/broker/google/endpoint
   - name: KC_HOSTNAME
-    value: "auth.munish.org"
+    value: "https://auth.asrax.in/auth"
+  - name: KC_HOSTNAME_STRICT
+    value: "false"
 
 global:
   security:
@@ -42,10 +46,10 @@ externalDatabase:
 ingress:
   enabled: true
   ingressClassName: "traefik"
-  hostname: "auth.munish.org"
+  hostname: "auth.asrax.in"
   path: "/"
   extraHosts:
-    - name: "auth.asrax.in"
+    - name: "auth.munish.org"
       path: "/"
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
