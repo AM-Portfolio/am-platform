@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 import re
 
@@ -54,14 +56,17 @@ class RegisterRequest(BaseModel):
 class LoginRequest(BaseModel):
     username: str
     password: str
+    platform: Literal["web", "android", "ios"] | None = None
 
 
 class RefreshRequest(BaseModel):
     refresh_token: str
+    client_id: str | None = None
 
 
 class LogoutRequest(BaseModel):
     refresh_token: str
+    client_id: str | None = None
 
 
 class OTPLoginRequest(BaseModel):

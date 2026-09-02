@@ -40,7 +40,9 @@ async def login(
     payload: LoginRequest,
     provider: IIdentityProvider = Depends(get_identity_provider),
 ):
-    return await provider.authenticate(payload.username, payload.password)
+    return await provider.authenticate(
+        payload.username, payload.password, platform=payload.platform
+    )
 
 
 @router.post("/login/otp")
@@ -80,7 +82,7 @@ async def refresh(
     payload: RefreshRequest,
     provider: IIdentityProvider = Depends(get_identity_provider),
 ):
-    return await provider.refresh_token(payload.refresh_token)
+    return await provider.refresh_token(payload.refresh_token, payload.client_id)
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
@@ -88,7 +90,7 @@ async def logout(
     payload: LogoutRequest,
     provider: IIdentityProvider = Depends(get_identity_provider),
 ):
-    await provider.revoke_token(payload.refresh_token)
+    await provider.revoke_token(payload.refresh_token, payload.client_id)
 
 
 @router.post("/password-reset", status_code=status.HTTP_202_ACCEPTED)

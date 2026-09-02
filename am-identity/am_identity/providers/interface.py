@@ -12,7 +12,9 @@ class IIdentityProvider(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def authenticate(self, username: str, password: str) -> dict[str, Any]:
+    async def authenticate(
+        self, username: str, password: str, platform: str | None = None
+    ) -> dict[str, Any]:
         raise NotImplementedError
 
     @abstractmethod
@@ -20,11 +22,15 @@ class IIdentityProvider(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def refresh_token(self, refresh_token: str) -> dict[str, Any]:
+    async def refresh_token(
+        self, refresh_token: str, client_id: str | None = None
+    ) -> dict[str, Any]:
         raise NotImplementedError
 
     @abstractmethod
-    async def revoke_token(self, refresh_token: str) -> None:
+    async def revoke_token(
+        self, refresh_token: str, client_id: str | None = None
+    ) -> None:
         raise NotImplementedError
 
     @abstractmethod
