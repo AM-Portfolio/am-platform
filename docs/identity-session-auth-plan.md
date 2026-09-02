@@ -10,40 +10,40 @@ todos:
     status: completed
   - id: phase2-keycloak-ttl
     content: "am-platform: Keycloak web 7d + mobile 15d client session TTLs + refresh rotation"
-    status: pending
+    status: completed
   - id: phase3-mobile-applock
     content: "am-modern-ui mobile: local_auth app lock every 24h + unlock then refresh"
-    status: pending
+    status: completed
   - id: phase4a-qr-backend
     content: "Phase 4a am-identity: device-link API + PKCE binding + confirmation code + preview + audit"
-    status: pending
+    status: completed
   - id: phase4b-qr-web
     content: "Phase 4b am-modern-ui web: QR login + numeric code + poll with code_verifier + cookie session"
-    status: pending
+    status: completed
   - id: phase4c-qr-mobile-scanner
     content: "Phase 4c am-modern-ui mobile: scanner + server-enriched confirm + biometric approve + deep link"
-    status: pending
+    status: completed
   - id: phase4d-qr-polish
     content: "Phase 4d QR polish: expiry UX, errors, feature flag, E2E runbook"
-    status: pending
+    status: completed
   - id: phase4e-qr-hardening
     content: "Phase 4e: QR cookie BFF completion, audit log, linked-device nickname, geo mismatch alert"
-    status: pending
+    status: completed
   - id: phase4f-web-otp
     content: "Phase 4f am-identity + web UI: email/SMS OTP login — web only, not mobile"
-    status: pending
+    status: completed
   - id: phase5-login-alerts
     content: "Phase 5: Push on NEW device + web in-app security banner (foreground) + mobile push/detail screen"
-    status: pending
+    status: completed
   - id: phase6-active-sessions
     content: "Phase 6: Profile active sessions UI web+mobile + revoke remote logout"
-    status: pending
+    status: completed
   - id: phase7-tests-docs
     content: "Phase 7: Tests + keycloak-realm-guide + auth runbook + security test cases"
-    status: pending
+    status: completed
   - id: phase8-trading-ready
     content: "Phase 8 (when buy/sell ships): step-up auth, aggressive refresh, web cookie BFF"
-    status: pending
+    status: completed
 isProject: false
 saved_to: "am-platform/docs/identity-session-auth-plan.md"
 drawio: "am-platform/docs/design/identity-session-auth.drawio"
@@ -102,24 +102,24 @@ git checkout -b feature/refresh-token
 
 ## Local commit log (feature/refresh-token)
 
-| Phase | Repo | Commit message prefix | Status |
-|-------|------|----------------------|--------|
-| 0 | am-platform | `docs(identity): phase 0 baseline audit` | pending |
-| 1 | am-modern-ui | `feat(auth): phase 1 client refresh core` | pending |
-| 2 | am-platform | `feat(identity): phase 2 keycloak session TTL` | pending |
-| 3 | am-modern-ui | `feat(auth): phase 3 mobile app lock` | pending |
-| 4a | am-platform | `feat(identity): phase 4a device-link backend` | pending |
-| 4b | am-modern-ui | `feat(auth): phase 4b web QR login` | pending |
-| 4c | am-modern-ui | `feat(auth): phase 4c mobile QR scanner` | pending |
-| 4d | both | `docs(auth): phase 4d QR polish` | pending |
-| 4e | am-platform | `feat(identity): phase 4e QR hardening BFF` | pending |
-| 4f | both | `feat(auth): phase 4f web OTP login` | pending |
-| 5 | both | `feat(auth): phase 5 login alerts` | pending |
-| 6 | both | `feat(auth): phase 6 active sessions` | pending |
-| 7 | both | `docs(auth): phase 7 tests and runbooks` | pending |
-| 8 | both | `feat(auth): phase 8 trading hardening` | pending |
+| Phase | Repo | Commit | Status |
+|-------|------|--------|--------|
+| 0 | am-platform | `e137dc2` | done |
+| 1 | am-modern-ui | `0849bc0` | done |
+| 2 | am-platform | `5742a63` | done |
+| 3 | am-modern-ui | `819502d` | done |
+| 4a | am-platform | `ac61d0e` | done |
+| 4b | am-modern-ui | `98fcd7a` | done |
+| 4c | am-modern-ui | `9cb64e6` (+ phase 8 wiring) | done |
+| 4d | both | `b24db36` / `98fcd7a` | done |
+| 4e | am-platform | `7526e30` (with phase 5) | done |
+| 4f | both | `a35e7b9` / `98fcd7a` | done |
+| 5 | both | `7526e30` / `722ef96` | done |
+| 6 | both | `7526e30` / `722ef96` | done |
+| 7 | both | `b24db36` / `d31b545` | done |
+| 8 | both | `1117b98` / `9cb64e6` | done |
 
-Commits are local only (not pushed) until PR review.
+Commits are local only (not pushed). Rebase onto `origin/main` before opening PRs.
 
 ---
 
