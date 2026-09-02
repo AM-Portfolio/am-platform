@@ -9,6 +9,9 @@
 - `critical_high_gap_resolution.md` - resolved decisions for gateway routing, events, migration, subscription enforcement, and notification reliability.
 - `task.md` - execution checklist.
 - `plan_identity.md` - Keycloak-backed identity service plan.
+- `identity-session-auth-plan.md` - full session/refresh/QR/OTP/login-alerts program plan (Phases 0–8).
+- `identity-session-auth-baseline-audit.md` - Phase 0 Keycloak/client audit snapshot.
+- `design/identity-session-auth.drawio` - draw.io flows (open in [diagrams.net](https://app.diagrams.net/)).
 - `plan_subscription.md` - subscription, entitlements, and usage plan.
 - `plan_notification.md` - notification routing and inbox plan.
 - `plan_payments.md` - future payment abstraction and billing plan, outside the main 10/10 platform score.
