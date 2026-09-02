@@ -32,7 +32,18 @@
     "notification_id",
     "last_request_name",
     "last_request_url",
-    "last_response_status"
+    "last_response_status",
+    "device_link_id",
+    "code_verifier",
+    "code_challenge",
+    "confirmation_code",
+    "am_session",
+    "step_up_token",
+    "login_session_id",
+    "security_event_id",
+    "machine_trust_key",
+    "web_otp_code",
+    "otp_session_id"
   ],
   "profiles": {
     "local": {
@@ -114,7 +125,18 @@
     "notification_id": "",
     "last_request_name": "",
     "last_request_url": "",
-    "last_response_status": ""
+    "last_response_status": "",
+    "device_link_id": "",
+    "code_verifier": "",
+    "code_challenge": "",
+    "confirmation_code": "",
+    "am_session": "",
+    "step_up_token": "",
+    "login_session_id": "",
+    "security_event_id": "",
+    "machine_trust_key": "postman-test-machine-trust-key",
+    "web_otp_code": "",
+    "otp_session_id": ""
   },
   "secret_keys": [
     "identity_client_secret",

@@ -14,17 +14,23 @@ from am_identity.schemas.device_link import (
     DeviceLinkStartResponse,
     DeviceLinkStatusResponse,
     DeviceLinkUserResponse,
+    WebSessionTokensResponse,
 )
 from am_identity.services.bff_session_service import BffUser
 from am_identity.services.cookie_utils import set_session_cookie
 from am_identity.services.device_link_service import (
+    DEVICE_LINK_TTL_SECONDS,
+    POLL_INTERVAL_MS,
     DeviceLinkStartInput,
     device_link_service,
 )
 from am_identity.services.login_session_service import LoginContext, login_session_service
+from am_identity.services.web_session_tokens import issue_web_session_tokens
 from am_platform_security import AuthContext, require_auth_context
 
 router = APIRouter(prefix="/auth/device-link", tags=["device-link"])
+
+_DEVICE_LINK_STATUS_POLL_BUDGET = (DEVICE_LINK_TTL_SECONDS * 1000) // POLL_INTERVAL_MS + 5
 
 
 def _bff_user_from_context(context: AuthContext) -> BffUser:
@@ -41,8 +47,8 @@ def _bff_user_from_context(context: AuthContext) -> BffUser:
 async def _web_tokens_for_user(
     provider: IIdentityProvider,
     user_id: str,
-) -> tuple[str, str | None]:
-    return f"web-access-{user_id}", f"web-refresh-{user_id}"
+) -> tuple[str, str | None, int | None]:
+    return await issue_web_session_tokens(provider, user_id)
 
 
 @router.post("/start", response_model=DeviceLinkStartResponse)
@@ -74,7 +80,13 @@ async def device_link_status(
     response: Response,
     code_verifier: str,
 ) -> DeviceLinkStatusResponse:
-    enforce_rate_limit(request, name="device-link-status", limit=30)
+    enforce_rate_limit(
+        request,
+        name="device-link-status",
+        key_suffix=device_link_id,
+        limit=_DEVICE_LINK_STATUS_POLL_BUDGET,
+        window_seconds=DEVICE_LINK_TTL_SECONDS,
+    )
     record, user = device_link_service.poll_status(
         device_link_id,
         code_verifier=code_verifier,
@@ -82,6 +94,7 @@ async def device_link_status(
         user_agent=request.headers.get("user-agent"),
     )
     user_response: DeviceLinkUserResponse | None = None
+    tokens_response: WebSessionTokensResponse | None = None
     if user is not None and record.session_id is not None:
         from am_identity.services.bff_session_service import bff_session_service
 
@@ -109,7 +122,16 @@ async def device_link_status(
             email=user.email,
             preferred_username=user.preferred_username,
         )
-    return DeviceLinkStatusResponse(status=record.status, user=user_response)
+        if record.access_token:
+            tokens_response = WebSessionTokensResponse(
+                access_token=record.access_token,
+                refresh_token=record.refresh_token,
+            )
+    return DeviceLinkStatusResponse(
+        status=record.status,
+        user=user_response,
+        tokens=tokens_response,
+    )
 
 
 @router.get("/{device_link_id}/preview", response_model=DeviceLinkPreviewResponse)
@@ -131,7 +153,7 @@ async def device_link_approve(
 ) -> DeviceLinkApproveResponse:
     enforce_rate_limit(request, name="device-link-approve", limit=5)
     user = _bff_user_from_context(context)
-    access_token, refresh_token = await _web_tokens_for_user(provider, user.sub)
+    access_token, refresh_token, _expires_in = await _web_tokens_for_user(provider, user.sub)
     record = device_link_service.approve(
         device_link_id,
         user=user,

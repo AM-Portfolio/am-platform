@@ -19,15 +19,22 @@ class DeviceLinkStartResponse(BaseModel):
     poll_interval_ms: int = 2000
 
 
-class DeviceLinkStatusResponse(BaseModel):
-    status: str
-    user: DeviceLinkUserResponse | None = None
-
-
 class DeviceLinkUserResponse(BaseModel):
     sub: str
     email: str | None = None
     preferred_username: str | None = None
+
+
+class WebSessionTokensResponse(BaseModel):
+    access_token: str
+    refresh_token: str | None = None
+    expires_in: int | None = None
+
+
+class DeviceLinkStatusResponse(BaseModel):
+    status: str
+    user: DeviceLinkUserResponse | None = None
+    tokens: WebSessionTokensResponse | None = None
 
 
 class DeviceLinkPreviewResponse(BaseModel):

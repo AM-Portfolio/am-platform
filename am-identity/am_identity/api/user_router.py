@@ -3,6 +3,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 
 from am_identity.deps import get_identity_provider
+from am_identity.api.auth_deps import require_user_context
 from am_identity.providers.interface import IIdentityProvider
 from am_identity.schemas.security import LoginSessionResponse, SecurityEventResponse
 from am_identity.schemas.user import UpdateUserSettingsRequest, UserProfileResponse
@@ -59,7 +60,7 @@ async def update_my_settings(
 
 @router.get("/me/security-events", response_model=list[SecurityEventResponse])
 async def list_security_events(
-    context: AuthContext = Depends(require_auth_context()),
+    context: AuthContext = Depends(require_user_context()),
     since: float | None = Query(default=None),
 ) -> list[SecurityEventResponse]:
     events = login_session_service.list_security_events(context.subject, since=since)
@@ -81,7 +82,7 @@ async def list_security_events(
 @router.post("/me/security-events/{event_id}/ack", response_model=SecurityEventResponse)
 async def acknowledge_security_event(
     event_id: str,
-    context: AuthContext = Depends(require_auth_context()),
+    context: AuthContext = Depends(require_user_context()),
 ) -> SecurityEventResponse:
     event = login_session_service.acknowledge_security_event(context.subject, event_id)
     return SecurityEventResponse(
@@ -98,7 +99,7 @@ async def acknowledge_security_event(
 
 @router.get("/me/login-sessions", response_model=list[LoginSessionResponse])
 async def list_login_sessions(
-    context: AuthContext = Depends(require_auth_context()),
+    context: AuthContext = Depends(require_user_context()),
 ) -> list[LoginSessionResponse]:
     sessions = login_session_service.list_login_sessions(context.subject)
     return [
@@ -121,13 +122,13 @@ async def list_login_sessions(
 @router.delete("/me/login-sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def revoke_login_session(
     session_id: str,
-    context: AuthContext = Depends(require_auth_context()),
+    context: AuthContext = Depends(require_user_context()),
 ) -> None:
     login_session_service.revoke_login_session(context.subject, session_id)
 
 
 @router.delete("/me/login-sessions", status_code=status.HTTP_204_NO_CONTENT)
 async def revoke_all_login_sessions(
-    context: AuthContext = Depends(require_auth_context()),
+    context: AuthContext = Depends(require_user_context()),
 ) -> None:
     login_session_service.revoke_all_login_sessions(context.subject)

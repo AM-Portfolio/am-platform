@@ -10,12 +10,14 @@ from am_identity.schemas.web_otp import (
     WebOtpSendResponse,
     WebOtpVerifyRequest,
     WebOtpVerifyResponse,
+    WebOtpVerifyTokensResponse,
     WebOtpVerifyUserResponse,
 )
 from am_identity.services.bff_session_service import bff_session_service
 from am_identity.services.cookie_utils import set_session_cookie
 from am_identity.services.user_agent import is_web_user_agent
 from am_identity.services.web_otp_service import web_otp_service
+from am_identity.services.web_session_tokens import issue_web_session_tokens
 
 router = APIRouter(prefix="/auth/web/otp", tags=["web-otp"])
 
@@ -72,10 +74,14 @@ async def web_otp_verify(
     payload: WebOtpVerifyRequest,
     request: Request,
     response: Response,
+    provider: IIdentityProvider = Depends(get_identity_provider),
 ) -> WebOtpVerifyResponse:
     _require_web_user_agent(request)
-    access_token = "web-access-otp"
-    refresh_token = "web-refresh-otp"
+    pending = web_otp_service.pending_session(payload.otp_session_id)
+    access_token, refresh_token, expires_in = await issue_web_session_tokens(
+        provider,
+        pending.user_id,
+    )
     user, session_id = web_otp_service.verify(
         otp_session_id=payload.otp_session_id,
         code=payload.code,
@@ -93,5 +99,10 @@ async def web_otp_verify(
             sub=user.sub,
             email=user.email,
             preferred_username=user.preferred_username,
-        )
+        ),
+        tokens=WebOtpVerifyTokensResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            expires_in=expires_in,
+        ),
     )

@@ -27,5 +27,12 @@ class WebOtpVerifyUserResponse(BaseModel):
     preferred_username: str | None = None
 
 
+class WebOtpVerifyTokensResponse(BaseModel):
+    access_token: str
+    refresh_token: str | None = None
+    expires_in: int | None = None
+
+
 class WebOtpVerifyResponse(BaseModel):
     user: WebOtpVerifyUserResponse
+    tokens: WebOtpVerifyTokensResponse | None = None

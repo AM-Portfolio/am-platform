@@ -121,6 +121,26 @@
           "  setEnv(\"refresh_token\", body.refresh_token);",
           "}",
           "",
+          "// --- Device link / web OTP / step-up ---",
+          "setEnv(\"device_link_id\", body.device_link_id);",
+          "setEnv(\"confirmation_code\", body.confirmation_code);",
+          "setEnv(\"otp_session_id\", body.otp_session_id);",
+          "setEnv(\"step_up_token\", body.step_up_token);",
+          "",
+          "const amSessionCookie = pm.cookies.get(\"am_session\");",
+          "if (amSessionCookie) {",
+          "  setEnv(\"am_session\", amSessionCookie);",
+          "}",
+          "",
+          "if (Array.isArray(body) && body.length) {",
+          "  if (body[0].session_id) {",
+          "    setEnv(\"login_session_id\", body[0].session_id);",
+          "  }",
+          "  if (body[0].event_id) {",
+          "    setEnv(\"security_event_id\", body[0].event_id);",
+          "  }",
+          "}",
+          "",
           "// --- Identity auth helpers ---",
           "setEnv(\"google_state\", body.state);",
           "setEnv(\"google_auth_url\", body.auth_url);",
@@ -173,6 +193,11 @@
           "  pm.environment.get(\"user_sub\") ? \"user_sub\" : null,",
           "  pm.environment.get(\"subscription_id\") ? \"subscription_id\" : null,",
           "  pm.environment.get(\"notification_id\") ? \"notification_id\" : null,",
+          "  pm.environment.get(\"device_link_id\") ? \"device_link_id\" : null,",
+          "  pm.environment.get(\"am_session\") ? \"am_session\" : null,",
+          "  pm.environment.get(\"step_up_token\") ? \"step_up_token\" : null,",
+          "  pm.environment.get(\"login_session_id\") ? \"login_session_id\" : null,",
+          "  pm.environment.get(\"security_event_id\") ? \"security_event_id\" : null,",
           "].filter(Boolean);",
           "",
           "if (captured.length) {",
@@ -185,6 +210,26 @@
   "variable": [
     {
       "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "am_session",
+      "value": ""
+    },
+    {
+      "key": "code_challenge",
+      "value": ""
+    },
+    {
+      "key": "code_verifier",
+      "value": ""
+    },
+    {
+      "key": "confirmation_code",
+      "value": ""
+    },
+    {
+      "key": "device_link_id",
       "value": ""
     },
     {
@@ -216,8 +261,20 @@
       "value": "http://auth.munish.org/auth"
     },
     {
+      "key": "login_session_id",
+      "value": ""
+    },
+    {
+      "key": "machine_trust_key",
+      "value": "postman-test-machine-trust-key"
+    },
+    {
       "key": "notification_base_url",
       "value": "http://localhost:8111"
+    },
+    {
+      "key": "otp_session_id",
+      "value": ""
     },
     {
       "key": "plan_code",
@@ -228,7 +285,15 @@
       "value": ""
     },
     {
+      "key": "security_event_id",
+      "value": ""
+    },
+    {
       "key": "service_access_token",
+      "value": ""
+    },
+    {
+      "key": "step_up_token",
       "value": ""
     },
     {
@@ -254,12 +319,16 @@
     {
       "key": "user_sub",
       "value": ""
+    },
+    {
+      "key": "web_otp_code",
+      "value": ""
     }
   ],
   "item": [
     {
       "name": "Identity",
-      "description": "Organized API collection for **am-identity** (port 8113).\n\n## Quick start\n1. Import `AM-Identity.local.postman_environment.json`\n2. Run **Health → Health Check**\n3. Run **Auth → Login** (or Google SSO flow)\n4. `access_token` / `refresh_token` are saved automatically\n5. Run **Users → Get My Profile**\n\n## Folders\n| Folder | Purpose |\n|--------|----------|\n| 00 Health | Liveness |\n| 01 Auth — Registration | Sign up |\n| 02 Auth — Login & Session | Password login, refresh, logout |\n| 03 Auth — Google SSO | URL + callback (manual browser step for `code`) |\n| 04 Users | Bearer-protected profile/settings |\n| 05 Internal | Service-account only |\n| 99 Keycloak Helpers | Direct token calls for setup/debug |\n\n## Gateway (future)\nPublic routes via Traefik: `/api/auth/*`, `/api/users/*`",
+      "description": "Organized API collection for **am-identity** (port 8113).\n\n## Quick start\n1. Import `AM-Identity.local.postman_environment.json`\n2. Run **Health → Health Check**\n3. Run **Auth → Login** (or Google SSO flow)\n4. `access_token` / `refresh_token` are saved automatically\n5. Run **Users → Get My Profile**\n\n## Folders\n| Folder | Purpose |\n|--------|----------|\n| 00 Health | Liveness |\n| 01 Auth — Registration | Sign up |\n| 02 Auth — Login & Session | Password login, refresh, logout |\n| 03 Auth — Google SSO | URL + callback (manual browser step for `code`) |\n| 04 Users | Bearer-protected profile/settings |\n| 05 Internal | Service-account only |\n| 99 Keycloak Helpers | Direct token calls for setup/debug |\n\n## Gateway (future)\nPublic routes via Traefik: `/api/auth/*`, `/api/users/*`\n| 06 Device Link | QR web login |\n| 07 Web OTP | Email/SMS web login |\n| 08 BFF | Cookie session |\n| 09 Security | Events + sessions |\n| 10 Step-Up | Trading prep |",
       "item": [
         {
           "name": "00 Health",
@@ -315,7 +384,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"username\": \"{{test_email}}\",\n  \"password\": \"{{test_password}}\"\n}"
+                  "raw": "{\n  \"username\": \"{{test_email}}\",\n  \"password\": \"{{test_password}}\",\n  \"platform\": \"android\"\n}"
                 },
                 "url": "{{identity_base_url}}/auth/login",
                 "description": "Password grant via am-identity-service client. Saves `access_token` and `refresh_token`."
@@ -334,7 +403,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+                  "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\",\n  \"client_id\": \"am-android-client\"\n}"
                 },
                 "url": "{{identity_base_url}}/auth/refresh",
                 "description": "Exchange refresh token for new access token."
@@ -383,7 +452,7 @@
         },
         {
           "name": "03 Auth — Google SSO",
-          "description": "**Flow:**\n1. Run **Get Google Auth URL** → copy `auth_url` from response\n2. Open URL in browser, sign in with Google\n3. After redirect, copy `code` and `state` from callback query string\n4. Set `google_auth_code` env var (or edit callback body)\n5. Run **Google Callback** → tokens saved automatically",
+          "description": "**Browser broker flow:**\n1. **Get Google Auth URL** → open `auth_url` in browser\n2. After redirect, copy `code` + `state` → **Google Callback**\n\n**Flutter / mobile id_token flow:**\n1. Obtain a Google `id_token` (see `automation/scripts/google-id-token.html`)\n2. Set env `google_id_token`\n3. Run **Google Token Login**",
           "item": [
             {
               "name": "Get Google Auth URL",
@@ -434,6 +503,25 @@
                 },
                 "url": "{{identity_base_url}}/auth/google/callback",
                 "description": "Exchange authorization code for AM tokens. `redirect_uri` must match the one used in step 1."
+              },
+              "response": []
+            },
+            {
+              "name": "Google Token Login (id_token)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"id_token\": \"{{google_id_token}}\"\n}"
+                },
+                "url": "{{identity_base_url}}/auth/google/token",
+                "description": "Same endpoint as Flutter GSI: exchange Google id_token for Keycloak/AM tokens. Requires `google_id_token` env var (1h TTL)."
               },
               "response": []
             }
@@ -543,6 +631,808 @@
                 "header": [],
                 "url": "{{identity_base_url}}/internal/users/{{user_sub}}",
                 "description": "Internal lookup stub. Set `user_sub` from login/profile response."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "06 Auth — Device Link",
+          "description": "QR web login backend. Run **Start** first (PKCE auto-generated).",
+          "item": [
+            {
+              "name": "Device Link Start",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const verifier = pm.variables.replaceIn('{{$guid}}') + pm.variables.replaceIn('{{$guid}}');",
+                      "const hash = CryptoJS.SHA256(verifier).toString(CryptoJS.enc.Base64)",
+                      "  .replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '');",
+                      "pm.environment.set('code_verifier', verifier);",
+                      "pm.collectionVariables.set('code_verifier', verifier);",
+                      "pm.environment.set('code_challenge', hash);",
+                      "pm.collectionVariables.set('code_challenge', hash);"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  try {",
+                      "    const body = pm.response.json();",
+                      "    if (body.device_link_id) {",
+                      "      pm.environment.set('device_link_id', body.device_link_id);",
+                      "      pm.collectionVariables.set('device_link_id', body.device_link_id);",
+                      "    }",
+                      "    if (body.confirmation_code) {",
+                      "      pm.environment.set('confirmation_code', body.confirmation_code);",
+                      "      pm.collectionVariables.set('confirmation_code', body.confirmation_code);",
+                      "    }",
+                      "    if (body.otp_session_id) {",
+                      "      pm.environment.set('otp_session_id', body.otp_session_id);",
+                      "    }",
+                      "    if (body.step_up_token) {",
+                      "      pm.environment.set('step_up_token', body.step_up_token);",
+                      "    }",
+                      "    const cookie = pm.cookies.get('am_session');",
+                      "    if (cookie) pm.environment.set('am_session', cookie);",
+                      "    if (Array.isArray(body) && body.length) {",
+                      "      if (body[0].session_id) pm.environment.set('login_session_id', body[0].session_id);",
+                      "      if (body[0].event_id) pm.environment.set('security_event_id', body[0].event_id);",
+                      "    }",
+                      "  } catch (e) {}",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "User-Agent",
+                    "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"client\": \"web\",\n  \"redirect_hint\": \"http://localhost:9000/login\",\n  \"code_challenge\": \"{{code_challenge}}\",\n  \"browser\": \"Chrome\",\n  \"os\": \"Windows\"\n}"
+                },
+                "url": "{{identity_base_url}}/auth/device-link/start",
+                "description": "Creates device link; saves device_link_id and confirmation_code."
+              },
+              "response": []
+            },
+            {
+              "name": "Device Link Status (Poll)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  try {",
+                      "    const body = pm.response.json();",
+                      "    if (body.device_link_id) {",
+                      "      pm.environment.set('device_link_id', body.device_link_id);",
+                      "      pm.collectionVariables.set('device_link_id', body.device_link_id);",
+                      "    }",
+                      "    if (body.confirmation_code) {",
+                      "      pm.environment.set('confirmation_code', body.confirmation_code);",
+                      "      pm.collectionVariables.set('confirmation_code', body.confirmation_code);",
+                      "    }",
+                      "    if (body.otp_session_id) {",
+                      "      pm.environment.set('otp_session_id', body.otp_session_id);",
+                      "    }",
+                      "    if (body.step_up_token) {",
+                      "      pm.environment.set('step_up_token', body.step_up_token);",
+                      "    }",
+                      "    const cookie = pm.cookies.get('am_session');",
+                      "    if (cookie) pm.environment.set('am_session', cookie);",
+                      "    if (Array.isArray(body) && body.length) {",
+                      "      if (body[0].session_id) pm.environment.set('login_session_id', body[0].session_id);",
+                      "      if (body[0].event_id) pm.environment.set('security_event_id', body[0].event_id);",
+                      "    }",
+                      "  } catch (e) {}",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Machine-Trust-Key",
+                    "value": "{{machine_trust_key}}"
+                  }
+                ],
+                "url": "{{identity_base_url}}/auth/device-link/{{device_link_id}}/status?code_verifier={{code_verifier}}",
+                "description": "Poll until approved; captures am_session cookie on success."
+              },
+              "response": []
+            },
+            {
+              "name": "Device Link Preview",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": "{{identity_base_url}}/auth/device-link/{{device_link_id}}/preview",
+                "description": "Mobile scanner preview (Bearer required)."
+              },
+              "response": []
+            },
+            {
+              "name": "Device Link Approve",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"confirmation_code\": \"{{confirmation_code}}\",\n  \"machine_label\": \"Postman Test Laptop\",\n  \"device_name\": \"Chrome on Windows\"\n}"
+                },
+                "url": "{{identity_base_url}}/auth/device-link/{{device_link_id}}/approve",
+                "description": "Mobile approves QR login."
+              },
+              "response": []
+            },
+            {
+              "name": "Device Link Deny",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reason\": \"Not me\"\n}"
+                },
+                "url": "{{identity_base_url}}/auth/device-link/{{device_link_id}}/deny"
+              },
+              "response": []
+            },
+            {
+              "name": "Device Link Cancel",
+              "request": {
+                "method": "POST",
+                "header": [],
+                "url": "{{identity_base_url}}/auth/device-link/{{device_link_id}}/cancel"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "06b QR Login Flow (Runner Order)",
+          "description": "Run in order: Login → Start → Approve → Poll → BFF Me",
+          "item": [
+            {
+              "name": "1 Login (for Approve Bearer)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"{{test_email}}\",\n  \"password\": \"{{test_password}}\",\n  \"platform\": \"android\"\n}"
+                },
+                "url": "{{identity_base_url}}/auth/login"
+              },
+              "response": []
+            },
+            {
+              "name": "2 Device Link Start",
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const verifier = pm.variables.replaceIn('{{$guid}}') + pm.variables.replaceIn('{{$guid}}');",
+                      "const hash = CryptoJS.SHA256(verifier).toString(CryptoJS.enc.Base64)",
+                      "  .replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '');",
+                      "pm.environment.set('code_verifier', verifier);",
+                      "pm.collectionVariables.set('code_verifier', verifier);",
+                      "pm.environment.set('code_challenge', hash);",
+                      "pm.collectionVariables.set('code_challenge', hash);"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  try {",
+                      "    const body = pm.response.json();",
+                      "    if (body.device_link_id) {",
+                      "      pm.environment.set('device_link_id', body.device_link_id);",
+                      "      pm.collectionVariables.set('device_link_id', body.device_link_id);",
+                      "    }",
+                      "    if (body.confirmation_code) {",
+                      "      pm.environment.set('confirmation_code', body.confirmation_code);",
+                      "      pm.collectionVariables.set('confirmation_code', body.confirmation_code);",
+                      "    }",
+                      "    if (body.otp_session_id) {",
+                      "      pm.environment.set('otp_session_id', body.otp_session_id);",
+                      "    }",
+                      "    if (body.step_up_token) {",
+                      "      pm.environment.set('step_up_token', body.step_up_token);",
+                      "    }",
+                      "    const cookie = pm.cookies.get('am_session');",
+                      "    if (cookie) pm.environment.set('am_session', cookie);",
+                      "    if (Array.isArray(body) && body.length) {",
+                      "      if (body[0].session_id) pm.environment.set('login_session_id', body[0].session_id);",
+                      "      if (body[0].event_id) pm.environment.set('security_event_id', body[0].event_id);",
+                      "    }",
+                      "  } catch (e) {}",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "User-Agent",
+                    "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"client\": \"web\",\n  \"redirect_hint\": \"http://localhost:9000/login\",\n  \"code_challenge\": \"{{code_challenge}}\",\n  \"browser\": \"Chrome\",\n  \"os\": \"Windows\"\n}"
+                },
+                "url": "{{identity_base_url}}/auth/device-link/start"
+              },
+              "response": []
+            },
+            {
+              "name": "3 Device Link Approve",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"confirmation_code\": \"{{confirmation_code}}\",\n  \"machine_label\": \"QR Flow Test\"\n}"
+                },
+                "url": "{{identity_base_url}}/auth/device-link/{{device_link_id}}/approve"
+              },
+              "response": []
+            },
+            {
+              "name": "4 Device Link Poll Approved",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  try {",
+                      "    const body = pm.response.json();",
+                      "    if (body.device_link_id) {",
+                      "      pm.environment.set('device_link_id', body.device_link_id);",
+                      "      pm.collectionVariables.set('device_link_id', body.device_link_id);",
+                      "    }",
+                      "    if (body.confirmation_code) {",
+                      "      pm.environment.set('confirmation_code', body.confirmation_code);",
+                      "      pm.collectionVariables.set('confirmation_code', body.confirmation_code);",
+                      "    }",
+                      "    if (body.otp_session_id) {",
+                      "      pm.environment.set('otp_session_id', body.otp_session_id);",
+                      "    }",
+                      "    if (body.step_up_token) {",
+                      "      pm.environment.set('step_up_token', body.step_up_token);",
+                      "    }",
+                      "    const cookie = pm.cookies.get('am_session');",
+                      "    if (cookie) pm.environment.set('am_session', cookie);",
+                      "    if (Array.isArray(body) && body.length) {",
+                      "      if (body[0].session_id) pm.environment.set('login_session_id', body[0].session_id);",
+                      "      if (body[0].event_id) pm.environment.set('security_event_id', body[0].event_id);",
+                      "    }",
+                      "  } catch (e) {}",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "X-Machine-Trust-Key",
+                    "value": "{{machine_trust_key}}"
+                  }
+                ],
+                "url": "{{identity_base_url}}/auth/device-link/{{device_link_id}}/status?code_verifier={{code_verifier}}"
+              },
+              "response": []
+            },
+            {
+              "name": "5 BFF Me (Cookie Session)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Cookie",
+                    "value": "am_session={{am_session}}"
+                  }
+                ],
+                "url": "{{identity_base_url}}/bff/me",
+                "description": "Uses am_session from poll Set-Cookie."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "07 Auth — Web OTP",
+          "description": "Web-only OTP login. Requires browser User-Agent.",
+          "item": [
+            {
+              "name": "Web OTP Send (Email)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  try {",
+                      "    const body = pm.response.json();",
+                      "    if (body.device_link_id) {",
+                      "      pm.environment.set('device_link_id', body.device_link_id);",
+                      "      pm.collectionVariables.set('device_link_id', body.device_link_id);",
+                      "    }",
+                      "    if (body.confirmation_code) {",
+                      "      pm.environment.set('confirmation_code', body.confirmation_code);",
+                      "      pm.collectionVariables.set('confirmation_code', body.confirmation_code);",
+                      "    }",
+                      "    if (body.otp_session_id) {",
+                      "      pm.environment.set('otp_session_id', body.otp_session_id);",
+                      "    }",
+                      "    if (body.step_up_token) {",
+                      "      pm.environment.set('step_up_token', body.step_up_token);",
+                      "    }",
+                      "    const cookie = pm.cookies.get('am_session');",
+                      "    if (cookie) pm.environment.set('am_session', cookie);",
+                      "    if (Array.isArray(body) && body.length) {",
+                      "      if (body[0].session_id) pm.environment.set('login_session_id', body[0].session_id);",
+                      "      if (body[0].event_id) pm.environment.set('security_event_id', body[0].event_id);",
+                      "    }",
+                      "  } catch (e) {}",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "User-Agent",
+                    "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"channel\": \"email\",\n  \"destination\": \"{{test_email}}\"\n}"
+                },
+                "url": "{{identity_base_url}}/auth/web/otp/send"
+              },
+              "response": []
+            },
+            {
+              "name": "Web OTP Verify",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  try {",
+                      "    const body = pm.response.json();",
+                      "    if (body.device_link_id) {",
+                      "      pm.environment.set('device_link_id', body.device_link_id);",
+                      "      pm.collectionVariables.set('device_link_id', body.device_link_id);",
+                      "    }",
+                      "    if (body.confirmation_code) {",
+                      "      pm.environment.set('confirmation_code', body.confirmation_code);",
+                      "      pm.collectionVariables.set('confirmation_code', body.confirmation_code);",
+                      "    }",
+                      "    if (body.otp_session_id) {",
+                      "      pm.environment.set('otp_session_id', body.otp_session_id);",
+                      "    }",
+                      "    if (body.step_up_token) {",
+                      "      pm.environment.set('step_up_token', body.step_up_token);",
+                      "    }",
+                      "    const cookie = pm.cookies.get('am_session');",
+                      "    if (cookie) pm.environment.set('am_session', cookie);",
+                      "    if (Array.isArray(body) && body.length) {",
+                      "      if (body[0].session_id) pm.environment.set('login_session_id', body[0].session_id);",
+                      "      if (body[0].event_id) pm.environment.set('security_event_id', body[0].event_id);",
+                      "    }",
+                      "  } catch (e) {}",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "User-Agent",
+                    "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"otp_session_id\": \"{{otp_session_id}}\",\n  \"code\": \"{{web_otp_code}}\"\n}"
+                },
+                "url": "{{identity_base_url}}/auth/web/otp/verify"
+              },
+              "response": []
+            },
+            {
+              "name": "Web OTP Send (Mobile UA — expect 403)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "User-Agent",
+                    "value": "okhttp/4.12.0"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"channel\": \"email\",\n  \"destination\": \"{{test_email}}\"\n}"
+                },
+                "url": "{{identity_base_url}}/auth/web/otp/send"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "08 BFF Session",
+          "item": [
+            {
+              "name": "BFF Me",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Cookie",
+                    "value": "am_session={{am_session}}"
+                  }
+                ],
+                "url": "{{identity_base_url}}/bff/me"
+              },
+              "response": []
+            },
+            {
+              "name": "BFF Audit Log",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{identity_base_url}}/bff/audit"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "09 Security and Sessions",
+          "item": [
+            {
+              "name": "List Security Events",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  try {",
+                      "    const body = pm.response.json();",
+                      "    if (body.device_link_id) {",
+                      "      pm.environment.set('device_link_id', body.device_link_id);",
+                      "      pm.collectionVariables.set('device_link_id', body.device_link_id);",
+                      "    }",
+                      "    if (body.confirmation_code) {",
+                      "      pm.environment.set('confirmation_code', body.confirmation_code);",
+                      "      pm.collectionVariables.set('confirmation_code', body.confirmation_code);",
+                      "    }",
+                      "    if (body.otp_session_id) {",
+                      "      pm.environment.set('otp_session_id', body.otp_session_id);",
+                      "    }",
+                      "    if (body.step_up_token) {",
+                      "      pm.environment.set('step_up_token', body.step_up_token);",
+                      "    }",
+                      "    const cookie = pm.cookies.get('am_session');",
+                      "    if (cookie) pm.environment.set('am_session', cookie);",
+                      "    if (Array.isArray(body) && body.length) {",
+                      "      if (body[0].session_id) pm.environment.set('login_session_id', body[0].session_id);",
+                      "      if (body[0].event_id) pm.environment.set('security_event_id', body[0].event_id);",
+                      "    }",
+                      "  } catch (e) {}",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": "{{identity_base_url}}/users/me/security-events"
+              },
+              "response": []
+            },
+            {
+              "name": "Ack Security Event",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "url": "{{identity_base_url}}/users/me/security-events/{{security_event_id}}/ack"
+              },
+              "response": []
+            },
+            {
+              "name": "List Login Sessions",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  try {",
+                      "    const body = pm.response.json();",
+                      "    if (body.device_link_id) {",
+                      "      pm.environment.set('device_link_id', body.device_link_id);",
+                      "      pm.collectionVariables.set('device_link_id', body.device_link_id);",
+                      "    }",
+                      "    if (body.confirmation_code) {",
+                      "      pm.environment.set('confirmation_code', body.confirmation_code);",
+                      "      pm.collectionVariables.set('confirmation_code', body.confirmation_code);",
+                      "    }",
+                      "    if (body.otp_session_id) {",
+                      "      pm.environment.set('otp_session_id', body.otp_session_id);",
+                      "    }",
+                      "    if (body.step_up_token) {",
+                      "      pm.environment.set('step_up_token', body.step_up_token);",
+                      "    }",
+                      "    const cookie = pm.cookies.get('am_session');",
+                      "    if (cookie) pm.environment.set('am_session', cookie);",
+                      "    if (Array.isArray(body) && body.length) {",
+                      "      if (body[0].session_id) pm.environment.set('login_session_id', body[0].session_id);",
+                      "      if (body[0].event_id) pm.environment.set('security_event_id', body[0].event_id);",
+                      "    }",
+                      "  } catch (e) {}",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": "{{identity_base_url}}/users/me/login-sessions"
+              },
+              "response": []
+            },
+            {
+              "name": "Revoke Login Session",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [],
+                "url": "{{identity_base_url}}/users/me/login-sessions/{{login_session_id}}"
+              },
+              "response": []
+            },
+            {
+              "name": "Revoke All Login Sessions",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [],
+                "url": "{{identity_base_url}}/users/me/login-sessions"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "10 Step-Up Auth",
+          "item": [
+            {
+              "name": "Issue Step-Up Token",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  try {",
+                      "    const body = pm.response.json();",
+                      "    if (body.device_link_id) {",
+                      "      pm.environment.set('device_link_id', body.device_link_id);",
+                      "      pm.collectionVariables.set('device_link_id', body.device_link_id);",
+                      "    }",
+                      "    if (body.confirmation_code) {",
+                      "      pm.environment.set('confirmation_code', body.confirmation_code);",
+                      "      pm.collectionVariables.set('confirmation_code', body.confirmation_code);",
+                      "    }",
+                      "    if (body.otp_session_id) {",
+                      "      pm.environment.set('otp_session_id', body.otp_session_id);",
+                      "    }",
+                      "    if (body.step_up_token) {",
+                      "      pm.environment.set('step_up_token', body.step_up_token);",
+                      "    }",
+                      "    const cookie = pm.cookies.get('am_session');",
+                      "    if (cookie) pm.environment.set('am_session', cookie);",
+                      "    if (Array.isArray(body) && body.length) {",
+                      "      if (body[0].session_id) pm.environment.set('login_session_id', body[0].session_id);",
+                      "      if (body[0].event_id) pm.environment.set('security_event_id', body[0].event_id);",
+                      "    }",
+                      "  } catch (e) {}",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "url": "{{identity_base_url}}/auth/step-up"
               },
               "response": []
             }

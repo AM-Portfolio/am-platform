@@ -48,3 +48,38 @@ python -m pytest tests/ -q
 - [ ] Web OTP rate limits verified
 - [ ] Login alert push on new device
 - [ ] Session revoke from profile works
+
+## Prod-direct deploy (local Docker, skip GitHub)
+
+Build from `am-platform` root, push to GHCR, roll prod deployment:
+
+```powershell
+cd am-platform
+$TAG = "local-$(git rev-parse --short HEAD)"
+docker build -f am-identity/Dockerfile -t ghcr.io/am-portfolio/am-identity:$TAG .
+docker login ghcr.io -u <github-user>
+docker push ghcr.io/am-portfolio/am-identity:$TAG
+
+$env:KUBECONFIG = "..\VPS\kubeconfig.am-vps-prod.yaml"
+kubectl --context kind-am-preprod set image deployment/am-identity `
+  am-identity=ghcr.io/am-portfolio/am-identity:$TAG -n am-apps-prod
+kubectl --context kind-am-preprod rollout status deployment/am-identity -n am-apps-prod
+```
+
+Verify:
+
+```powershell
+curl https://am.asrax.in/identity/health
+curl -X POST https://am.asrax.in/identity/auth/device-link/start -H "Content-Type: application/json" -d '{"client":"web","code_challenge":"test"}'
+# expect 422 (validation), not 404
+```
+
+Flutter UI against prod APIs:
+
+```powershell
+cd am-modern-ui
+npm run run:app:9000:prod
+# http://localhost:9000 — AM_ENV=prod
+```
+
+Postman prod sync: `python postman/scripts/sync_platform_postman.py` (needs `POSTMAN_API_KEY`).

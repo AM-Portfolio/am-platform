@@ -47,5 +47,9 @@ def enforce_rate_limit(
     name: str,
     limit: int,
     window_seconds: int = 60,
+    key_suffix: str | None = None,
 ) -> None:
-    _limiter.check(f"{name}:{client_ip(request)}", limit=limit, window_seconds=window_seconds)
+    key = f"{name}:{client_ip(request)}"
+    if key_suffix is not None:
+        key = f"{name}:{key_suffix}:{client_ip(request)}"
+    _limiter.check(key, limit=limit, window_seconds=window_seconds)

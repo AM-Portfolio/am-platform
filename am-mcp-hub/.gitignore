@@ -1,7 +1,15 @@
 # Local runtime / secrets — never commit
 .env
 .env.*
+**/.env
+**/.env.*
+*.env
 !.env.example
+!**/.env.example
+local-data/**/*.env
+credentials.env
+**/credentials.env
+**/credentials.d/*.env
 *.db
 *.sqlite
 *.sqlite3

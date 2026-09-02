@@ -10,6 +10,7 @@ from typing import Literal
 
 from fastapi import HTTPException, status
 
+from am_identity.email.web_otp_mailer import send_web_otp_email
 from am_identity.services.bff_session_service import BffUser, bff_session_service
 from am_identity.services.login_session_service import LoginContext, login_session_service
 
@@ -92,6 +93,11 @@ class WebOtpService:
     ) -> OtpSession:
         normalized = self._normalize_destination(channel, destination)
         self._check_send_rate(normalized)
+        if channel == "sms":
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="SMS OTP is not available yet. Use email instead.",
+            )
         user = await resolve_user_id(channel, normalized)
         if user is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
@@ -109,6 +115,21 @@ class WebOtpService:
         )
         with self._lock:
             self._sessions[session.otp_session_id] = session
+        if channel == "email":
+            send_web_otp_email(
+                to_email=normalized,
+                code=code,
+                expires_minutes=max(1, OTP_TTL_SECONDS // 60),
+            )
+        return session
+
+    def pending_session(self, otp_session_id: str) -> OtpSession:
+        with self._lock:
+            session = self._sessions.get(otp_session_id)
+        if session is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="OTP session not found")
+        if session.consumed:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="OTP already used")
         return session
 
     def verify(
