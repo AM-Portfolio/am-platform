@@ -62,6 +62,19 @@ if (body.access_token) {
   }
 }
 
+if (body.tokens && typeof body.tokens === "object") {
+  if (body.tokens.access_token) {
+    setEnv("access_token", body.tokens.access_token);
+    const payload = jwtPayload(body.tokens.access_token);
+    if (payload?.sub) {
+      setEnv("user_sub", payload.sub);
+    }
+  }
+  if (body.tokens.refresh_token) {
+    setEnv("refresh_token", body.tokens.refresh_token);
+  }
+}
+
 if (body.refresh_token) {
   setEnv("refresh_token", body.refresh_token);
 }

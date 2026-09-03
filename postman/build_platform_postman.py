@@ -11,6 +11,16 @@ SCRIPTS = ROOT / "scripts"
 PLATFORM = ROOT.parent
 ENV_DEFAULTS_PATH = ROOT / "environment.defaults.json"
 
+MODULE_BLURBS = {
+    "Identity": (
+        "am-identity. **Auth → Login & Session → Login** (Web / Android / iOS), then "
+        "**Refresh → Last login**. Working OTP: **Auth → Web OTP**. QR without a phone: "
+        "**Flows → QR login (no phone)**."
+    ),
+    "Subscription": "am-subscription. Plans, user subscriptions, internal entitlements, webhooks.",
+    "Notification": "am-notification. Inbox, preferences, internal send.",
+}
+
 MODULES = (
     {
         "folder": "Identity",
@@ -163,7 +173,7 @@ def build_collection() -> dict:
         top_items.append(
             {
                 "name": module["folder"],
-                "description": source.get("info", {}).get("description", ""),
+                "description": MODULE_BLURBS[module["folder"]],
                 "item": items,
             }
         )
@@ -187,15 +197,26 @@ def build_collection() -> dict:
             "name": "AM Platform",
             "description": (
                 "Unified Postman collection for **am-platform** thin-layer services.\n\n"
+                "Import **this collection only**. Do not also import `AM-Identity.postman_collection.json` "
+                "(that file is builder source and would duplicate Identity).\n\n"
                 "## Environments\n"
                 "| File | Use when |\n"
                 "|------|----------|\n"
                 "| `AM-Platform.local.postman_environment.json` | `npm run platform:dev` (localhost) |\n"
-                "| `AM-Platform.preprod.postman_environment.json` | Gateway at `am-dev.asrax.in/api` |\n\n"
+                "| `AM-Platform.preprod.postman_environment.json` | Gateway at `am-dev.asrax.in` / `am.asrax.in` |\n"
+                "| `AM-Platform.prod.postman_environment.json` | Prod `https://am.asrax.in` |\n\n"
+                "## Identity login\n"
+                "Identity → **Auth** → **Login & Session** → **Login**: Web, Android, or iOS. "
+                "Each sets `oauth_client_id`. Then **Refresh → Last login**.\n\n"
+                "Working OTP is Identity → **Auth → Web OTP**. `/auth/login/otp` is a 501 stub "
+                "(**Auth → Deprecated**).\n\n"
+                "QR without a phone: Identity → **Flows → QR login (no phone)** "
+                "(Start → Android login → Approve → Poll).\n\n"
                 "## Auto-capture (collection scripts)\n"
                 "**Pre-request:** fresh `idempotency_key` for meter/check POSTs; `X-Request-Id` header.\n\n"
                 "**Post-response:** saves `access_token`, `refresh_token`, `service_access_token`, "
-                "`user_sub`, `subscription_id`, `plan_code`, `notification_id`, Google SSO vars.\n\n"
+                "`user_sub`, `subscription_id`, `plan_code`, `notification_id`, Google SSO vars, "
+                "device-link and web OTP ids.\n\n"
                 "## Modules\n"
                 "| Folder | Service |\n"
                 "|--------|--------|\n"
