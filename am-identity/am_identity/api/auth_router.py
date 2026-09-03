@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, Request, status
 from am_identity.deps import get_identity_provider
 from am_identity.email.rate_limit import enforce_rate_limit
 from am_identity.providers.interface import IIdentityProvider
+from am_identity.services.login_recording import record_token_login
 from am_identity.schemas.auth import (
     ChangePasswordRequest,
     GoogleAuthURLRequest,
@@ -38,11 +39,14 @@ async def register_user(
 @router.post("/login", response_model=TokenResponse)
 async def login(
     payload: LoginRequest,
+    request: Request,
     provider: IIdentityProvider = Depends(get_identity_provider),
 ):
-    return await provider.authenticate(
+    tokens = await provider.authenticate(
         payload.username, payload.password, platform=payload.platform
     )
+    record_token_login(request, tokens, platform=payload.platform)
+    return tokens
 
 
 @router.post("/login/otp")
@@ -64,17 +68,23 @@ async def google_auth_url(
 @router.post("/google/callback", response_model=TokenResponse)
 async def google_callback(
     payload: GoogleCallbackRequest,
+    request: Request,
     provider: IIdentityProvider = Depends(get_identity_provider),
 ):
-    return await provider.authenticate_google(payload.code, payload.state, payload.redirect_uri)
+    tokens = await provider.authenticate_google(payload.code, payload.state, payload.redirect_uri)
+    record_token_login(request, tokens, platform="web")
+    return tokens
 
 
 @router.post("/google/token", response_model=TokenResponse)
 async def google_token(
     payload: GoogleTokenRequest,
+    request: Request,
     provider: IIdentityProvider = Depends(get_identity_provider),
 ):
-    return await provider.authenticate_google_token(payload.id_token)
+    tokens = await provider.authenticate_google_token(payload.id_token)
+    record_token_login(request, tokens, platform="web")
+    return tokens
 
 
 @router.post("/refresh", response_model=TokenResponse)

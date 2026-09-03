@@ -89,6 +89,9 @@ class KeycloakIdentityProvider(IIdentityProvider):
         self._admin_roles_url = (
             f"{keycloak_base}/admin/realms/{settings.keycloak_realm}/roles"
         )
+        self._admin_sessions_url = (
+            f"{keycloak_base}/admin/realms/{settings.keycloak_realm}/sessions"
+        )
         self._auth_url = f"{self._openid_base}/auth"
         self._session_timeout = 20.0
         self._http_headers = {
@@ -1408,6 +1411,21 @@ class KeycloakIdentityProvider(IIdentityProvider):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Logout user sessions failed: {response.text}",
+            )
+
+    async def logout_keycloak_session(self, keycloak_session_id: str) -> None:
+        admin_token = await self._get_admin_access_token()
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            response = await client.delete(
+                f"{self._admin_sessions_url}/{keycloak_session_id}",
+                headers=self._admin_headers(admin_token),
+            )
+        if response.status_code >= 400:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Logout session failed: {response.text}",
             )
 
 

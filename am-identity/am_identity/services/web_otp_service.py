@@ -146,6 +146,8 @@ class WebOtpService:
         access_token: str,
         refresh_token: str | None,
         machine_trust_key: str | None = None,
+        geo_city: str | None = None,
+        geo_country: str | None = None,
     ) -> tuple[BffUser, str]:
         with self._lock:
             session = self._sessions.get(otp_session_id)
@@ -197,6 +199,8 @@ class WebOtpService:
                 bff_session_id=bff.session_id,
                 access_token=access_token,
                 refresh_token=refresh_token,
+                geo_city=geo_city,
+                geo_country=geo_country,
             )
         )
         with self._lock:

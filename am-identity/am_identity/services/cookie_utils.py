@@ -20,5 +20,17 @@ def set_session_cookie(response: Response, session: BffSession, settings: Identi
     )
 
 
+def clear_session_cookie(response: Response, settings: IdentitySettings | None = None) -> None:
+    resolved = settings or get_settings()
+    secure = resolved.app_env not in ("dev", "local", "test")
+    response.delete_cookie(
+        key=bff_session_service.SESSION_COOKIE,
+        httponly=True,
+        secure=secure,
+        samesite="lax",
+        path="/",
+    )
+
+
 def read_session_cookie(session_id: str | None) -> BffSession | None:
     return bff_session_service.get_session(session_id)

@@ -17,6 +17,7 @@ from am_identity.schemas.web_otp import (
 )
 from am_identity.services.bff_session_service import bff_session_service
 from am_identity.services.cookie_utils import set_session_cookie
+from am_identity.services.geo_resolution import geo_from_request
 from am_identity.services.user_agent import is_web_user_agent
 from am_identity.services.web_otp_service import web_otp_service
 from am_identity.services.web_session_tokens import issue_web_session_tokens
@@ -92,6 +93,7 @@ async def web_otp_verify(
         provider,
         pending.user_id,
     )
+    geo = geo_from_request(request)
     user, session_id = web_otp_service.verify(
         otp_session_id=payload.otp_session_id,
         code=payload.code,
@@ -100,6 +102,8 @@ async def web_otp_verify(
         access_token=access_token,
         refresh_token=refresh_token,
         machine_trust_key=request.headers.get("x-machine-trust-key"),
+        geo_city=geo.city,
+        geo_country=geo.country,
     )
     bff_session = bff_session_service.get_session(session_id)
     if bff_session is not None:

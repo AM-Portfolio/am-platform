@@ -33,6 +33,8 @@ class DeviceLinkStartInput:
     os: str | None
     ip: str | None
     user_agent: str | None
+    geo_city: str | None = None
+    geo_country: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -170,8 +172,8 @@ class DeviceLinkService:
             redirect_hint=payload.redirect_hint,
             browser=payload.browser,
             os=payload.os,
-            geo_city=None,
-            geo_country=None,
+            geo_city=payload.geo_city,
+            geo_country=payload.geo_country,
             ip=payload.ip,
             user_agent=payload.user_agent,
             created_at=now,

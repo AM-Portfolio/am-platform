@@ -24,6 +24,7 @@ from am_identity.services.device_link_service import (
     DeviceLinkStartInput,
     device_link_service,
 )
+from am_identity.services.geo_resolution import geo_from_request
 from am_identity.services.login_session_service import LoginContext, login_session_service
 from am_identity.services.web_session_tokens import issue_web_session_tokens
 from am_platform_security import AuthContext, require_auth_context
@@ -54,6 +55,7 @@ async def _web_tokens_for_user(
 @router.post("/start", response_model=DeviceLinkStartResponse)
 async def start_device_link(payload: DeviceLinkStartRequest, request: Request) -> DeviceLinkStartResponse:
     enforce_rate_limit(request, name="device-link-start", limit=10)
+    geo = geo_from_request(request)
     record = device_link_service.start(
         DeviceLinkStartInput(
             client=payload.client,
@@ -63,6 +65,8 @@ async def start_device_link(payload: DeviceLinkStartRequest, request: Request) -
             os=payload.os,
             ip=client_ip(request),
             user_agent=request.headers.get("user-agent"),
+            geo_city=geo.city,
+            geo_country=geo.country,
         )
     )
     return DeviceLinkStartResponse(
@@ -115,6 +119,8 @@ async def device_link_status(
                     bff_session_id=record.session_id,
                     access_token=record.access_token,
                     refresh_token=record.refresh_token,
+                    geo_city=record.geo_city,
+                    geo_country=record.geo_country,
                 )
             )
         user_response = DeviceLinkUserResponse(

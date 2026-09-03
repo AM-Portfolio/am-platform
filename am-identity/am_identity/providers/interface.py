@@ -172,3 +172,7 @@ class IIdentityProvider(ABC):
     @abstractmethod
     async def logout_user_sessions(self, user_id: str) -> None:
         raise NotImplementedError
+
+    @abstractmethod
+    async def logout_keycloak_session(self, keycloak_session_id: str) -> None:
+        raise NotImplementedError

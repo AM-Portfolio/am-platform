@@ -41,6 +41,7 @@ class LoginSession:
     ip_masked: str | None
     machine_label: str | None
     keycloak_session_id: str | None
+    bff_session_id: str | None
     created_at: float
     last_active_at: float
     revoked: bool = False
@@ -74,6 +75,8 @@ class LoginContext:
     access_token: str | None = None
     refresh_token: str | None = None
     keycloak_session_id: str | None = None
+    geo_city: str | None = None
+    geo_country: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,6 +112,8 @@ class LoginSessionService:
             device_class=device_class,
         )
         now = time.time()
+        geo_city = ctx.geo_city
+        geo_country = ctx.geo_country
         known_key = (ctx.user_id, machine_trust_key)
         is_new_device = False
         with self._lock:
@@ -124,8 +129,8 @@ class LoginSessionService:
                     device_label=ctx.machine_label,
                     first_seen_at=now,
                     last_seen_at=now,
-                    geo_city=None,
-                    geo_country=None,
+                    geo_city=geo_city,
+                    geo_country=geo_country,
                 )
                 self._known_devices[known_key] = known
             else:
@@ -138,8 +143,8 @@ class LoginSessionService:
                     device_label=ctx.machine_label or known.device_label,
                     first_seen_at=known.first_seen_at,
                     last_seen_at=now,
-                    geo_city=known.geo_city,
-                    geo_country=known.geo_country,
+                    geo_city=geo_city or known.geo_city,
+                    geo_country=geo_country or known.geo_country,
                 )
                 self._known_devices[known_key] = updated
                 known = updated
@@ -152,11 +157,12 @@ class LoginSessionService:
             browser=ctx.browser,
             os=os_family,
             client_type=ctx.client_type,
-            geo_city=None,
-            geo_country=None,
+            geo_city=geo_city,
+            geo_country=geo_country,
             ip_masked=_mask_ip(ctx.ip),
             machine_label=ctx.machine_label,
             keycloak_session_id=ctx.keycloak_session_id,
+            bff_session_id=ctx.bff_session_id,
             created_at=now,
             last_active_at=now,
         )
@@ -170,8 +176,8 @@ class LoginSessionService:
                 type="new_device_login",
                 session_id=session_id,
                 device_label=label,
-                geo_city=None,
-                geo_country=None,
+                geo_city=geo_city,
+                geo_country=geo_country,
                 created_at=now,
             )
             with self._lock:
@@ -231,6 +237,13 @@ class LoginSessionService:
             ]
         return tuple(sorted(sessions, key=lambda item: item.last_active_at, reverse=True))
 
+    def get_login_session(self, user_id: str, session_id: str) -> LoginSession:
+        with self._lock:
+            session = self._login_sessions.get(session_id)
+        if session is None or session.user_id != user_id or session.revoked:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+        return session
+
     def revoke_login_session(self, user_id: str, session_id: str) -> None:
         with self._lock:
             session = self._login_sessions.get(session_id)
@@ -248,6 +261,7 @@ class LoginSessionService:
                 ip_masked=session.ip_masked,
                 machine_label=session.machine_label,
                 keycloak_session_id=session.keycloak_session_id,
+                bff_session_id=session.bff_session_id,
                 created_at=session.created_at,
                 last_active_at=session.last_active_at,
                 revoked=True,
@@ -271,6 +285,7 @@ class LoginSessionService:
                     ip_masked=session.ip_masked,
                     machine_label=session.machine_label,
                     keycloak_session_id=session.keycloak_session_id,
+                    bff_session_id=session.bff_session_id,
                     created_at=session.created_at,
                     last_active_at=session.last_active_at,
                     revoked=True,

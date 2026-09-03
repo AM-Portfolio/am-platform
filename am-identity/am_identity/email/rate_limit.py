@@ -33,6 +33,12 @@ _limiter = InMemoryRateLimiter()
 
 
 def client_ip(request: Request) -> str:
+    for header in ("cf-connecting-ip", "true-client-ip", "x-real-ip"):
+        value = request.headers.get(header)
+        if value:
+            candidate = value.split(",")[0].strip()
+            if candidate:
+                return candidate
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
         return forwarded.split(",")[0].strip()

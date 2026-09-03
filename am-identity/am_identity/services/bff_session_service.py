@@ -83,6 +83,17 @@ class BffSessionService:
         with self._lock:
             return self._sessions.pop(session_id, None) is not None
 
+    def delete_sessions_for_user(self, user_id: str) -> int:
+        with self._lock:
+            session_ids = [
+                session_id
+                for session_id, session in self._sessions.items()
+                if session.user.sub == user_id
+            ]
+            for session_id in session_ids:
+                del self._sessions[session_id]
+        return len(session_ids)
+
     def append_audit(
         self,
         *,

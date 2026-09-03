@@ -1,12 +1,14 @@
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 
 from am_identity.deps import get_identity_provider
 from am_identity.api.auth_deps import require_user_context
 from am_identity.providers.interface import IIdentityProvider
 from am_identity.schemas.security import LoginSessionResponse, SecurityEventResponse
 from am_identity.schemas.user import UpdateUserSettingsRequest, UserProfileResponse
+from am_identity.services.bff_session_service import bff_session_service
+from am_identity.services.cookie_utils import clear_session_cookie
 from am_identity.services.login_session_service import login_session_service
 from am_platform_security import AuthContext, require_auth_context
 
@@ -99,9 +101,13 @@ async def acknowledge_security_event(
 
 @router.get("/me/login-sessions", response_model=list[LoginSessionResponse])
 async def list_login_sessions(
+    request: Request,
     context: AuthContext = Depends(require_user_context()),
 ) -> list[LoginSessionResponse]:
     sessions = login_session_service.list_login_sessions(context.subject)
+    sid = context.claims.get("sid")
+    current_sid = sid if isinstance(sid, str) else None
+    cookie_session_id = request.cookies.get(bff_session_service.SESSION_COOKIE)
     return [
         LoginSessionResponse(
             session_id=session.session_id,
@@ -114,6 +120,13 @@ async def list_login_sessions(
             machine_label=session.machine_label,
             created_at=session.created_at,
             last_active_at=session.last_active_at,
+            current=(
+                (current_sid is not None and session.keycloak_session_id == current_sid)
+                or (
+                    cookie_session_id is not None
+                    and session.bff_session_id == cookie_session_id
+                )
+            ),
         )
         for session in sessions
     ]
@@ -122,13 +135,38 @@ async def list_login_sessions(
 @router.delete("/me/login-sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def revoke_login_session(
     session_id: str,
+    request: Request,
+    response: Response,
     context: AuthContext = Depends(require_user_context()),
+    provider: IIdentityProvider = Depends(get_identity_provider),
 ) -> None:
+    session = login_session_service.get_login_session(context.subject, session_id)
+    cookie_session_id = request.cookies.get(bff_session_service.SESSION_COOKIE)
+    sid = context.claims.get("sid")
+    current_sid = sid if isinstance(sid, str) else None
+    is_current = (
+        (current_sid is not None and session.keycloak_session_id == current_sid)
+        or (
+            cookie_session_id is not None
+            and session.bff_session_id == cookie_session_id
+        )
+    )
+    if session.keycloak_session_id:
+        await provider.logout_keycloak_session(session.keycloak_session_id)
+    if session.bff_session_id:
+        bff_session_service.delete_session(session.bff_session_id)
     login_session_service.revoke_login_session(context.subject, session_id)
+    if is_current:
+        clear_session_cookie(response)
 
 
 @router.delete("/me/login-sessions", status_code=status.HTTP_204_NO_CONTENT)
 async def revoke_all_login_sessions(
+    response: Response,
     context: AuthContext = Depends(require_user_context()),
+    provider: IIdentityProvider = Depends(get_identity_provider),
 ) -> None:
+    await provider.logout_user_sessions(context.subject)
+    bff_session_service.delete_sessions_for_user(context.subject)
     login_session_service.revoke_all_login_sessions(context.subject)
+    clear_session_cookie(response)
