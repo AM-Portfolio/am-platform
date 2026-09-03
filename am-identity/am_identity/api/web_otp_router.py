@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
 from am_identity.deps import get_identity_provider
@@ -21,8 +23,16 @@ from am_identity.services.web_session_tokens import issue_web_session_tokens
 
 router = APIRouter(prefix="/auth/web/otp", tags=["web-otp"])
 
+_TRUSTED_WEB_ORIGIN = re.compile(
+    r"^https?://(localhost(:\d+)?|127\.0\.0\.1(:\d+)?|.*\.asrax\.in)(/.*)?$",
+    re.IGNORECASE,
+)
+
 
 def _require_web_user_agent(request: Request) -> None:
+    origin = (request.headers.get("origin") or "").strip()
+    if origin and _TRUSTED_WEB_ORIGIN.match(origin):
+        return
     user_agent = request.headers.get("user-agent")
     if not is_web_user_agent(user_agent):
         raise HTTPException(

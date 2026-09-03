@@ -5,7 +5,7 @@ import smtplib
 import ssl
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.utils import formataddr
+from email.utils import formataddr, formatdate, make_msgid
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -41,6 +41,9 @@ def send_auth_email(
     message["Subject"] = subject
     message["From"] = formataddr((display, from_addr))
     message["To"] = to_email
+    message["Date"] = formatdate(localtime=False)
+    message["Message-ID"] = make_msgid(domain="asrax.in")
+    message["Reply-To"] = from_addr
     message.attach(MIMEText(text_body, "plain", "utf-8"))
     message.attach(MIMEText(html_body, "html", "utf-8"))
 

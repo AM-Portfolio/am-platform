@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import re
 import secrets
 import threading
@@ -13,6 +14,8 @@ from fastapi import HTTPException, status
 from am_identity.email.web_otp_mailer import send_web_otp_email
 from am_identity.services.bff_session_service import BffUser, bff_session_service
 from am_identity.services.login_session_service import LoginContext, login_session_service
+
+logger = logging.getLogger(__name__)
 
 OtpChannel = Literal["email", "sms"]
 OTP_TTL_SECONDS = 300
@@ -121,6 +124,7 @@ class WebOtpService:
                 code=code,
                 expires_minutes=max(1, OTP_TTL_SECONDS // 60),
             )
+            logger.info("Web OTP email dispatched to %s", normalized)
         return session
 
     def pending_session(self, otp_session_id: str) -> OtpSession:

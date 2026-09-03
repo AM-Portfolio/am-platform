@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 
 _MOBILE_UA = re.compile(
-    r"(android|iphone|ipad|ipod|mobile|webos|blackberry|iemobile|opera mini|okhttp|dart)",
+    r"(android|iphone|ipad|ipod|webos|blackberry|iemobile|opera mini|okhttp)",
     re.IGNORECASE,
 )
 

@@ -291,13 +291,13 @@ def _otp_shell(*, preheader: str, headline: str, body: str, code: str) -> str:
 
 def build_web_login_otp(*, code: str, expires_minutes: int = 5) -> tuple[str, str, str]:
     formatted = f"{code[:3]} {code[3:]}" if len(code) == 6 else code
-    subject = "Your Asrax sign-in code"
+    subject = "Asrax Accounts — sign-in verification code"
     body = (
         f"Use this one-time code to sign in to Asrax. "
         f"It expires in {expires_minutes} minutes."
     )
     html = _otp_shell(
-        preheader=f"Your Asrax sign-in code is {formatted}",
+        preheader="Your Asrax sign-in verification code is ready.",
         headline="Sign in to Asrax",
         body=body,
         code=formatted,
