@@ -133,6 +133,7 @@ def build_plan_payload(plan: dict, currency: str, metric_ids: dict[str, str]) ->
         ("portfolios", limits.get("portfolios")),
         ("ai_portfolio_summaries", limits.get("ai_portfolio_summaries")),
         ("api_calls", limits.get("api_calls")),
+        ("ai_chat_tokens", limits.get("ai_chat_tokens")),
     ):
         if not limit:
             continue
@@ -161,9 +162,10 @@ def ensure_plan(
     base_url: str, api_key: str, plan: dict, currency: str, metric_ids: dict[str, str]
 ) -> None:
     code = plan["code"]
-    status, _ = api_request(base_url, api_key, "GET", f"/api/v1/plans/{code}")
+    status, existing = api_request(base_url, api_key, "GET", f"/api/v1/plans/{code}")
     if status == 200:
-        print(f"  plan {code}: exists (skip)")
+        print(f"  plan {code}: exists")
+        ensure_plan_charges(base_url, api_key, plan, existing, metric_ids)
         return
     payload = build_plan_payload(plan, currency, metric_ids)
     status, result = api_request(base_url, api_key, "POST", "/api/v1/plans", payload)
@@ -171,6 +173,86 @@ def ensure_plan(
         raise RuntimeError(f"Failed to create plan {code}: {status} {result}")
     amount = plan["amount_inr"]
     print(f"  plan {code}: created (INR {amount}/{plan['interval']})")
+
+
+def ensure_plan_charges(
+    base_url: str,
+    api_key: str,
+    plan: dict,
+    existing: dict | list | str,
+    metric_ids: dict[str, str],
+) -> None:
+    """Add any catalog charges missing on an existing Lago plan (e.g. new metrics)."""
+    if not isinstance(existing, dict):
+        print(f"  plan {plan['code']}: unexpected GET payload, skip charge sync")
+        return
+    plan_body = existing.get("plan") if isinstance(existing.get("plan"), dict) else existing
+    code = plan["code"]
+    existing_codes = set()
+    for c in plan_body.get("charges") or []:
+        if not isinstance(c, dict):
+            continue
+        if c.get("billable_metric_code"):
+            existing_codes.add(c["billable_metric_code"])
+        bm = c.get("billable_metric") or {}
+        if isinstance(bm, dict) and bm.get("code"):
+            existing_codes.add(bm["code"])
+
+    limits = plan.get("limits", {})
+    missing: list[tuple[str, int]] = []
+    for metric_code, limit in (
+        ("document_parses", limits.get("document_parses")),
+        ("portfolios", limits.get("portfolios")),
+        ("ai_portfolio_summaries", limits.get("ai_portfolio_summaries")),
+        ("api_calls", limits.get("api_calls")),
+        ("ai_chat_tokens", limits.get("ai_chat_tokens")),
+    ):
+        if limit and metric_code not in existing_codes:
+            missing.append((metric_code, int(limit)))
+    if not missing:
+        print(f"  plan {code}: charges already up to date")
+        return
+
+    charges: list[dict] = []
+    for c in plan_body.get("charges") or []:
+        if not isinstance(c, dict):
+            continue
+        charges.append(
+            {
+                "lago_id": c["lago_id"],
+                "billable_metric_id": c["lago_billable_metric_id"],
+                "charge_model": c["charge_model"],
+                "invoiceable": c.get("invoiceable", True),
+                "pay_in_advance": c.get("pay_in_advance", False),
+                "prorated": c.get("prorated", False),
+                "min_amount_cents": c.get("min_amount_cents", 0),
+                "properties": c.get("properties") or {},
+            }
+        )
+    for metric_code, limit in missing:
+        metric_id = metric_ids.get(metric_code)
+        if not metric_id:
+            raise RuntimeError(f"Billable metric not found: {metric_code}")
+        charges.append(package_charge(metric_id, metric_code, limit))
+
+    payload = {
+        "plan": {
+            "name": plan_body["name"],
+            "code": plan_body["code"],
+            "interval": plan_body["interval"],
+            "amount_cents": plan_body["amount_cents"],
+            "amount_currency": plan_body["amount_currency"],
+            "pay_in_advance": plan_body.get("pay_in_advance", False),
+            "trial_period": plan_body.get("trial_period", 0),
+            "description": plan_body.get("description") or "",
+            "charges": charges,
+        }
+    }
+    status, result = api_request(base_url, api_key, "PUT", f"/api/v1/plans/{code}", payload)
+    if status not in (200, 201):
+        raise RuntimeError(f"Failed to update charges on {code}: {status} {result}")
+    added = ", ".join(m for m, _ in missing)
+    print(f"  plan {code}: added charge(s) {added}")
 
 
 def main() -> int:

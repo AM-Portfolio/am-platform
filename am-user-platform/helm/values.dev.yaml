@@ -1,0 +1,46 @@
+# Dev Environment — am-user-platform
+environment: dev
+replicaCount: 1
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+hostAliases:
+  - ip: "203.174.22.129"
+    hostnames:
+      - "postgres.asrax.in"
+
+vault:
+  enabled: true
+  secretPaths:
+    postgres:
+      path: "apps/data/dev/infra/postgres"
+    user-platform:
+      path: "apps/data/dev/services/am-user-platform"
+    identity-oidc:
+      path: "apps/data/dev/services/am-identity"
+    service-oauth:
+      path: "apps/data/dev/services/am-user-platform"
+
+ingress:
+  enabled: true
+  className: "traefik"
+  annotations:
+    kubernetes.io/ingress.class: "traefik"
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.middlewares: >-
+      am-apps-dev-dev-global-cors@kubernetescrd
+  hosts:
+    - host: am-dev.asrax.in
+      paths:
+        - path: /v1/user-platform
+          pathType: Prefix
+
+env:
+  APP_ENV: dev
+  LOG_LEVEL: DEBUG

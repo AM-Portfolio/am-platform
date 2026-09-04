@@ -1,0 +1,27 @@
+# DEPRECATED for CI completeness — mappings are also in values.yaml so base+env
+# files alone work. Kept for workflows that still pass -f vault-mappings.yaml.
+vault:
+  secretPaths:
+    postgres:
+      mappings:
+        POSTGRES_HOST: "host"
+        POSTGRES_USER: "username"
+        POSTGRES_PASSWORD: "password"
+        AM_USER_PLATFORM_POSTGRES_HOST: "host"
+        AM_USER_PLATFORM_POSTGRES_PORT: "port"
+        AM_USER_PLATFORM_DB_NAME: "AM_USER_PLATFORM_DB_NAME"
+        AM_USER_PLATFORM_DB_USER: "AM_USER_PLATFORM_DB_USER"
+        AM_USER_PLATFORM_DB_PASSWORD: "AM_USER_PLATFORM_DB_PASSWORD"
+    user-platform:
+      mappings:
+        AM_USER_PLATFORM_CLIENT_ID: "AM_USER_PLATFORM_CLIENT_ID"
+        AM_USER_PLATFORM_CLIENT_SECRET: "AM_USER_PLATFORM_CLIENT_SECRET"
+        SERVICE_TOKEN: "SERVICE_TOKEN"
+    identity-oidc:
+      mappings:
+        OIDC_JWKS_URL: "OIDC_JWKS_URL"
+        OIDC_ISSUER: "OIDC_ISSUER"
+    service-oauth:
+      mappings:
+        OAUTH2_CLIENT_ID: "AM_USER_PLATFORM_CLIENT_ID"
+        OAUTH2_CLIENT_SECRET: "AM_USER_PLATFORM_CLIENT_SECRET"

@@ -1,0 +1,24 @@
+[project]
+name = "am-user-platform"
+version = "0.1.0"
+description = "User-facing platform state — AI chat memory, preferences, corp settings"
+authors = [{ name = "AM Platform", email = "platform@asrax.in" }]
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.100.0",
+    "uvicorn>=0.30.0",
+    "httpx>=0.24.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "sqlalchemy[asyncio]>=2.0.0",
+    "asyncpg>=0.29.0",
+    "am-platform-common",
+    "am-platform-security",
+]
+
+[tool.poetry]
+packages = [{ include = "am_user_platform" }]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

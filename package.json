@@ -9,6 +9,7 @@
     "am-identity",
     "am-subscription",
     "am-notification",
+    "am-user-platform",
     "libraries/am-platform-common",
     "libraries/am-platform-security"
   ],
@@ -44,6 +45,12 @@
     "notification:start": "npm run notification:dev",
     "notification:lint": "npm run lint -w @am-platform/notification",
     "notification:compile": "npm run compile -w @am-platform/notification",
+
+    "user-platform:dev": "npm run dev -w @am-platform/user-platform",
+    "user-platform:start": "npm run user-platform:dev",
+    "user-platform:lint": "npm run lint -w @am-platform/user-platform",
+    "user-platform:compile": "npm run compile -w @am-platform/user-platform",
+    "user-platform:test": "npm run test -w @am-platform/user-platform",
 
     "common:test": "npm run test -w @am-platform/common",
     "common:lint": "npm run lint -w @am-platform/common",
@@ -85,9 +92,11 @@
     "run:identity:prod": "npm run identity:dev:prod",
     "run:subscription": "npm run subscription:dev",
     "run:notification": "npm run notification:dev",
+    "run:user-platform": "npm run user-platform:dev",
     "dev:notification": "npm run notification:dev",
     "dev:subscription": "npm run subscription:dev",
     "dev:identity": "npm run identity:dev",
+    "dev:user-platform": "npm run user-platform:dev",
     "test:common": "npm run common:test",
     "test:security": "npm run security:test",
     "lint:fix": "node automation/scripts/run-with-logs.js npm run lint:fix --workspaces --if-present",

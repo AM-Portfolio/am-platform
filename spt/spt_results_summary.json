@@ -1,0 +1,62 @@
+[
+  {
+    "service": "Identity",
+    "scenario": "baseline",
+    "checks_pct": "100.00%",
+    "req_failed_pct": "0.00%",
+    "avg_lat": "1.12s",
+    "p95_lat": "1.93s",
+    "reqs_sec": "0.412823/s",
+    "status": "Passed"
+  },
+  {
+    "service": "Identity",
+    "scenario": "load",
+    "checks_pct": "100.00%",
+    "req_failed_pct": "0.00%",
+    "avg_lat": "1.79s",
+    "p95_lat": "3.58s",
+    "reqs_sec": "2.566254/s",
+    "status": "Passed"
+  },
+  {
+    "service": "Identity",
+    "scenario": "stress",
+    "checks_pct": "99.88%",
+    "req_failed_pct": "0.10%",
+    "avg_lat": "9.04s",
+    "p95_lat": "16.47s",
+    "reqs_sec": "3.798428/s",
+    "status": "Passed"
+  },
+  {
+    "service": "Subscription",
+    "scenario": "baseline",
+    "checks_pct": "100.00%",
+    "req_failed_pct": "0.00%",
+    "avg_lat": "396.12ms",
+    "p95_lat": "543.77ms",
+    "reqs_sec": "0.586969/s",
+    "status": "Passed"
+  },
+  {
+    "service": "Subscription",
+    "scenario": "load",
+    "checks_pct": "100.00%",
+    "req_failed_pct": "0.00%",
+    "avg_lat": "371.33ms",
+    "p95_lat": "609.31ms",
+    "reqs_sec": "4.719487/s",
+    "status": "Passed"
+  },
+  {
+    "service": "Subscription",
+    "scenario": "stress",
+    "checks_pct": "100.00%",
+    "req_failed_pct": "0.00%",
+    "avg_lat": "1.16s",
+    "p95_lat": "2.99s",
+    "reqs_sec": "15.24661/s",
+    "status": "Passed"
+  }
+]

@@ -6,7 +6,13 @@ from __future__ import annotations
 import subprocess
 import sys
 
-from platform_env import PLATFORM_ROOT, identity_env, notification_env, subscription_env
+from platform_env import (
+    PLATFORM_ROOT,
+    identity_env,
+    notification_env,
+    subscription_env,
+    user_platform_env,
+)
 from uvicorn_runner import build_uvicorn_args
 
 
@@ -46,10 +52,19 @@ def run_notification(*, reload: bool) -> int:
     )
 
 
+def run_user_platform(*, reload: bool) -> int:
+    return run_uvicorn(
+        "am_user_platform.main:app",
+        reload=reload,
+        env=user_platform_env(),
+        cwd_name="am-user-platform",
+    )
+
+
 def main() -> None:
     if len(sys.argv) < 2:
         print(
-            "Usage: run_service.py <identity|subscription|notification> <dev|dev:prod>"
+            "Usage: run_service.py <identity|subscription|notification|user-platform> <dev|dev:prod>"
         )
         sys.exit(1)
 
@@ -65,6 +80,8 @@ def main() -> None:
         sys.exit(run_subscription(reload=reload))
     if service == "notification":
         sys.exit(run_notification(reload=reload))
+    if service == "user-platform":
+        sys.exit(run_user_platform(reload=reload))
 
     print(f"Unknown service: {service}")
     sys.exit(1)

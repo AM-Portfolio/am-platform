@@ -4,7 +4,8 @@ image: ghcr.io/am-portfolio/am-subscription
 runtime: python
 language: python
 dockerfile: Dockerfile
-context: .
+# Dockerfile COPYs libraries/ + am-subscription/ — build from am-platform root
+context: ..
 github:
   repo: AM-Portfolio/am-platform
   deploy_workflow: central-build-publish.yml

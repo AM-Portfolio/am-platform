@@ -1,0 +1,15 @@
+{
+  "name": "@am-platform/user-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AM User Platform service (AI chat memory, preferences, corp)",
+  "scripts": {
+    "dev": "node ../automation/scripts/run-with-logs.js python ../automation/scripts/run_service.py user-platform dev",
+    "start": "npm run dev",
+    "test": "node ../automation/scripts/run-with-logs.js python ../automation/scripts/run_user_platform_tests.py",
+    "lint": "node ../automation/scripts/run-with-logs.js python -m ruff check am_user_platform && python -m black --check am_user_platform",
+    "lint:fix": "node ../automation/scripts/run-with-logs.js python -m ruff check am_user_platform --fix",
+    "format": "node ../automation/scripts/run-with-logs.js python -m black am_user_platform",
+    "compile": "node ../automation/scripts/run-with-logs.js python -m compileall am_user_platform"
+  }
+}
