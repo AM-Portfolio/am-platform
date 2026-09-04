@@ -28,6 +28,12 @@ NOTIFICATION_LIB_PATHS = [
     PLATFORM_ROOT / "am-notification",
 ]
 
+USER_PLATFORM_LIB_PATHS = [
+    PLATFORM_ROOT / "libraries" / "am-platform-common",
+    PLATFORM_ROOT / "libraries" / "am-platform-security",
+    PLATFORM_ROOT / "am-user-platform",
+]
+
 
 def notification_env() -> dict[str, str]:
     env = os.environ.copy()
@@ -115,4 +121,17 @@ def subscription_env() -> dict[str, str]:
     if ".svc.cluster.local" in pg_host and not env.get("AM_SUBSCRIPTION_POSTGRES_HOST"):
         env["AM_SUBSCRIPTION_POSTGRES_HOST"] = "postgres.asrax.in"
         env.setdefault("AM_SUBSCRIPTION_POSTGRES_PORT", "8891")
+    return env
+
+
+def user_platform_env() -> dict[str, str]:
+    env = os.environ.copy()
+    env.update(load_env_files())
+    env["PYTHONPATH"] = os.pathsep.join(str(p) for p in USER_PLATFORM_LIB_PATHS)
+    env["APP_NAME"] = "am-user-platform"
+    env["APP_PORT"] = "8115"
+    pg_host = env.get("POSTGRES_HOST", "")
+    if ".svc.cluster.local" in pg_host and not env.get("AM_USER_PLATFORM_POSTGRES_HOST"):
+        env["AM_USER_PLATFORM_POSTGRES_HOST"] = "postgres.asrax.in"
+        env.setdefault("AM_USER_PLATFORM_POSTGRES_PORT", "8891")
     return env

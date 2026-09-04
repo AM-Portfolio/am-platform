@@ -1,0 +1,41 @@
+# Preprod Environment — am-user-platform
+environment: preprod
+replicaCount: 1
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 1m
+    memory: 64Mi
+
+vault:
+  enabled: true
+  secretPaths:
+    postgres:
+      path: "apps/data/preprod/infra/postgres"
+    user-platform:
+      path: "apps/data/preprod/services/am-user-platform"
+    identity-oidc:
+      path: "apps/data/preprod/services/am-identity"
+    service-oauth:
+      path: "apps/data/preprod/services/am-user-platform"
+
+env:
+  APP_ENV: preprod
+  LOG_LEVEL: INFO
+
+ingress:
+  enabled: true
+  className: "traefik"
+  annotations:
+    kubernetes.io/ingress.class: "traefik"
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.middlewares: >-
+      am-apps-preprod-global-cors@kubernetescrd
+  hosts:
+    - host: am-preprod.asrax.in
+      paths:
+        - path: /v1/user-platform
+          pathType: Prefix

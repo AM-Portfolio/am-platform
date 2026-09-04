@@ -1,0 +1,16 @@
+name: am-user-platform
+release: am-user-platform
+image: ghcr.io/am-portfolio/am-user-platform
+runtime: python
+language: python
+dockerfile: Dockerfile
+# Dockerfile COPYs libraries/ + am-user-platform/ — build from am-platform root
+context: ..
+github:
+  repo: AM-Portfolio/am-platform
+  deploy_workflow: deploy-am-user-platform.yml
+  service: am-user-platform
+  ref: main
+deploy:
+  via: helm
+  rebuild: on-change

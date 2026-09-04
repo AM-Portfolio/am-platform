@@ -7,6 +7,7 @@ on:
       - "am-identity/**"
       - "am-subscription/**"
       - "am-notification/**"
+      - "am-user-platform/**"
       - "libraries/**"
       - "requirements*.txt"
   pull_request:
@@ -15,6 +16,7 @@ on:
       - "am-identity/**"
       - "am-subscription/**"
       - "am-notification/**"
+      - "am-user-platform/**"
       - "libraries/**"
       - "requirements*.txt"
 
@@ -37,10 +39,10 @@ jobs:
           pip install ./libraries/am-platform-common ./libraries/am-platform-security
 
       - name: Run Ruff Linter
-        run: ruff check am-identity am-subscription am-notification libraries
+        run: ruff check am-identity am-subscription am-notification am-user-platform libraries
 
       - name: Run Black Code Formatter Check
-        run: black --check am-identity am-subscription am-notification libraries
+        run: black --check am-identity am-subscription am-notification am-user-platform libraries
 
       - name: Run Unit Tests
         env:

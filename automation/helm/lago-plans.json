@@ -25,6 +25,13 @@
       "name": "API Calls",
       "description": "Gateway and service API calls for metering",
       "aggregation_type": "count_agg"
+    },
+    {
+      "code": "ai_chat_tokens",
+      "name": "AI Chat Tokens",
+      "description": "LLM tokens consumed in AI chat per billing period",
+      "aggregation_type": "sum_agg",
+      "field_name": "tokens"
     }
   ],
   "plans": [
@@ -46,7 +53,8 @@
         "document_parses": 5,
         "portfolios": 1,
         "ai_portfolio_summaries": 1,
-        "api_calls": 1000
+        "api_calls": 1000,
+        "ai_chat_tokens": 100000
       },
       "entitlements": {
         "live_market_data": false,
@@ -77,7 +85,8 @@
         "document_parses": 50,
         "portfolios": 5,
         "ai_portfolio_summaries": 20,
-        "api_calls": 50000
+        "api_calls": 50000,
+        "ai_chat_tokens": 1000000
       },
       "entitlements": {
         "live_market_data": true,
@@ -103,7 +112,8 @@
         "document_parses": 50,
         "portfolios": 5,
         "ai_portfolio_summaries": 20,
-        "api_calls": 50000
+        "api_calls": 50000,
+        "ai_chat_tokens": 1000000
       },
       "entitlements": {
         "live_market_data": true,
@@ -135,7 +145,8 @@
         "document_parses": 200,
         "portfolios": 20,
         "ai_portfolio_summaries": 100,
-        "api_calls": 250000
+        "api_calls": 250000,
+        "ai_chat_tokens": 1000000
       },
       "entitlements": {
         "live_market_data": true,
@@ -162,7 +173,8 @@
         "document_parses": 200,
         "portfolios": 20,
         "ai_portfolio_summaries": 100,
-        "api_calls": 250000
+        "api_calls": 250000,
+        "ai_chat_tokens": 1000000
       },
       "entitlements": {
         "live_market_data": true,

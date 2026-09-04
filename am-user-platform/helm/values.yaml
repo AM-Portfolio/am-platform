@@ -1,0 +1,93 @@
+# Base Helm values for am-user-platform
+global:
+  image:
+    registry: ghcr.io/am-portfolio
+    pullPolicy: Always
+    imagePullSecrets:
+      - name: regcred
+  vault:
+    enabled: true
+    role: "am-backend-role"
+    authPath: "auth/kubernetes"
+    serviceAccountName: "am-backend-sa"
+
+image:
+  repository: am-user-platform
+
+replicaCount: 1
+language: python
+port: 8080
+service:
+  port: 8080
+entrypoint: "exec uvicorn am_user_platform.main:app --host 0.0.0.0 --port 8080"
+
+security:
+  automountServiceAccountToken: true
+
+# Empty stub — universal-chart batchSearch/scheduler templates require config to exist
+config: {}
+
+# Vault key→env mappings live here so base+env values alone are enough for CI.
+# Env files only override paths.
+vault:
+  secretPaths:
+    postgres:
+      mappings:
+        POSTGRES_HOST: "host"
+        POSTGRES_USER: "username"
+        POSTGRES_PASSWORD: "password"
+        AM_USER_PLATFORM_POSTGRES_HOST: "host"
+        AM_USER_PLATFORM_POSTGRES_PORT: "port"
+        AM_USER_PLATFORM_DB_NAME: "AM_USER_PLATFORM_DB_NAME"
+        AM_USER_PLATFORM_DB_USER: "AM_USER_PLATFORM_DB_USER"
+        AM_USER_PLATFORM_DB_PASSWORD: "AM_USER_PLATFORM_DB_PASSWORD"
+    user-platform:
+      mappings:
+        AM_USER_PLATFORM_CLIENT_ID: "AM_USER_PLATFORM_CLIENT_ID"
+        AM_USER_PLATFORM_CLIENT_SECRET: "AM_USER_PLATFORM_CLIENT_SECRET"
+        SERVICE_TOKEN: "SERVICE_TOKEN"
+    identity-oidc:
+      mappings:
+        OIDC_JWKS_URL: "OIDC_JWKS_URL"
+        OIDC_ISSUER: "OIDC_ISSUER"
+    service-oauth:
+      mappings:
+        OAUTH2_CLIENT_ID: "AM_USER_PLATFORM_CLIENT_ID"
+        OAUTH2_CLIENT_SECRET: "AM_USER_PLATFORM_CLIENT_SECRET"
+
+env:
+  APP_ENV: production
+  APP_NAME: am-user-platform
+  APP_PORT: "8080"
+  LOG_FORMAT: json
+  LOG_LEVEL: INFO
+  TZ: Asia/Kolkata
+  AM_USER_PLATFORM_POSTGRES_SSL: "false"
+
+probes:
+  port: 8080
+  startup:
+    path: /health/live
+    failureThreshold: 30
+    periodSeconds: 10
+  liveness:
+    path: /health/live
+  readiness:
+    path: /ready
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+# Host list is environment-specific — see values.*.yaml
+ingress:
+  enabled: true
+  className: "traefik"
+  annotations:
+    kubernetes.io/ingress.class: "traefik"
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+  hosts: []

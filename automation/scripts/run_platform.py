@@ -12,7 +12,13 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from platform_env import PLATFORM_ROOT, identity_env, notification_env, subscription_env
+from platform_env import (
+    PLATFORM_ROOT,
+    identity_env,
+    notification_env,
+    subscription_env,
+    user_platform_env,
+)
 from uvicorn_runner import build_uvicorn_args
 
 
@@ -42,6 +48,13 @@ SERVICES: tuple[ServiceSpec, ...] = (
         "am-notification",
         notification_env,
         "8111",
+    ),
+    ServiceSpec(
+        "user-platform",
+        "am_user_platform.main:app",
+        "am-user-platform",
+        user_platform_env,
+        "8115",
     ),
 )
 
@@ -171,7 +184,7 @@ def run_platform(*, reload: bool) -> int:
     labels = ", ".join(f"{spec.name}:{spec.port}" for spec in specs)
     print(f"Platform dev - {labels}")
     if parse_service_filter() is None:
-        print("Tip: set PLATFORM_DEV_SERVICES=identity,subscription to run a subset.\n")
+        print("Tip: set PLATFORM_DEV_SERVICES=identity,subscription,user-platform to run a subset.\n")
     return PlatformSupervisor(specs, reload=reload).run()
 
 

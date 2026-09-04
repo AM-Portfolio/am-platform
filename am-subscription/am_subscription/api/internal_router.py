@@ -27,6 +27,7 @@ from am_subscription.services.subscription_service import SubscriptionService
 
 INTERNAL_CLIENTS = {
     "am-gateway-client",
+    "am-fin-agent-service",
     "am-portfolio-service",
     "am-market-service",
     "am-market-data-service",

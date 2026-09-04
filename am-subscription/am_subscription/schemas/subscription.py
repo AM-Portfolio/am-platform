@@ -19,6 +19,7 @@ class PlanLimitsDTO(BaseDTO):
     portfolios: int = 0
     ai_portfolio_summaries: int = 0
     api_calls: int = 0
+    ai_chat_tokens: int = 0
 
 
 class PlanDTO(BaseDTO):

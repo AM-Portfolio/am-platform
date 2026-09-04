@@ -31,6 +31,7 @@ ACTION_TO_METRIC: dict[str, str] = {
     "portfolio.create": "portfolios",
     "ai.summary": "ai_portfolio_summaries",
     "api.call": "api_calls",
+    "ai.chat": "ai_chat_tokens",
 }
 
 

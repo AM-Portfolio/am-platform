@@ -1,0 +1,41 @@
+# Production Environment — am-user-platform
+environment: prod
+replicaCount: 1
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 768Mi
+  requests:
+    cpu: 500m
+    memory: 512Mi
+
+vault:
+  enabled: true
+  secretPaths:
+    postgres:
+      path: "apps/data/prod/infra/postgres"
+    user-platform:
+      path: "secret/data/prod/services/am-user-platform"
+    identity-oidc:
+      path: "secret/data/prod/services/am-identity"
+    service-oauth:
+      path: "secret/data/prod/services/am-user-platform"
+
+env:
+  APP_ENV: production
+  LOG_LEVEL: INFO
+
+ingress:
+  enabled: true
+  className: "traefik"
+  annotations:
+    kubernetes.io/ingress.class: "traefik"
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.middlewares: >-
+      am-apps-prod-global-cors@kubernetescrd
+  hosts:
+    - host: am.asrax.in
+      paths:
+        - path: /v1/user-platform
+          pathType: Prefix
