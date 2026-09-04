@@ -1,0 +1,15 @@
+name: am-mcp-hub
+release: am-mcp-hub
+image: ghcr.io/am-portfolio/am-mcp-hub
+runtime: python
+language: python
+dockerfile: Dockerfile
+context: .
+github:
+  repo: AM-Portfolio/am-platform
+  deploy_workflow: central-build-publish.yml
+  service: am-mcp-hub
+  ref: main
+deploy:
+  via: helm
+  rebuild: on-change

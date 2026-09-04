@@ -28,6 +28,7 @@ resource "keycloak_realm" "am_realm" {
   sso_session_idle_timeout = "30m"
   sso_session_max_lifespan = "10h"
   access_token_lifespan    = "5m"
+  revoke_refresh_token     = true
 
   # Password policy: min length + mixed case + digits
   password_policy = "length(8) and lowerCase(1) and upperCase(1) and digits(1)"
@@ -117,6 +118,9 @@ resource "keycloak_openid_client" "am_web_client" {
     "https://am.asrax.in",
     "https://am-dev.asrax.in",
   ]
+
+  client_session_idle_timeout = "168h"
+  client_session_max_lifespan = "168h"
 
   login_theme = ""
 }
@@ -489,7 +493,7 @@ resource "keycloak_openid_client" "am_android_client" {
   access_type                  = "PUBLIC"
   standard_flow_enabled        = true  # Auth Code + PKCE
   implicit_flow_enabled        = false
-  direct_access_grants_enabled = false
+  direct_access_grants_enabled = true
   service_accounts_enabled     = false
 
   valid_redirect_uris = [
@@ -499,6 +503,9 @@ resource "keycloak_openid_client" "am_android_client" {
   ]
 
   web_origins = ["+"]
+
+  client_session_idle_timeout = "360h"
+  client_session_max_lifespan = "360h"
 }
 
 # ---------------------------------------------------------
@@ -514,7 +521,7 @@ resource "keycloak_openid_client" "am_ios_client" {
   access_type                  = "PUBLIC"
   standard_flow_enabled        = true  # Auth Code + PKCE
   implicit_flow_enabled        = false
-  direct_access_grants_enabled = false
+  direct_access_grants_enabled = true
   service_accounts_enabled     = false
 
   valid_redirect_uris = [
@@ -526,6 +533,9 @@ resource "keycloak_openid_client" "am_ios_client" {
   ]
 
   web_origins = ["+"]
+
+  client_session_idle_timeout = "360h"
+  client_session_max_lifespan = "360h"
 }
 
 # ---------------------------------------------------------

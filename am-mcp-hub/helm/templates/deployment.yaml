@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: am-mcp-hub
+spec:
+  ports:
+    - port: 8130
+      targetPort: 8130
+  selector:
+    app: am-mcp-hub
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: am-mcp-hub
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: am-mcp-hub
+  template:
+    metadata:
+      labels:
+        app: am-mcp-hub
+    spec:
+      containers:
+        - name: am-mcp-hub
+          image: ghcr.io/am-portfolio/am-mcp-hub:latest
+          ports:
+            - containerPort: 8130
+          env:
+            - name: APP_PORT
+              value: "8130"
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: am-mcp-hub
+                  key: database-url
+                  optional: true

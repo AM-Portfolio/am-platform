@@ -46,8 +46,11 @@
 | **Duplicate Emails** | ❌ Disabled | One account per email |
 | **Verify Email** | Enabled (preprod/prod with Zoho SMTP) | Register triggers VERIFY_EMAIL via Keycloak |
 | **Access Token TTL** | 5 minutes | Short for security |
-| **SSO Session Idle** | 30 minutes | Extends on activity |
-| **SSO Session Max** | 10 hours | Hard cap per day |
+| **Refresh Token Rotation** | Enabled (`revoke_refresh_token`) | OAuth 2.1 reuse detection |
+| **SSO Session Idle** | 30 minutes | Realm default; extends on activity |
+| **SSO Session Max** | 10 hours | Realm hard cap |
+| **Web client session (`am-web-client`)** | 7 days idle + max | QR / web OTP cookie sessions |
+| **Mobile client session (`am-android-client`, `am-ios-client`)** | 15 days idle + max | Mobile refresh SSO |
 | **Password Policy** | min 8 + upper + lower + digit | Enforced at registration & reset |
 | **Brute Force** | 10 failures → 15 min lockout | Auto-unlocks after 12h |
 

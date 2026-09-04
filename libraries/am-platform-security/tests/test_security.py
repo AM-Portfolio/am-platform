@@ -25,3 +25,9 @@ def test_issuer_matches_http_https_variants():
     assert _issuer_matches(token_iss, configured)
     assert _issuer_matches(configured, configured)
     assert not _issuer_matches("http://other.example/realms/am-realm", configured)
+
+
+def test_issuer_matches_keycloak_public_hostname_aliases():
+    configured = "https://auth.munish.org/auth/realms/am-realm"
+    token_iss = "https://auth.asrax.in/auth/realms/am-realm"
+    assert _issuer_matches(token_iss, configured)

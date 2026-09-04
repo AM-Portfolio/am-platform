@@ -12,7 +12,9 @@ class IIdentityProvider(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def authenticate(self, username: str, password: str) -> dict[str, Any]:
+    async def authenticate(
+        self, username: str, password: str, platform: str | None = None
+    ) -> dict[str, Any]:
         raise NotImplementedError
 
     @abstractmethod
@@ -20,11 +22,15 @@ class IIdentityProvider(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def refresh_token(self, refresh_token: str) -> dict[str, Any]:
+    async def refresh_token(
+        self, refresh_token: str, client_id: str | None = None
+    ) -> dict[str, Any]:
         raise NotImplementedError
 
     @abstractmethod
-    async def revoke_token(self, refresh_token: str) -> None:
+    async def revoke_token(
+        self, refresh_token: str, client_id: str | None = None
+    ) -> None:
         raise NotImplementedError
 
     @abstractmethod
@@ -176,35 +182,5 @@ class IIdentityProvider(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def set_user_attribute(
-        self, user_id: str, key: str, value: str
-    ) -> dict[str, Any]:
-        """Set or update a single custom attribute for a user."""
-        raise NotImplementedError
-
-    @abstractmethod
-    async def set_user_attributes(
-        self, user_id: str, attributes: dict[str, Any]
-    ) -> dict[str, Any]:
-        """Update multiple user custom attributes in a single Keycloak API transaction."""
-        raise NotImplementedError
-
-    @abstractmethod
-    async def remove_user_attribute(self, user_id: str, key: str) -> dict[str, Any]:
-        """Remove a single custom attribute from a user."""
-        raise NotImplementedError
-
-    @abstractmethod
-    async def hard_delete_user(self, user_id: str) -> None:
-        """Permanently delete a user account from the identity provider."""
-        raise NotImplementedError
-
-    @abstractmethod
-    async def is_user_deletion_pending(self, user_id: str) -> bool:
-        """Check if user account has pending deletion state."""
-        raise NotImplementedError
-
-    @abstractmethod
-    async def restore_user_account(self, user_id: str) -> bool:
-        """Restore user account by clearing deletion attributes. Returns True if restored."""
+    async def logout_keycloak_session(self, keycloak_session_id: str) -> None:
         raise NotImplementedError

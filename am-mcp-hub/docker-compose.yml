@@ -1,0 +1,123 @@
+# Local AM MCP Hub + Google Workspace MCP + official MCP Inspector UI
+#
+#   $env:ASRAX_LAPTOP_HOME="$env:USERPROFILE\.asrax"
+#   $env:AM_LAPTOP_HOME="$env:USERPROFILE\.am"
+#   docker compose up --build
+#
+# Host URLs:
+#   Hub:         http://127.0.0.1:8130/
+#   Google UI:   http://127.0.0.1:8130/google/
+#   Marketplace: http://127.0.0.1:8130/marketplace/
+#   History:     http://127.0.0.1:8130/history/   (reads ~/.asrax/chat-memory)
+#   Skills:      http://127.0.0.1:8130/skills/
+#   Rules:       http://127.0.0.1:8130/rules/
+#   Hooks:       http://127.0.0.1:8130/hooks/
+#   Agents:      http://127.0.0.1:8130/agents/
+#   Tools:       http://127.0.0.1:8130/tools/
+#   Inspector:   use hub /api/v1/ui-config inspector_url (token prefilled)
+#   Note:        http://127.0.0.1:8000/ is workspace-mcp health JSON, not a UI
+
+services:
+  google-workspace:
+    build:
+      context: ./docker/google-workspace
+    ports:
+      - "8000:8000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      PORT: "8000"
+      WORKSPACE_MCP_HOST: "0.0.0.0"
+      WORKSPACE_MCP_PORT: "8000"
+      TOOL_TIER: ${TOOL_TIER:-core}
+      OAUTHLIB_INSECURE_TRANSPORT: "1"
+      MCP_ENABLE_OAUTH21: ${MCP_ENABLE_OAUTH21:-false}
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      GOOGLE_OAUTH_REDIRECT_URI: ${GOOGLE_OAUTH_REDIRECT_URI:-http://127.0.0.1:8000/oauth2callback}
+      GOOGLE_OAUTH_CLIENT_FILE: ${GOOGLE_OAUTH_CLIENT_FILE:-/google-secrets/google-oauth-client.json}
+      GOOGLE_DRIVE_OAUTH_CREDENTIALS: ${GOOGLE_DRIVE_OAUTH_CREDENTIALS:-/google-secrets/google-oauth-client.json}
+    volumes:
+      - google-creds:/app/store_creds
+      - ${AM_MCP_LOCAL_CREDS:-./local-data/credentials}/secrets:/google-secrets:ro
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]
+      interval: 20s
+      timeout: 8s
+      retries: 8
+      start_period: 45s
+
+  hub:
+    build:
+      context: .
+    ports:
+      - "8130:8130"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      APP_PORT: "8130"
+      HUB_DEV_BYPASS_AUTH: "1"
+      DATABASE_URL: sqlite+aiosqlite:////data/mcp_hub.db
+      GOOGLE_WORKSPACE_MCP_URL: http://google-workspace:8000/mcp
+      GOOGLE_WORKSPACE_MCP_PUBLIC_URL: http://127.0.0.1:8130/google/mcp
+      INSPECTOR_PUBLIC_URL: http://127.0.0.1:6274/
+      INSPECTOR_MCP_URL: http://hub:8130/sse
+      INSPECTOR_PROXY_AUTH_TOKEN: am-local-inspector
+      HOST_PROBE_URL: http://host.docker.internal:8765
+      AM_HOST_PROBE_URL: http://host.docker.internal:8765
+      LOCAL_CREDS_DIR: /local-creds
+      LAPTOP_ASRAX_DIR: /laptop-asrax
+      LAPTOP_AM_DIR: /laptop-am
+    volumes:
+      - hub-data:/data
+      - ${AM_MCP_LOCAL_CREDS:-./local-data/credentials}:/local-creds
+      - ${ASRAX_LAPTOP_HOME:-./local-data/laptop-asrax}:/laptop-asrax
+      - ${AM_LAPTOP_HOME:-./local-data/laptop-am}:/laptop-am:ro
+    depends_on:
+      google-workspace:
+        condition: service_started
+
+  inspector:
+    image: node:22-bookworm-slim
+    working_dir: /app
+    restart: always
+    # Restart loop: Inspector 0.16 can still crash; bring proxy back without manual recreate.
+    command:
+      [
+        "sh",
+        "-c",
+        "while true; do npx --yes @modelcontextprotocol/inspector@0.16.8 --config /config/mcp-inspector.json --server asrax-hub || true; echo inspector-exited; sleep 2; done",
+      ]
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "6274"
+      MCP_PROXY_AUTH_TOKEN: am-local-inspector
+      DANGEROUSLY_BIND_ALL_INTERFACES: "true"
+      ALLOWED_ORIGINS: "http://127.0.0.1:6274,http://localhost:6274,http://127.0.0.1:8130,http://localhost:8130"
+      MCP_AUTO_OPEN_ENABLED: "false"
+    volumes:
+      - ./docker/inspector/mcp-inspector.json:/config/mcp-inspector.json:ro
+    ports:
+      - "6274:6274"
+      - "6277:6277"
+    depends_on:
+      hub:
+        condition: service_started
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:6277/config',{headers:{'x-mcp-proxy-auth':'Bearer am-local-inspector','Origin':'http://127.0.0.1:6274'}}).then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 40s
+
+volumes:
+  hub-data:
+  google-creds:

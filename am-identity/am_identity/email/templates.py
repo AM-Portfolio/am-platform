@@ -251,3 +251,86 @@ def build_reset_password(*, action_url: str, app_home: str) -> tuple[str, str, s
             include_features=True,
         ),
     )
+
+
+def _otp_shell(*, preheader: str, headline: str, body: str, code: str) -> str:
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>{headline}</title>
+</head>
+<body style="margin:0;padding:0;background:{_NAVY_TOP};font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">{preheader}</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:linear-gradient(160deg,{_NAVY_TOP} 0%,{_NAVY_MID} 55%,{_NAVY_DEEP} 100%);background-color:{_NAVY_TOP};">
+    <tr>
+      <td align="center" style="padding:24px 12px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;">
+          <tr>
+            <td align="center" style="padding:0 4px 16px;">
+              <div style="font-size:24px;font-weight:700;letter-spacing:0.12em;color:#FFFFFF;">ASRAX</div>
+              <div style="margin-top:5px;font-size:12px;letter-spacing:0.04em;color:rgba(255,255,255,0.7);">AM Investment Platform</div>
+              <div style="margin:12px auto 0;width:40px;height:3px;background:{_CTA};border-radius:2px;"></div>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#FFFFFF;border-radius:18px;padding:26px 24px 20px;box-shadow:0 14px 32px rgba(0,0,0,0.28);">
+              <h1 style="margin:0 0 10px;font-size:20px;line-height:1.25;color:{_TEXT};">{headline}</h1>
+              <p style="margin:0 0 20px;font-size:14px;line-height:1.55;color:{_MUTED};">{body}</p>
+              <p style="margin:0 0 8px;font-size:12px;font-weight:600;color:{_MUTED};text-align:center;">Your sign-in code</p>
+              <p style="margin:0 0 16px;font-size:32px;font-weight:700;letter-spacing:0.35em;color:{_TEXT};text-align:center;">{code}</p>
+              <p style="margin:0;font-size:11px;line-height:1.4;color:{_MUTED};text-align:center;">
+                Enter this code on the Asrax sign-in page. Do not share it with anyone.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:18px 8px 4px;font-size:11px;line-height:1.55;color:rgba(255,255,255,0.55);">
+              Questions? Contact Asrax Accounts<br/>
+              <a href="mailto:noreply@asrax.in" style="color:rgba(255,255,255,0.75);text-decoration:none;">noreply@asrax.in</a>
+              &nbsp;·&nbsp;
+              <a href="https://asrax.in" style="color:rgba(255,255,255,0.75);text-decoration:none;">asrax.in</a>
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:6px 8px 8px;font-size:10px;line-height:1.4;color:rgba(255,255,255,0.4);">
+              If you did not request this code, you can ignore this email.
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+"""
+
+
+def build_web_login_otp(*, code: str, expires_minutes: int = 5) -> tuple[str, str, str]:
+    formatted = f"{code[:3]} {code[3:]}" if len(code) == 6 else code
+    subject = "Asrax Accounts — sign-in verification code"
+    body = (
+        f"Use this one-time code to sign in to Asrax. "
+        f"It expires in {expires_minutes} minutes."
+    )
+    html = _otp_shell(
+        preheader="Your Asrax sign-in verification code is ready.",
+        headline="Sign in to Asrax",
+        body=body,
+        code=formatted,
+    )
+    plain = "\n".join(
+        [
+            subject,
+            "",
+            body,
+            "",
+            f"Code: {formatted}",
+            "",
+            f"This code expires in {expires_minutes} minutes.",
+            "",
+            "Questions? Contact Asrax Accounts — noreply@asrax.in · https://asrax.in",
+        ]
+    )
+    return subject, html, plain

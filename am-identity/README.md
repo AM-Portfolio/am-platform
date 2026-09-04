@@ -26,9 +26,8 @@ Loads `.env` / `.secrets.env` from platform root and sets `PYTHONPATH` for share
 
 ## Postman
 
-Import the collection and environment from [`postman/`](postman/README.md):
+Do **not** import the files in [`postman/`](postman/README.md) into Postman. They are the Identity **source** for the unified collection.
 
-- `postman/AM-Identity.postman_collection.json`
-- `postman/AM-Identity.local.postman_environment.json`
+Use `am-platform/postman/AM-Platform.postman_collection.json` (Identity folder). Rebuild with `python postman/build_platform_postman.py` from `am-platform/`.
 
 <!-- dummy trigger commit -->

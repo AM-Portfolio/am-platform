@@ -1,0 +1,25 @@
+{
+  "name": "@asrax/mcp",
+  "version": "0.1.0",
+  "description": "Asrax MCP Hub stdio client for Cursor — exchanges API key and proxies to HTTPS /mcp",
+  "bin": {
+    "asrax-mcp": "bin/asrax-mcp.js"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "README.md"
+  ],
+  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AM-Portfolio/am-platform"
+  },
+  "dependencies": {
+    "mcp-remote": "^0.1.0"
+  }
+}

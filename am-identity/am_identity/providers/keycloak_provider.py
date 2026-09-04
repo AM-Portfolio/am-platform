@@ -91,6 +91,9 @@ class KeycloakIdentityProvider(IIdentityProvider):
         self._admin_roles_url = (
             f"{keycloak_base}/admin/realms/{settings.keycloak_realm}/roles"
         )
+        self._admin_sessions_url = (
+            f"{keycloak_base}/admin/realms/{settings.keycloak_realm}/sessions"
+        )
         self._auth_url = f"{self._openid_base}/auth"
         self._session_timeout = 20.0
         self._http_headers = {
@@ -239,6 +242,9 @@ class KeycloakIdentityProvider(IIdentityProvider):
             }
         )
 
+    async def issue_user_session_tokens(self, user_id: str) -> dict[str, Any]:
+        return await self._issue_tokens_for_user(user_id)
+
     async def _request_token(self, data: dict[str, str]) -> dict[str, Any]:
         async with httpx.AsyncClient(
             timeout=self._session_timeout, verify=self.settings.verify_ssl
@@ -261,6 +267,54 @@ class KeycloakIdentityProvider(IIdentityProvider):
                 detail=f"Token request failed: {body}",
             )
         return response.json()
+
+    def _resolve_oauth_client(
+        self, *, platform: str | None = None, client_id: str | None = None
+    ) -> tuple[str, str | None]:
+        resolved = client_id
+        if resolved is None and platform == "android":
+            resolved = self.settings.android_client_id
+        elif resolved is None and platform == "ios":
+            resolved = self.settings.ios_client_id
+        elif resolved is None and platform == "web":
+            resolved = self.settings.web_client_id
+
+        public_clients = {
+            self.settings.web_client_id,
+            self.settings.android_client_id,
+            self.settings.ios_client_id,
+        }
+        if resolved in public_clients:
+            return resolved, None
+        return self.settings.identity_client_id, self.settings.identity_client_secret
+
+    def _token_form(
+        self,
+        *,
+        grant_type: str,
+        platform: str | None = None,
+        client_id: str | None = None,
+        refresh_token: str | None = None,
+        username: str | None = None,
+        password: str | None = None,
+    ) -> dict[str, str]:
+        oauth_client_id, oauth_secret = self._resolve_oauth_client(
+            platform=platform, client_id=client_id
+        )
+        form: dict[str, str] = {
+            "grant_type": grant_type,
+            "client_id": oauth_client_id,
+            "scope": _OIDC_USER_SCOPES,
+        }
+        if oauth_secret:
+            form["client_secret"] = oauth_secret
+        if refresh_token:
+            form["refresh_token"] = refresh_token
+        if username:
+            form["username"] = username
+        if password:
+            form["password"] = password
+        return form
 
     async def _get_admin_access_token(self) -> str:
         async with httpx.AsyncClient(
@@ -358,17 +412,17 @@ class KeycloakIdentityProvider(IIdentityProvider):
             "message": message,
         }
 
-    async def authenticate(self, username: str, password: str) -> dict[str, Any]:
+    async def authenticate(
+        self, username: str, password: str, platform: str | None = None
+    ) -> dict[str, Any]:
         try:
             return await self._request_token(
-                {
-                    "grant_type": "password",
-                    "client_id": self.settings.identity_client_id,
-                    "client_secret": self.settings.identity_client_secret,
-                    "username": username,
-                    "password": password,
-                    "scope": _OIDC_USER_SCOPES,
-                }
+                self._token_form(
+                    grant_type="password",
+                    platform=platform,
+                    username=username,
+                    password=password,
+                )
             )
         except HTTPException as exc:
             detail = str(exc.detail).lower()
@@ -393,30 +447,32 @@ class KeycloakIdentityProvider(IIdentityProvider):
             detail="OTP login route is scaffolded but provider flow is not implemented yet.",
         )
 
-    async def refresh_token(self, refresh_token: str) -> dict[str, Any]:
+    async def refresh_token(
+        self, refresh_token: str, client_id: str | None = None
+    ) -> dict[str, Any]:
         return await self._request_token(
-            {
-                "grant_type": "refresh_token",
-                "client_id": self.settings.identity_client_id,
-                "client_secret": self.settings.identity_client_secret,
-                "refresh_token": refresh_token,
-                "scope": _OIDC_USER_SCOPES,
-            }
+            self._token_form(
+                grant_type="refresh_token",
+                client_id=client_id,
+                refresh_token=refresh_token,
+            )
         )
 
-    async def revoke_token(self, refresh_token: str) -> None:
+    async def revoke_token(
+        self, refresh_token: str, client_id: str | None = None
+    ) -> None:
+        oauth_client_id, oauth_secret = self._resolve_oauth_client(client_id=client_id)
         logout_url = f"{self._openid_base}/logout"
+        payload: dict[str, str] = {
+            "client_id": oauth_client_id,
+            "refresh_token": refresh_token,
+        }
+        if oauth_secret:
+            payload["client_secret"] = oauth_secret
         async with httpx.AsyncClient(
             timeout=self._session_timeout, verify=self.settings.verify_ssl
         ) as client:
-            response = await client.post(
-                logout_url,
-                data={
-                    "client_id": self.settings.identity_client_id,
-                    "client_secret": self.settings.identity_client_secret,
-                    "refresh_token": refresh_token,
-                },
-            )
+            response = await client.post(logout_url, data=payload)
         if response.status_code >= 400:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -1434,120 +1490,20 @@ class KeycloakIdentityProvider(IIdentityProvider):
                 detail=f"Logout user sessions failed: {response.text}",
             )
 
-    async def set_user_attribute(
-        self, user_id: str, key: str, value: str
-    ) -> dict[str, Any]:
-        return await self.set_user_attributes(user_id, {key: value})
-
-    async def set_user_attributes(
-        self, user_id: str, attributes: dict[str, Any]
-    ) -> dict[str, Any]:
-        await self._ensure_settings_profile_attribute()
+    async def logout_keycloak_session(self, keycloak_session_id: str) -> None:
         admin_token = await self._get_admin_access_token()
-        headers = self._admin_headers(admin_token)
-        get_response = await self.client.get(
-            f"{self._admin_users_url}/{user_id}", headers=headers
-        )
-        if get_response.status_code >= 400:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"User not found: {user_id}",
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            response = await client.delete(
+                f"{self._admin_sessions_url}/{keycloak_session_id}",
+                headers=self._admin_headers(admin_token),
             )
-        user = get_response.json()
-        attrs = user.get("attributes", {})
-        for key, value in attributes.items():
-            attrs[key] = [value]
-        user["attributes"] = attrs
-        put_response = await self.client.put(
-            f"{self._admin_users_url}/{user_id}", json=user, headers=headers
-        )
-        if put_response.status_code >= 400:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Failed to set user attributes: {put_response.text}",
-            )
-        return await self.get_user(user_id)
-
-    async def remove_user_attribute(self, user_id: str, key: str) -> dict[str, Any]:
-        admin_token = await self._get_admin_access_token()
-        headers = self._admin_headers(admin_token)
-        get_response = await self.client.get(
-            f"{self._admin_users_url}/{user_id}", headers=headers
-        )
-        if get_response.status_code >= 400:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"User not found: {user_id}",
-            )
-        user = get_response.json()
-        attrs = user.get("attributes", {})
-        if key in attrs:
-            del attrs[key]
-            user["attributes"] = attrs
-            put_response = await self.client.put(
-                f"{self._admin_users_url}/{user_id}", json=user, headers=headers
-            )
-            if put_response.status_code >= 400:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Failed to remove user attribute: {put_response.text}",
-                )
-        return await self.get_user(user_id)
-
-    async def hard_delete_user(self, user_id: str) -> None:
-        admin_token = await self._get_admin_access_token()
-        headers = self._admin_headers(admin_token)
-        response = await self.client.delete(
-            f"{self._admin_users_url}/{user_id}", headers=headers
-        )
         if response.status_code >= 400:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Failed to delete user: {response.text}",
+                detail=f"Logout session failed: {response.text}",
             )
-
-    async def is_user_deletion_pending(self, user_id: str) -> bool:
-        admin_token = await self._get_admin_access_token()
-        headers = self._admin_headers(admin_token)
-        response = await self.client.get(
-            f"{self._admin_users_url}/{user_id}", headers=headers
-        )
-        if response.status_code >= 400:
-            return False
-        user = response.json()
-        attrs = user.get("attributes", {})
-        return attrs.get("account_status") == ["pending_deletion"]
-
-    async def restore_user_account(self, user_id: str) -> bool:
-        admin_token = await self._get_admin_access_token()
-        headers = self._admin_headers(admin_token)
-        response = await self.client.get(
-            f"{self._admin_users_url}/{user_id}", headers=headers
-        )
-        if response.status_code >= 400:
-            return False
-        user = response.json()
-        attrs = user.get("attributes", {})
-        
-        updated = False
-        for key in ["account_status", "deletion_requested_at", "deletion_feedback"]:
-            if key in attrs:
-                del attrs[key]
-                updated = True
-        
-        if updated:
-            user["attributes"] = attrs
-            put_response = await self.client.put(
-                f"{self._admin_users_url}/{user_id}", json=user, headers=headers
-            )
-            if put_response.status_code >= 400:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Failed to restore user: {put_response.text}",
-                )
-            return True
-        return False
-
 
 
 def hmac_compare(a: str, b: str) -> bool:
