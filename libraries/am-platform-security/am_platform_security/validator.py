@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+from urllib.parse import urlparse
 
 import jwt
 from fastapi import HTTPException, status
@@ -33,12 +34,20 @@ def _normalize_issuer(url: str) -> str:
     return url.replace("https://", "http://", 1)
 
 
+def _issuer_path(url: str) -> str:
+    return urlparse(_normalize_issuer(url)).path.rstrip("/")
+
+
 def _issuer_matches(token_issuer: str | None, configured_issuer: str) -> bool:
     if not token_issuer:
         return False
     if token_issuer == configured_issuer:
         return True
-    return _normalize_issuer(token_issuer) == _normalize_issuer(configured_issuer)
+    if _normalize_issuer(token_issuer) == _normalize_issuer(configured_issuer):
+        return True
+    token_path = _issuer_path(token_issuer)
+    configured_path = _issuer_path(configured_issuer)
+    return bool(token_path) and token_path == configured_path
 
 
 class TokenValidator:

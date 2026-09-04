@@ -37,12 +37,17 @@ automation/terraform/**/generated.auto.tfvars.json
 
 
 # ============================================================
-# ENVIRONMENT FILES — real values only in .env.example (safe)
+# ENVIRONMENT FILES — never commit; only .env.example is tracked
 # ============================================================
 .env
+.env.*
+**/.env
+**/.env.*
+*.env
+!.env.example
+!**/.env.example
 .env.local
 .env.*.local
-!.env.example
 automation/helm/lago-admin.generated.yaml
 automation/helm/*-admin.generated.yaml
 **/kubeconfig*

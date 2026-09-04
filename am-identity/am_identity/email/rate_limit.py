@@ -33,6 +33,12 @@ _limiter = InMemoryRateLimiter()
 
 
 def client_ip(request: Request) -> str:
+    for header in ("cf-connecting-ip", "true-client-ip", "x-real-ip"):
+        value = request.headers.get(header)
+        if value:
+            candidate = value.split(",")[0].strip()
+            if candidate:
+                return candidate
     forwarded = request.headers.get("x-forwarded-for")
     if forwarded:
         return forwarded.split(",")[0].strip()
@@ -47,7 +53,9 @@ def enforce_rate_limit(
     name: str,
     limit: int,
     window_seconds: int = 60,
+    key_suffix: str | None = None,
 ) -> None:
-    _limiter.check(
-        f"{name}:{client_ip(request)}", limit=limit, window_seconds=window_seconds
-    )
+    key = f"{name}:{client_ip(request)}"
+    if key_suffix is not None:
+        key = f"{name}:{key_suffix}:{client_ip(request)}"
+    _limiter.check(key, limit=limit, window_seconds=window_seconds)

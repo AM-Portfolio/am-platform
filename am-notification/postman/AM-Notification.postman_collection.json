@@ -2,18 +2,30 @@
   "info": {
     "_postman_id": "am-notification-collection-v1",
     "name": "AM Notification Service",
-    "description": "Organized API collection for **am-notification** (port 8111).\n\n## Quick start\n1. Import `AM-Notification.local.postman_environment.json`\n2. Set `notification_client_secret` from `.secrets.env` (`AM_NOTIFICATION_CLIENT_SECRET`)\n3. Run **00 Health → Ready Check**\n4. Run **99 Keycloak → Client Credentials (am-notification-service)**\n5. Run **03 Internal → Send Notification**\n6. For user inbox routes: login via Identity collection first\n\n## Folders\n| Folder | Purpose |\n|--------|----------|\n| 00 Health | Liveness + readiness |\n| 01 Inbox | User JWT — list, unread, mark read |\n| 02 Preferences | User notification preferences |\n| 03 Internal | Service token — synchronous send |\n| 99 Keycloak Helpers | Machine tokens |",
+    "description": "Organized API collection for **am-notification** (port 8111).\n\n## Quick start\n1. Prefer the unified **AM Platform** collection; this file is builder source.\n2. Set `notification_client_secret` from `.secrets.env`\n3. Run **Health → Ready Check**\n4. Run **Keycloak Helpers → Client Credentials (am-notification-service)**\n5. Run **Internal → Send Notification**\n6. Inbox routes need an Identity login first\n\n## Folders\n| Folder | Purpose |\n|--------|----------|\n| Health | Liveness + readiness |\n| Inbox | User JWT — list, unread, mark read |\n| Preferences | User notification preferences |\n| Internal | Service token — synchronous send |\n| Keycloak Helpers | Machine tokens |",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "base_url", "value": "http://localhost:8111" },
-    { "key": "access_token", "value": "" },
-    { "key": "service_access_token", "value": "" },
-    { "key": "user_sub", "value": "test-user-1" }
+    {
+      "key": "base_url",
+      "value": "http://localhost:8111"
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "service_access_token",
+      "value": ""
+    },
+    {
+      "key": "user_sub",
+      "value": "test-user-1"
+    }
   ],
   "item": [
     {
-      "name": "00 Health",
+      "name": "Health",
       "item": [
         {
           "name": "Live Check",
@@ -29,16 +41,22 @@
             "url": "{{base_url}}/health/ready"
           }
         }
-      ]
+      ],
+      "description": "Liveness and readiness."
     },
     {
-      "name": "01 Inbox",
+      "name": "Inbox",
       "item": [
         {
           "name": "List My Notifications",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
             "url": "{{base_url}}/notifications/me?page=0&page_size=20"
           }
         },
@@ -46,7 +64,12 @@
           "name": "Unread Count",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
             "url": "{{base_url}}/notifications/me/unread-count"
           }
         },
@@ -54,20 +77,31 @@
           "name": "Mark All Read",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
             "url": "{{base_url}}/notifications/read-all"
           }
         }
-      ]
+      ],
+      "description": "Bearer required."
     },
     {
-      "name": "02 Preferences",
+      "name": "Preferences",
       "item": [
         {
           "name": "Get Preferences",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
             "url": "{{base_url}}/notifications/preferences"
           }
         },
@@ -76,8 +110,14 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{access_token}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -86,18 +126,25 @@
             "url": "{{base_url}}/notifications/preferences"
           }
         }
-      ]
+      ],
+      "description": "Bearer required."
     },
     {
-      "name": "03 Internal",
+      "name": "Internal",
       "item": [
         {
           "name": "Send Notification",
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{service_access_token}}" },
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{service_access_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "body": {
               "mode": "raw",
@@ -106,10 +153,11 @@
             "url": "{{base_url}}/notifications/internal/send"
           }
         }
-      ]
+      ],
+      "description": "Service-account token required."
     },
     {
-      "name": "99 Keycloak Helpers",
+      "name": "Keycloak Helpers",
       "item": [
         {
           "name": "Client Credentials (am-notification-service)",
@@ -129,19 +177,34 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
             "body": {
               "mode": "urlencoded",
               "urlencoded": [
-                { "key": "grant_type", "value": "client_credentials" },
-                { "key": "client_id", "value": "{{notification_client_id}}" },
-                { "key": "client_secret", "value": "{{notification_client_secret}}" }
+                {
+                  "key": "grant_type",
+                  "value": "client_credentials"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{notification_client_id}}"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "{{notification_client_secret}}"
+                }
               ]
             },
             "url": "{{keycloak_url}}/realms/{{keycloak_realm}}/protocol/openid-connect/token"
           }
         }
-      ]
+      ],
+      "description": "Direct token calls for setup and debug."
     }
   ]
 }

@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>AM MCP Marketplace</title>
+  <link rel="stylesheet" href="/admin/assets/shell.css"/>
+  <style>
+    :root {
+      --bg: #ffffff; --panel: #ffffff; --line: #e4e4e7; --text: #18181b;
+      --muted: #71717a; --accent: #2563eb; --ok: #16a34a; --warn: #ca8a04;
+      --soft: #f4f4f5; --card-shadow: 0 1px 2px rgba(24,24,27,0.04), 0 8px 24px rgba(24,24,27,0.06);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; }
+    .pill {
+      font-size: 0.72rem; color: var(--muted); border: 1px solid var(--line);
+      border-radius: 999px; padding: 0.18rem 0.55rem; background: #fff; line-height: 1.2;
+    }
+    .pill.on { color: var(--ok); border-color: #bbf7d0; background: #f0fdf4; }
+    .pill.warn { color: var(--warn); border-color: #fde68a; background: #fffbeb; }
+    .pill.off { color: #dc2626; border-color: #fecaca; background: #fef2f2; }
+    .pill.muted { color: var(--muted); border-color: var(--line); background: var(--soft); }
+    .conn {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-size: 0.8rem; font-weight: 600;
+    }
+    .conn .dot {
+      width: 8px; height: 8px; border-radius: 50%; background: #a1a1aa; flex-shrink: 0;
+    }
+    .conn.connected { color: var(--ok); }
+    .conn.connected .dot { background: var(--ok); box-shadow: 0 0 0 3px rgba(22,163,74,0.18); }
+    .conn.disconnected { color: #dc2626; }
+    .conn.disconnected .dot { background: #dc2626; box-shadow: 0 0 0 3px rgba(220,38,38,0.15); }
+    .conn.unknown { color: var(--muted); }
+    .conn.unknown .dot { background: #a1a1aa; }
+    .conn-note {
+      margin: 0; font-size: 0.75rem; color: var(--muted); line-height: 1.35;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .conn-note.bad { color: #b91c1c; }
+    .filters {
+      display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0 0 1rem; align-items: center;
+    }
+    .filters .chip {
+      border: 1px solid var(--line); background: #fff; color: var(--text);
+      border-radius: 999px; padding: 0.35rem 0.75rem; font: inherit; font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .filters .chip.active {
+      background: var(--accent); border-color: var(--accent); color: #fff;
+    }
+    .title-row {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 0.6rem;
+    }
+    .title-row h2 { flex: 1; }
+    a.btn, button.btn {
+      text-decoration: none; color: var(--text); background: #fff;
+      border: 1px solid var(--line); border-radius: 8px; padding: 0.45rem 0.8rem;
+      font: inherit; cursor: pointer;
+    }
+    a.btn.primary, button.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    main.hub-page { padding: 28px 36px 48px; max-width: 1180px; }
+    .banner {
+      background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534;
+      padding: 0.75rem 0.9rem; border-radius: 10px; margin-bottom: 1rem; font-size: 0.9rem; line-height: 1.45;
+    }
+    .banner code { background: #fff; padding: 0.1rem 0.35rem; border-radius: 4px; border: 1px solid var(--line); color: var(--text); }
+    input[type="search"] {
+      width: 100%; max-width: 28rem; background: #fff; border: 1px solid var(--line);
+      border-radius: 8px; color: var(--text); padding: 0.55rem 0.7rem; font: inherit; margin-bottom: 1rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+      align-items: stretch;
+    }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 1rem 1.05rem 0.95rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+      min-height: 220px;
+      box-shadow: var(--card-shadow);
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    }
+    .card:hover {
+      border-color: #c7d2fe;
+      box-shadow: 0 2px 4px rgba(37,99,235,0.06), 0 12px 28px rgba(24,24,27,0.08);
+      transform: translateY(-1px);
+    }
+    .card-top {
+      display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center;
+    }
+    .card h2 {
+      margin: 0; font-size: 1.05rem; font-weight: 650; letter-spacing: -0.01em; line-height: 1.25;
+    }
+    .card .desc {
+      margin: 0; color: var(--muted); font-size: 0.84rem; line-height: 1.45;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+      min-height: 2.45em;
+    }
+    .tools-block {
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 0.45rem 0.6rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+    }
+    .tools-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;
+    }
+    .tools-label {
+      font-size: 0.72rem; font-weight: 650; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .tools-meta { font-size: 0.72rem; color: var(--muted); }
+    .tools-line {
+      margin: 0; font-size: 0.78rem; line-height: 1.45; color: var(--text);
+      font-family: ui-monospace, Consolas, "SF Mono", monospace;
+      word-break: break-word;
+    }
+    .tools-line .sep { color: var(--muted); font-weight: 400; }
+    .tools-empty {
+      margin: 0; color: var(--muted); font-size: 0.8rem; line-height: 1.4;
+    }
+    .see-more {
+      border: none; background: transparent; color: var(--accent);
+      font: inherit; font-size: 0.78rem; font-weight: 600;
+      padding: 0; cursor: pointer; display: inline;
+    }
+    .see-more:hover { text-decoration: underline; }
+    .card-actions {
+      display: flex; flex-wrap: wrap; gap: 0.4rem;
+      margin-top: auto; padding-top: 0.15rem;
+    }
+    .card-actions .btn { flex: 1 1 auto; text-align: center; min-width: 5.5rem; }
+    .row { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.35rem; }
+    dialog {
+      border: 1px solid var(--line); border-radius: 12px; background: #fff;
+      color: var(--text); padding: 1rem 1.1rem; max-width: 36rem; width: calc(100% - 2rem);
+    }
+    dialog::backdrop { background: rgba(0,0,0,0.35); }
+    textarea, #cfgPath {
+      width: 100%; background: #fafafa; border: 1px solid var(--line);
+      border-radius: 8px; color: var(--text); padding: 0.7rem; font: 0.85rem/1.4 ui-monospace, Consolas, monospace;
+    }
+    textarea { min-height: 14rem; }
+    label { font-size: 0.8rem; color: var(--muted); display: block; margin: 0.5rem 0 0.25rem; }
+    .err { color: #dc2626; font-size: 0.85rem; }
+    .drawer-backdrop {
+      position: fixed; inset: 0; background: rgba(24,24,27,0.28);
+      opacity: 0; pointer-events: none; transition: opacity 0.18s ease; z-index: 40;
+    }
+    .drawer-backdrop.open { opacity: 1; pointer-events: auto; }
+    .drawer {
+      position: fixed; top: 0; right: 0; height: 100%; width: min(380px, 100%);
+      background: #fff; border-left: 1px solid var(--line);
+      box-shadow: -12px 0 40px rgba(24,24,27,0.12);
+      transform: translateX(105%); transition: transform 0.2s ease;
+      z-index: 50; display: flex; flex-direction: column; padding: 1.1rem 1.15rem;
+    }
+    .drawer.open { transform: translateX(0); }
+    .drawer-head {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem;
+      margin-bottom: 0.85rem;
+    }
+    .drawer-head h2 { margin: 0; font-size: 1.1rem; }
+    .drawer-head .sub { margin: 0.25rem 0 0; color: var(--muted); font-size: 0.8rem; }
+    .drawer-close {
+      border: 1px solid var(--line); background: #fff; border-radius: 8px;
+      width: 2rem; height: 2rem; cursor: pointer; font: inherit;
+    }
+    .toggle-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+      padding: 0.85rem 0.9rem; border: 1px solid var(--line); border-radius: 12px;
+      background: var(--soft); margin-bottom: 0.65rem;
+    }
+    .toggle-copy strong { display: block; font-size: 0.9rem; }
+    .toggle-copy span { display: block; color: var(--muted); font-size: 0.75rem; margin-top: 0.15rem; line-height: 1.35; }
+    .switch {
+      position: relative; width: 44px; height: 26px; flex-shrink: 0;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .switch .slider {
+      position: absolute; inset: 0; background: #d4d4d8; border-radius: 999px; cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .switch .slider::before {
+      content: ""; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px;
+      background: #fff; border-radius: 50%; transition: transform 0.15s ease;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.15);
+    }
+    .switch input:checked + .slider { background: var(--accent); }
+    .switch input:checked + .slider::before { transform: translateX(18px); }
+    .drawer-meta {
+      margin: 0.35rem 0 0.9rem; font-size: 0.78rem; color: var(--muted); line-height: 1.4;
+    }
+    .drawer-meta code {
+      font-size: 0.72rem; background: #fff; border: 1px solid var(--line);
+      border-radius: 4px; padding: 0.05rem 0.3rem;
+    }
+    .drawer-actions { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-top: auto; padding-top: 1rem; }
+    .drawer-actions .btn { flex: 1 1 auto; text-align: center; }
+    .drawer-err { color: #dc2626; font-size: 0.8rem; min-height: 1.1em; margin: 0.4rem 0 0; }
+    textarea[readonly] { opacity: 0.85; cursor: default; }
+  </style>
+</head>
+<body>
+<main class="hub-page">
+  <h1>Marketplace</h1>
+  <p class="subhead">Hub integrations and asrax MCP launchers. Credentials stay local.</p>
+  <div class="hub-toolbar">
+    <span class="pill" id="countPill">loading…</span>
+    <button class="btn primary" type="button" id="syncLocalBtn">Sync locally…</button>
+    <a class="btn" id="openInspector" href="http://127.0.0.1:6274/" target="_blank" rel="noopener">Open Inspector</a>
+  </div>
+  <div class="banner">
+    <strong>Probed</strong> = host inspect/refresh OK.
+    <strong>In IDE</strong> = listed in a local client MCP config on this computer.
+    Use <strong>Sync locally</strong> to write enabled MCPs into local IDEs / LLM apps
+    (Cursor, Gemini, Codex, Claude, …). Needs <code>am ai probe-server</code> on this laptop
+    (or run <code>am ai mcp-sync</code>). Credentials stay local.
+  </div>
+  <input type="search" id="filter" placeholder="Filter MCPs…" autocomplete="off"/>
+  <div class="filters" id="connFilters" role="group" aria-label="Probe filter">
+    <button type="button" class="chip active" data-conn="all">All</button>
+    <button type="button" class="chip" data-conn="connected">Probed</button>
+    <button type="button" class="chip" data-conn="disconnected">Probe failed</button>
+    <button type="button" class="chip" data-conn="unknown">Not probed</button>
+  </div>
+  <p class="err" id="syncErr" style="min-height:1.2em;margin:0.35rem 0 0.5rem"></p>
+  <div id="grid" class="grid"></div>
+  <p class="err" id="err"></p>
+</main>
+<dialog id="syncLocalDialog">
+  <form method="dialog" id="syncLocalForm">
+    <h2 style="margin:0 0 0.35rem;font-size:1.1rem">Sync locally to this computer</h2>
+    <p style="margin:0 0 0.75rem;color:var(--muted);font-size:0.85rem;line-height:1.45">
+      Writes enabled Marketplace MCPs into MCP configs for local IDEs / LLM tools on this machine.
+      Remote hubs are not changed. Reload each app after sync.
+    </p>
+    <div id="syncIdeList" style="display:flex;flex-direction:column;gap:0.45rem;margin:0.5rem 0 0.85rem"></div>
+    <label style="display:flex;align-items:center;gap:0.45rem;font-size:0.85rem;color:var(--muted);margin:0 0 0.75rem">
+      <input type="checkbox" id="syncForce"/> Overwrite existing managed entries
+    </label>
+    <p class="err" id="syncDlgErr" style="min-height:1.1em;margin:0 0 0.5rem"></p>
+    <div class="row" style="margin-top:0.35rem">
+      <button class="btn primary" value="sync" id="syncLocalConfirm" type="submit">Sync selected</button>
+      <button class="btn" value="cancel" type="submit">Cancel</button>
+    </div>
+  </form>
+</dialog>
+<div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
+<aside class="drawer" id="mcpDrawer" aria-hidden="true">
+  <div class="drawer-head">
+    <div>
+      <h2 id="drawerTitle">MCP controls</h2>
+      <p class="sub" id="drawerSub"></p>
+    </div>
+    <button type="button" class="drawer-close" id="drawerClose" aria-label="Close">×</button>
+  </div>
+  <p class="drawer-meta" id="drawerMeta"></p>
+  <div class="toggle-row">
+    <div class="toggle-copy">
+      <strong>MCP power</strong>
+      <span id="enabledHint">Turn this MCP on or off.</span>
+    </div>
+    <label class="switch" title="Enable MCP">
+      <input type="checkbox" id="togEnabled"/>
+      <span class="slider"></span>
+    </label>
+  </div>
+  <div class="toggle-row">
+    <div class="toggle-copy">
+      <strong>Config edit</strong>
+      <span id="writeHint">Off = read-only config. On = allow edits / writes.</span>
+    </div>
+    <label class="switch" title="Allow config edit / writes">
+      <input type="checkbox" id="togWrite"/>
+      <span class="slider"></span>
+    </label>
+  </div>
+  <p class="drawer-err" id="drawerErr"></p>
+  <div class="drawer-actions">
+    <button class="btn primary" type="button" id="drawerConfigure">Open config</button>
+    <button class="btn" type="button" id="drawerRefresh">Refresh</button>
+    <a class="btn" id="drawerTools" href="/tools/">Tools</a>
+    <a class="btn" id="drawerInsp" href="#" target="_blank" rel="noopener">Inspector</a>
+  </div>
+</aside>
+<dialog id="cfgDialog">
+  <form method="dialog" id="cfgForm">
+    <h2 id="cfgTitle" style="margin:0 0 0.35rem;font-size:1.1rem">Configure</h2>
+    <p id="cfgHint" style="margin:0;color:var(--muted);font-size:0.85rem;line-height:1.4"></p>
+    <label for="cfgPath">Credential file</label>
+    <input id="cfgPath" readonly/>
+    <label for="cfgBody">Contents (KEY=value). Fill client id / secret / tokens as needed.</label>
+    <textarea id="cfgBody"></textarea>
+    <div class="row" style="margin-top:0.75rem">
+      <button class="btn primary" value="save" id="cfgSave" type="submit">Save locally</button>
+      <button class="btn" value="cancel" type="submit">Cancel</button>
+      <a class="btn" id="cfgInspect" href="#" target="_blank" rel="noopener">Open Inspector</a>
+    </div>
+    <p class="err" id="cfgErr"></p>
+  </form>
+</dialog>
+<script src="/admin/assets/shell.js"></script>
+<script>
+const TOOL_PREVIEW = 5;
+const state = {
+  items: [],
+  inspectorUrl: '',
+  token: 'am-local-inspector',
+  selected: null,
+  expanded: new Set(),
+  connFilter: 'all',
+  counts: {},
+  drawerBusy: false,
+  refreshing: false,
+  localIdeTargets: [],
+};
+
+function connectionOf(it) {
+  if (it.connected === 'connected' || it.connected === 'disconnected' || it.connected === 'unknown') {
+    return it.connected;
+  }
+  if (it.probe_ok === true) return 'connected';
+  if (it.probe_ok === false) return 'disconnected';
+  return 'unknown';
+}
+
+function connectionLabel(status) {
+  if (status === 'connected') return 'Probed';
+  if (status === 'disconnected') return 'Probe failed';
+  return 'Not probed';
+}
+
+function connectionPill(status) {
+  if (status === 'connected') return 'on';
+  if (status === 'disconnected') return 'off';
+  return 'muted';
+}
+
+function inCursorPill(it) {
+  const v = (it.in_ide !== undefined) ? it.in_ide : it.in_cursor;
+  if (v === true) return '<span class="pill on">In IDE</span>';
+  if (v === false) return '<span class="pill warn">Not in IDE</span>';
+  return '';
+}
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, {
+    ...opts,
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...(opts.headers || {}) },
+  });
+  const text = await r.text();
+  let body; try { body = JSON.parse(text); } catch { body = text; }
+  if (!r.ok) throw new Error(typeof body === 'object' ? (body.detail || JSON.stringify(body)) : text);
+  return body;
+}
+
+function escapeAttr(s) {
+  return String(s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+}
+
+function toolNames(it) {
+  const tools = Array.isArray(it.tools) ? it.tools : [];
+  return tools
+    .map((t) => (typeof t === 'string' ? t : (t && t.name) || ''))
+    .map((n) => String(n || '').trim())
+    .filter(Boolean);
+}
+
+function renderToolsBlock(it) {
+  const names = toolNames(it);
+  const hostCount = Number(it.host_tool_count || 0);
+  const total = Math.max(names.length, hostCount, Number(it.tool_count || 0));
+  const preview = names.slice(0, TOOL_PREVIEW);
+  const rest = names.slice(TOOL_PREVIEW);
+  const expanded = state.expanded.has(it.id);
+
+  if (!names.length) {
+    const msg = hostCount
+      ? `${hostCount} tools on host MCP (names missing — re-run inspect_all_tools.py)`
+      : (it.kind === 'stdio-launcher'
+        ? 'No probe yet — run inspect_all_tools.py'
+        : 'No tools listed for this adapter yet');
+    return `
+      <div class="tools-block">
+        <div class="tools-head">
+          <span class="tools-label">Tools</span>
+          <span class="tools-meta">${total || 0}</span>
+        </div>
+        <p class="tools-empty">${escapeAttr(msg)}</p>
+      </div>`;
+  }
+
+  const shown = expanded ? names : preview;
+  const joined = shown.map((n) => escapeAttr(n)).join('<span class="sep">, </span>');
+  const moreBtn = rest.length
+    ? ` <button class="see-more" type="button" data-id="${escapeAttr(it.id)}">${
+        expanded ? 'show less' : `… see more (${rest.length})`
+      }</button>`
+    : '';
+
+  return `
+    <div class="tools-block">
+      <div class="tools-head">
+        <span class="tools-label">Tools</span>
+        <span class="tools-meta">${total}</span>
+      </div>
+      <p class="tools-line">${joined}${moreBtn}</p>
+    </div>`;
+}
+
+function render() {
+  const q = (document.getElementById('filter').value || '').trim().toLowerCase();
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  const rows = state.items.filter((it) => {
+    const conn = connectionOf(it);
+    if (state.connFilter !== 'all' && conn !== state.connFilter) return false;
+    if (!q) return true;
+    const toolBlob = toolNames(it).join(' ');
+    return [it.name, it.slug, it.kind, it.description, toolBlob, conn].join(' ').toLowerCase().includes(q);
+  });
+  for (const it of rows) {
+    const card = document.createElement('div');
+    card.className = 'card' + (state.expanded.has(it.id) ? ' expanded' : '');
+    const status = it.configured ? 'configured' : (it.needs_config ? 'needs config' : 'ready');
+    const statusClass = it.configured ? 'on' : (it.needs_config ? 'warn' : 'on');
+    const hostCount = Number(it.host_tool_count || 0);
+    const names = toolNames(it);
+    const countLabel = hostCount
+      ? `${hostCount} tools`
+      : (names.length ? `${names.length} tools` : '0 tools');
+    const conn = connectionOf(it);
+    const connNote = conn === 'disconnected' && it.probe_error
+      ? `<p class="conn-note bad" title="${escapeAttr(it.probe_error)}">${escapeAttr(it.probe_error)}</p>`
+      : (conn === 'unknown'
+        ? `<p class="conn-note">Run inspect_all_tools.py to probe connection.</p>`
+        : '');
+    card.innerHTML = `
+      <div class="card-top">
+        <span class="pill ${connectionPill(conn)}">${connectionLabel(conn)}</span>
+        ${inCursorPill(it)}
+        <span class="pill">${escapeAttr(it.kind)}</span>
+        <span class="pill ${statusClass}">${status}</span>
+        <span class="pill">${countLabel}</span>
+        ${it.enabled === false ? '<span class="pill warn">disabled</span>' : ''}
+      </div>
+      <div class="title-row">
+        <h2></h2>
+        <span class="conn ${conn}"><span class="dot" aria-hidden="true"></span>${connectionLabel(conn)}</span>
+      </div>
+      <p class="desc"></p>
+      ${connNote}
+      ${renderToolsBlock(it)}
+      <div class="card-actions">
+        <button class="btn primary cfg" type="button">Configure</button>
+        <button class="btn ctrl" type="button">Controls</button>
+        <button class="btn refresh" type="button">Refresh</button>
+        <a class="btn toolsLink" href="#">Tools</a>
+        <a class="btn insp" target="_blank" rel="noopener">Inspector</a>
+      </div>`;
+    card.querySelector('h2').textContent = it.name;
+    card.querySelector('.desc').textContent = it.description || '';
+    card.querySelector('.insp').href = it.inspector_url || state.inspectorUrl;
+    card.querySelector('.toolsLink').href = it.tools_ui_url || '/tools/';
+    card.querySelector('.cfg').addEventListener('click', () => openConfig(it));
+    card.querySelector('.ctrl').addEventListener('click', () => openDrawer(it));
+    card.querySelector('.refresh').addEventListener('click', () => refreshItem(it, card.querySelector('.refresh')));
+    const more = card.querySelector('.see-more');
+    if (more) {
+      more.addEventListener('click', () => {
+        if (state.expanded.has(it.id)) state.expanded.delete(it.id);
+        else state.expanded.add(it.id);
+        render();
+      });
+    }
+    grid.appendChild(card);
+  }
+}
+
+async function refreshItem(it, btn) {
+  if (!it || state.refreshing) return;
+  state.refreshing = true;
+  const label = btn ? btn.textContent : '';
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = 'Refreshing…';
+  }
+  try {
+    const res = await api('/api/v1/marketplace/refresh', {
+      method: 'POST',
+      body: JSON.stringify({ slug: it.slug || it.name, live: true }),
+    });
+    if (res.item) {
+      const idx = state.items.findIndex((x) => x.id === it.id || x.slug === it.slug);
+      if (idx >= 0) state.items[idx] = res.item;
+      else state.items.push(res.item);
+    } else {
+      await load();
+      return;
+    }
+    if (res.counts) state.counts = res.counts;
+    syncConnFilters();
+    const c = state.counts || {};
+    document.getElementById('countPill').textContent =
+      `${c.total || state.items.length} MCPs · ${c.connected || 0} connected · ${c.disconnected || 0} down · ${c.configured || 0} configured`;
+    render();
+    if (res.mode === 'report' && res.hint) {
+      document.getElementById('err').textContent = res.hint;
+      setTimeout(() => { document.getElementById('err').textContent = ''; }, 8000);
+    }
+  } catch (e) {
+    document.getElementById('err').textContent = String(e.message || e);
+  } finally {
+    state.refreshing = false;
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = label || 'Refresh';
+    }
+  }
+}
+
+function syncConnFilters() {
+  const c = state.counts || {};
+  const labels = {
+    all: `All (${c.total || state.items.length || 0})`,
+    connected: `Probed (${c.connected || 0})`,
+    disconnected: `Probe failed (${c.disconnected || 0})`,
+    unknown: `Not probed (${c.unknown || 0})`,
+  };
+  document.querySelectorAll('#connFilters .chip').forEach((btn) => {
+    const key = btn.getAttribute('data-conn');
+    btn.textContent = labels[key] || btn.textContent;
+    btn.classList.toggle('active', key === state.connFilter);
+  });
+}
+
+function closeDrawer() {
+  document.getElementById('mcpDrawer').classList.remove('open');
+  document.getElementById('mcpDrawer').setAttribute('aria-hidden', 'true');
+  const bd = document.getElementById('drawerBackdrop');
+  bd.classList.remove('open');
+  bd.hidden = true;
+}
+
+function fillDrawer(it) {
+  state.selected = it;
+  document.getElementById('drawerTitle').textContent = it.name;
+  document.getElementById('drawerSub').textContent =
+    `${it.kind} · ${connectionLabel(connectionOf(it))}`;
+  document.getElementById('drawerMeta').innerHTML =
+    `Write key <code>${escapeAttr(it.write_key || '')}</code>` +
+    (it.enabled_key ? ` · On key <code>${escapeAttr(it.enabled_key)}</code>` : '');
+  document.getElementById('enabledHint').textContent =
+    it.kind === 'hub-integration'
+      ? 'Hub integration on/off (tools hidden when off).'
+      : 'Host launcher preference (saved in mcp-controls.env).';
+  document.getElementById('writeHint').textContent =
+    it.write_enabled
+      ? 'Edit mode: config can be saved; mutating tools allowed when launcher honors write flag.'
+      : 'Read-only: config is view-only; mutating tools stay disabled.';
+  const en = document.getElementById('togEnabled');
+  const wr = document.getElementById('togWrite');
+  en.checked = it.enabled !== false;
+  wr.checked = !!it.write_enabled;
+  document.getElementById('drawerTools').href = it.tools_ui_url || '/tools/';
+  document.getElementById('drawerInsp').href = it.inspector_url || state.inspectorUrl;
+  document.getElementById('drawerErr').textContent = '';
+}
+
+function openDrawer(it) {
+  fillDrawer(it);
+  const bd = document.getElementById('drawerBackdrop');
+  bd.hidden = false;
+  requestAnimationFrame(() => {
+    bd.classList.add('open');
+    document.getElementById('mcpDrawer').classList.add('open');
+    document.getElementById('mcpDrawer').setAttribute('aria-hidden', 'false');
+  });
+}
+
+async function patchControls(partial) {
+  const it = state.selected;
+  if (!it || state.drawerBusy) return;
+  state.drawerBusy = true;
+  document.getElementById('drawerErr').textContent = '';
+  try {
+    const res = await api('/api/v1/marketplace/controls', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        slug: it.slug,
+        kind: it.kind,
+        cred_target: it.cred_target || null,
+        ...partial,
+      }),
+    });
+    const ctrl = (res && res.controls) || {};
+    if (typeof ctrl.enabled === 'boolean') it.enabled = ctrl.enabled;
+    if (typeof ctrl.write_enabled === 'boolean') {
+      it.write_enabled = ctrl.write_enabled;
+      it.config_mode = ctrl.config_mode || (ctrl.write_enabled ? 'edit' : 'read');
+    }
+    if (ctrl.write_key) it.write_key = ctrl.write_key;
+    if (ctrl.enabled_key) it.enabled_key = ctrl.enabled_key;
+    fillDrawer(it);
+    render();
+  } catch (e) {
+    document.getElementById('drawerErr').textContent = String(e.message || e);
+    fillDrawer(it);
+  } finally {
+    state.drawerBusy = false;
+  }
+}
+
+async function openConfig(it) {
+  state.selected = it;
+  const canEdit = !!it.write_enabled;
+  document.getElementById('cfgTitle').textContent = `Configure ${it.name}`;
+  document.getElementById('cfgHint').textContent = it.configure_hint || '';
+  const names = toolNames(it);
+  if (names.length) {
+    const shown = names.slice(0, 8).join(', ');
+    const more = names.length > 8 ? ` (+${names.length - 8} more)` : '';
+    document.getElementById('cfgHint').textContent =
+      (it.configure_hint || '') + ` Tools: ${shown}${more}.`;
+  }
+  if (!canEdit) {
+    document.getElementById('cfgHint').textContent +=
+      ' Config is read-only — open Controls and turn on Config edit to save changes.';
+  }
+  document.getElementById('cfgPath').value = it.cred_target || '';
+  document.getElementById('cfgInspect').href = it.inspector_url || state.inspectorUrl;
+  document.getElementById('cfgErr').textContent = '';
+  const bodyEl = document.getElementById('cfgBody');
+  const saveBtn = document.getElementById('cfgSave');
+  bodyEl.readOnly = !canEdit;
+  saveBtn.hidden = !canEdit;
+  saveBtn.disabled = !canEdit;
+  let body = '';
+  if (it.sample) {
+    try {
+      const applied = await api('/api/v1/local-creds/samples/apply', {
+        method: 'POST',
+        body: JSON.stringify({ sample_id: it.sample, overwrite: false }),
+      });
+      const path = applied.target || it.cred_target;
+      document.getElementById('cfgPath').value = path;
+      const file = await api(`/api/v1/local-creds/files/${encodeURIComponent(path)}`);
+      body = file.content || '';
+    } catch (e) {
+      try {
+        const sample = await api(`/api/v1/local-creds/samples/${encodeURIComponent(it.sample)}`);
+        body = sample.content || '';
+      } catch (e2) {
+        document.getElementById('cfgErr').textContent = String(e.message || e);
+      }
+    }
+  } else if (it.cred_target) {
+    try {
+      const file = await api(`/api/v1/local-creds/files/${encodeURIComponent(it.cred_target)}`);
+      body = file.content || `# Local secrets for ${it.slug}\n# CLIENT_ID=\n# CLIENT_SECRET=\n# TOKEN=\n`;
+    } catch {
+      body = `# Local secrets for ${it.slug}\nCLIENT_ID=\nCLIENT_SECRET=\nTOKEN=\n`;
+    }
+  }
+  bodyEl.value = body;
+  document.getElementById('cfgDialog').showModal();
+}
+
+document.getElementById('cfgForm').addEventListener('submit', async (ev) => {
+  const submitter = ev.submitter;
+  if (!submitter || submitter.value !== 'save') return;
+  ev.preventDefault();
+  if (!state.selected || !state.selected.write_enabled) {
+    document.getElementById('cfgErr').textContent =
+      'Config is read-only. Open Controls and enable Config edit first.';
+    return;
+  }
+  const path = document.getElementById('cfgPath').value.trim();
+  const content = document.getElementById('cfgBody').value;
+  document.getElementById('cfgErr').textContent = '';
+  try {
+    await api('/api/v1/local-creds/files', {
+      method: 'PUT',
+      body: JSON.stringify({ path, content }),
+    });
+    await api('/api/v1/local-creds/reload', { method: 'POST', body: '{}' });
+    if (state.selected && state.selected.kind === 'hub-integration' && state.selected.slug) {
+      try {
+        await api(`/api/v1/integrations/${encodeURIComponent(state.selected.slug)}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ enabled: true }),
+        });
+      } catch (_) {}
+    }
+    document.getElementById('cfgDialog').close();
+    await load();
+  } catch (e) {
+    document.getElementById('cfgErr').textContent = String(e.message || e);
+  }
+});
+
+async function openSyncLocalDialog() {
+  const list = document.getElementById('syncIdeList');
+  const err = document.getElementById('syncDlgErr');
+  err.textContent = '';
+  let targets = state.localIdeTargets || [];
+  if (!targets.length) {
+    try {
+      const data = await api('/api/v1/marketplace');
+      targets = data.local_ide_targets || [];
+      state.localIdeTargets = targets;
+      if (data.ide_sync_hint) {
+        err.textContent = data.ide_sync_hint;
+      }
+    } catch (e) {
+      err.textContent = String(e.message || e);
+    }
+  }
+  if (!targets.length) {
+    list.innerHTML =
+      '<p style="margin:0;color:var(--muted);font-size:0.85rem">No local IDE helper data. Start <code>am ai probe-server</code> on this computer, then reopen.</p>';
+  } else {
+    list.innerHTML = targets.map((t) => {
+      const id = escapeAttr(t.id || '');
+      const label = escapeAttr(t.label || t.id || '');
+      const path = escapeAttr(t.path || '');
+      const detected = !!t.detected;
+      const count = Number(t.server_count || 0);
+      const status = detected ? `${count} servers` : 'not detected on this PC';
+      return `
+        <label style="display:flex;gap:0.55rem;align-items:flex-start;padding:0.55rem 0.65rem;border:1px solid var(--line);border-radius:10px;background:var(--soft)">
+          <input type="checkbox" name="ide" value="${id}" ${detected ? 'checked' : ''}/>
+          <span style="display:block;line-height:1.35">
+            <strong>${label}</strong>
+            <span style="display:block;color:var(--muted);font-size:0.75rem">${status}${path ? ' · ' + path : ''}</span>
+          </span>
+        </label>`;
+    }).join('');
+  }
+  document.getElementById('syncLocalDialog').showModal();
+}
+
+async function syncToLocalIdes(ev) {
+  const submitter = ev && ev.submitter;
+  if (submitter && submitter.value === 'cancel') return;
+  if (ev) ev.preventDefault();
+  const err = document.getElementById('syncDlgErr');
+  const pageErr = document.getElementById('syncErr');
+  const btn = document.getElementById('syncLocalConfirm');
+  const ides = Array.from(document.querySelectorAll('#syncIdeList input[name="ide"]:checked'))
+    .map((el) => el.value)
+    .filter(Boolean);
+  if (!ides.length) {
+    err.textContent = 'Select at least one local IDE / LLM on this computer.';
+    return;
+  }
+  err.textContent = '';
+  btn.disabled = true;
+  const label = btn.textContent;
+  btn.textContent = 'Syncing…';
+  try {
+    const res = await api('/api/v1/marketplace/mcp-sync', {
+      method: 'POST',
+      body: JSON.stringify({
+        force: !!document.getElementById('syncForce').checked,
+        ides,
+        scope: 'local',
+      }),
+    });
+    if (!res.ok && res.error) throw new Error(res.error);
+    const n = (res.desired || res.servers || []).length;
+    const synced = (res.targets || []).filter((t) => t && !t.skipped_target).map((t) => t.ide);
+    const msg =
+      `Local sync: ${n} servers → ${synced.join(', ') || ides.join(', ')}. Reload those apps.`;
+    pageErr.style.color = 'var(--ok)';
+    pageErr.textContent = msg;
+    document.getElementById('syncLocalDialog').close();
+    await load();
+  } catch (e) {
+    err.textContent = String(e.message || e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = label || 'Sync selected';
+  }
+}
+
+async function load() {
+  document.getElementById('err').textContent = '';
+  try {
+    const cfg = await api('/api/v1/ui-config');
+    if (cfg.inspector_url) {
+      state.inspectorUrl = cfg.inspector_url;
+      document.getElementById('openInspector').href = cfg.inspector_url;
+    }
+    if (cfg.inspector_proxy_token) {
+      state.token = cfg.inspector_proxy_token;
+    }
+    const data = await api('/api/v1/marketplace');
+    state.items = data.items || [];
+    state.counts = data.counts || {};
+    state.localIdeTargets = data.local_ide_targets || [];
+    const c = state.counts;
+    const inCur = c.in_ide == null ? (c.in_cursor == null ? '?' : c.in_cursor) : c.in_ide;
+    document.getElementById('countPill').textContent =
+      `${c.total || state.items.length} MCPs · ${c.connected || 0} probed · ${inCur} in local IDEs · ${c.configured || 0} configured`;
+    if (data.ide_sync_hint || data.cursor_sync_hint) {
+      document.getElementById('syncErr').style.color = 'var(--warn)';
+      document.getElementById('syncErr').textContent = data.ide_sync_hint || data.cursor_sync_hint;
+    } else {
+      document.getElementById('syncErr').textContent = '';
+    }
+    if (data.inspector_url) {
+      state.inspectorUrl = data.inspector_url;
+      document.getElementById('openInspector').href = data.inspector_url;
+    }
+    syncConnFilters();
+    render();
+  } catch (e) {
+    document.getElementById('err').textContent = String(e.message || e);
+    document.getElementById('countPill').textContent = 'error';
+  }
+}
+
+document.getElementById('drawerClose').addEventListener('click', closeDrawer);
+document.getElementById('drawerBackdrop').addEventListener('click', closeDrawer);
+document.getElementById('drawerConfigure').addEventListener('click', () => {
+  if (state.selected) openConfig(state.selected);
+});
+document.getElementById('drawerRefresh').addEventListener('click', () => {
+  if (state.selected) refreshItem(state.selected, document.getElementById('drawerRefresh'));
+});
+document.getElementById('togEnabled').addEventListener('change', (ev) => {
+  patchControls({ enabled: !!ev.target.checked });
+});
+document.getElementById('togWrite').addEventListener('change', (ev) => {
+  patchControls({ write_enabled: !!ev.target.checked });
+});
+document.addEventListener('keydown', (ev) => {
+  if (ev.key === 'Escape') closeDrawer();
+});
+
+document.getElementById('filter').addEventListener('input', render);
+document.getElementById('connFilters').addEventListener('click', (ev) => {
+  const btn = ev.target.closest('.chip');
+  if (!btn) return;
+  state.connFilter = btn.getAttribute('data-conn') || 'all';
+  syncConnFilters();
+  render();
+});
+document.getElementById('syncLocalBtn').addEventListener('click', openSyncLocalDialog);
+document.getElementById('syncLocalForm').addEventListener('submit', syncToLocalIdes);
+(function applyQuery() {
+  const q = (new URLSearchParams(location.search).get('q') || '').trim();
+  if (q) document.getElementById('filter').value = q;
+})();
+load();
+</script>
+</body>
+</html>

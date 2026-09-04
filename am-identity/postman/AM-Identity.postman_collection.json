@@ -1,8 +1,8 @@
 {
   "info": {
     "_postman_id": "am-identity-collection-v1",
-    "name": "AM Identity Service",
-    "description": "Organized API collection for **am-identity** (port 8113).\n\n## Quick start\n1. Import `AM-Identity.local.postman_environment.json`\n2. Run **Health → Health Check**\n3. Run **Auth → Login** (or Google SSO flow)\n4. `access_token` / `refresh_token` are saved automatically\n5. Run **Users → Get My Profile**\n\n## Folders\n| Folder | Purpose |\n|--------|----------|\n| 00 Health | Liveness |\n| 01 Auth — Registration | Sign up |\n| 02 Auth — Login & Session | Password login, refresh, logout |\n| 03 Auth — Google SSO | URL + callback (manual browser step for `code`) |\n| 04 Users | Bearer-protected profile/settings |\n| 05 Internal | Service-account only |\n| 99 Keycloak Helpers | Direct token calls for setup/debug |\n\n## Gateway (future)\nPublic routes via Traefik: `/api/auth/*`, `/api/users/*`",
+    "name": "AM Identity (source — do not import)",
+    "description": "Source collection for **am-identity**. Do **not** import this file into Postman.\n\nUse **AM Platform** (`postman/AM-Platform.postman_collection.json`). This JSON is the Identity folder source for `python postman/build_platform_postman.py`.\n\n## Auth\nIdentity → **Auth** → **Login & Session**. Run one Login (Web / Android / iOS). Each sets `login_platform` and `oauth_client_id`. Then **Refresh → Last login**.\n\nWorking OTP is **Auth → Web OTP** (`/auth/web/otp/send` + `/verify`). `POST /auth/login/otp` is a 501 stub under **Auth → Deprecated**.\n\n## QR without a phone\nCollection Runner on **Flows → QR login (no phone)**: Start → Login (Android fake phone) → Approve → Poll. TTL ~120s.\n\nIf the localhost:9000 QR tab is already open, skip Start and reuse that tab's `device_link_id` (same `code_verifier`).\n\n## Folders\n| Folder | Purpose |\n|--------|---------|\n| Health | Liveness |\n| Auth | Registration, email/password, login, Google, web OTP, step-up |\n| Flows | Collection Runner (QR, web OTP) |\n| Device Link | Individual QR APIs |\n| Users | Bearer profile/settings |\n| BFF Session | Cookie session |\n| Security and Sessions | Events + sessions |\n| Internal | Service-account only |\n| Keycloak Helpers | Direct token calls |\n",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "event": [
@@ -40,8 +40,20 @@
           "  if (body.auth_url) {",
           "    pm.environment.set('google_auth_url', body.auth_url);",
           "  }",
-          "  if (body.sub) {",
+          "if (body.sub) {",
           "    pm.environment.set('user_sub', body.sub);",
+          "  }",
+          "  if (body.otp_session_id) {",
+          "    pm.environment.set('otp_session_id', body.otp_session_id);",
+          "    pm.collectionVariables.set('otp_session_id', body.otp_session_id);",
+          "  }",
+          "  if (body.tokens && body.tokens.access_token) {",
+          "    pm.environment.set('access_token', body.tokens.access_token);",
+          "    pm.collectionVariables.set('access_token', body.tokens.access_token);",
+          "  }",
+          "  if (body.tokens && body.tokens.refresh_token) {",
+          "    pm.environment.set('refresh_token', body.tokens.refresh_token);",
+          "    pm.collectionVariables.set('refresh_token', body.tokens.refresh_token);",
           "  }",
           "} catch (e) {}"
         ]
@@ -49,21 +61,114 @@
     }
   ],
   "variable": [
-    { "key": "base_url", "value": "http://localhost:8113" },
-    { "key": "keycloak_url", "value": "http://auth.munish.org/auth" },
-    { "key": "keycloak_realm", "value": "am-realm" },
-    { "key": "access_token", "value": "" },
-    { "key": "refresh_token", "value": "" },
-    { "key": "google_state", "value": "" },
-    { "key": "google_auth_url", "value": "" },
-    { "key": "google_redirect_uri", "value": "http://localhost:9000/callback" },
-    { "key": "user_sub", "value": "" },
-    { "key": "test_email", "value": "test.user@example.com" },
-    { "key": "test_password", "value": "TestPass123!" }
+    {
+      "key": "base_url",
+      "value": "http://localhost:8113"
+    },
+    {
+      "key": "keycloak_url",
+      "value": "http://auth.munish.org/auth"
+    },
+    {
+      "key": "keycloak_realm",
+      "value": "am-realm"
+    },
+    {
+      "key": "access_token",
+      "value": ""
+    },
+    {
+      "key": "refresh_token",
+      "value": ""
+    },
+    {
+      "key": "google_state",
+      "value": ""
+    },
+    {
+      "key": "google_auth_url",
+      "value": ""
+    },
+    {
+      "key": "google_redirect_uri",
+      "value": "http://localhost:9000/callback"
+    },
+    {
+      "key": "user_sub",
+      "value": ""
+    },
+    {
+      "key": "test_email",
+      "value": "test.user@example.com"
+    },
+    {
+      "key": "test_password",
+      "value": "TestPass123!"
+    },
+    {
+      "key": "device_link_id",
+      "value": ""
+    },
+    {
+      "key": "code_verifier",
+      "value": ""
+    },
+    {
+      "key": "code_challenge",
+      "value": ""
+    },
+    {
+      "key": "confirmation_code",
+      "value": ""
+    },
+    {
+      "key": "am_session",
+      "value": ""
+    },
+    {
+      "key": "step_up_token",
+      "value": ""
+    },
+    {
+      "key": "login_session_id",
+      "value": ""
+    },
+    {
+      "key": "security_event_id",
+      "value": ""
+    },
+    {
+      "key": "machine_trust_key",
+      "value": "postman-test-machine-trust-key"
+    },
+    {
+      "key": "web_otp_code",
+      "value": ""
+    },
+    {
+      "key": "otp_session_id",
+      "value": ""
+    },
+    {
+      "key": "login_platform",
+      "value": "web"
+    },
+    {
+      "key": "oauth_client_id",
+      "value": "am-web-client"
+    },
+    {
+      "key": "verify_email_code",
+      "value": ""
+    },
+    {
+      "key": "password_reset_code",
+      "value": ""
+    }
   ],
   "item": [
     {
-      "name": "00 Health",
+      "name": "Health",
       "item": [
         {
           "name": "Health Check",
@@ -75,103 +180,1056 @@
           },
           "response": []
         }
-      ]
+      ],
+      "description": "Liveness."
     },
     {
-      "name": "01 Auth — Registration",
+      "name": "Auth",
+      "description": "Sign up, password login, Google, web OTP, step-up. Deprecated holds the 501 `/auth/login/otp` stub.",
       "item": [
         {
-          "name": "Register User",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"email\": \"{{test_email}}\",\n  \"password\": \"{{test_password}}\",\n  \"first_name\": \"Test\",\n  \"last_name\": \"User\"\n}"
+          "name": "Registration",
+          "item": [
+            {
+              "name": "Register User",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{test_email}}\",\n  \"password\": \"{{test_password}}\",\n  \"first_name\": \"Test\",\n  \"last_name\": \"User\"\n}"
+                },
+                "url": "{{base_url}}/auth/register",
+                "description": "Creates a user in Keycloak (admin API). Use a unique email per run."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Email verify and password",
+          "description": "Mailbox verify and password reset. Codes/tokens come from email (or identity logs). Confirm endpoints expect exactly one of `token` or `code`.",
+          "item": [
+            {
+              "name": "Resend Verify Email",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/auth/verify-email/resend",
+                "description": "Always 202. Sends branded verify-email if the user exists.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{test_email}}\"\n}"
+                }
+              },
+              "response": []
             },
-            "url": "{{base_url}}/auth/register",
-            "description": "Creates a user in Keycloak (admin API). Use a unique email per run."
-          },
-          "response": []
+            {
+              "name": "Confirm Verify Email",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/auth/verify-email/confirm",
+                "description": "Set `verify_email_code` from email. Can use `token` instead of `code`.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"{{verify_email_code}}\"\n}"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Password Reset Request",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/auth/password-reset",
+                "description": "Always 202. Sends reset email if the user exists.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{test_email}}\"\n}"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Password Reset Confirm",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/auth/password-reset/confirm",
+                "description": "Set `password_reset_code` from email. Can use `token` instead of `code`.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"{{password_reset_code}}\",\n  \"new_password\": \"{{test_password}}\"\n}"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Change Password",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/auth/change-password",
+                "description": "Authenticated by current password, not Bearer.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"{{test_email}}\",\n  \"current_password\": \"{{test_password}}\",\n  \"new_password\": \"{{test_password}}\"\n}"
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Login & Session",
+          "description": "Password login is platform-specific. Run one Login, then Refresh → Last login (uses `oauth_client_id` from the login you just ran).",
+          "item": [
+            {
+              "name": "Login",
+              "description": "Web 7d TTL (`am-web-client`). Android/iOS 15d TTL.",
+              "item": [
+                {
+                  "name": "Login (Web)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{base_url}}/auth/login",
+                    "description": "Password grant as Web. Sets tokens plus `login_platform=web` and `oauth_client_id=am-web-client` (7d TTL).",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"username\": \"{{test_email}}\",\n  \"password\": \"{{test_password}}\",\n  \"platform\": \"web\"\n}"
+                    }
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                          "  pm.environment.set('login_platform', 'web');",
+                          "  pm.collectionVariables.set('login_platform', 'web');",
+                          "  pm.environment.set('oauth_client_id', 'am-web-client');",
+                          "  pm.collectionVariables.set('oauth_client_id', 'am-web-client');",
+                          "}"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Login (Android)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{base_url}}/auth/login",
+                    "description": "Password grant as Android. Sets tokens plus `login_platform=android` and `oauth_client_id=am-android-client` (15d TTL).",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"username\": \"{{test_email}}\",\n  \"password\": \"{{test_password}}\",\n  \"platform\": \"android\"\n}"
+                    }
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                          "  pm.environment.set('login_platform', 'android');",
+                          "  pm.collectionVariables.set('login_platform', 'android');",
+                          "  pm.environment.set('oauth_client_id', 'am-android-client');",
+                          "  pm.collectionVariables.set('oauth_client_id', 'am-android-client');",
+                          "}"
+                        ]
+                      }
+                    }
+                  ]
+                },
+                {
+                  "name": "Login (iOS)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{base_url}}/auth/login",
+                    "description": "Password grant as iOS. Sets tokens plus `login_platform=ios` and `oauth_client_id=am-ios-client` (15d TTL).",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"username\": \"{{test_email}}\",\n  \"password\": \"{{test_password}}\",\n  \"platform\": \"ios\"\n}"
+                    }
+                  },
+                  "response": [],
+                  "event": [
+                    {
+                      "listen": "test",
+                      "script": {
+                        "type": "text/javascript",
+                        "exec": [
+                          "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                          "  pm.environment.set('login_platform', 'ios');",
+                          "  pm.collectionVariables.set('login_platform', 'ios');",
+                          "  pm.environment.set('oauth_client_id', 'am-ios-client');",
+                          "  pm.collectionVariables.set('oauth_client_id', 'am-ios-client');",
+                          "}"
+                        ]
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "name": "Refresh",
+              "description": "Last login follows `oauth_client_id`. Platform folders pin the client.",
+              "item": [
+                {
+                  "name": "Refresh (last login)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{base_url}}/auth/refresh",
+                    "description": "Uses `oauth_client_id` set by the last platform Login.",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\",\n  \"client_id\": \"{{oauth_client_id}}\"\n}"
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Refresh (Web)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{base_url}}/auth/refresh",
+                    "description": "Refresh using am-web-client. Run the matching Login first.",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\",\n  \"client_id\": \"am-web-client\"\n}"
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Refresh (Android)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{base_url}}/auth/refresh",
+                    "description": "Refresh using am-android-client. Run the matching Login first.",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\",\n  \"client_id\": \"am-android-client\"\n}"
+                    }
+                  },
+                  "response": []
+                },
+                {
+                  "name": "Refresh (iOS)",
+                  "request": {
+                    "method": "POST",
+                    "header": [
+                      {
+                        "key": "Content-Type",
+                        "value": "application/json"
+                      }
+                    ],
+                    "url": "{{base_url}}/auth/refresh",
+                    "description": "Refresh using am-ios-client. Run the matching Login first.",
+                    "body": {
+                      "mode": "raw",
+                      "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\",\n  \"client_id\": \"am-ios-client\"\n}"
+                    }
+                  },
+                  "response": []
+                }
+              ]
+            },
+            {
+              "name": "Logout",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/auth/logout",
+                "description": "Revokes the refresh session for the last login client. Expect 204.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\",\n  \"client_id\": \"{{oauth_client_id}}\"\n}"
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Google SSO",
+          "description": "**Browser broker flow:**\n1. **Get Google Auth URL** → open `auth_url` in browser\n2. After redirect, copy `code` + `state` → **Google Callback**\n\n**Flutter / mobile id_token flow:**\n1. Obtain a Google `id_token` (see `automation/scripts/google-id-token.html`)\n2. Set env `google_id_token`\n3. Run **Google Token Login**",
+          "item": [
+            {
+              "name": "Get Google Auth URL",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code === 200) {",
+                      "  const b = pm.response.json();",
+                      "  if (b.auth_url) console.log('Open in browser:\\n' + b.auth_url);",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"redirect_uri\": \"{{google_redirect_uri}}\"\n}"
+                },
+                "url": "{{base_url}}/auth/google/url",
+                "description": "Returns Keycloak auth URL with `kc_idp_hint=google` and anti-replay `state`."
+              },
+              "response": []
+            },
+            {
+              "name": "Google Callback",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"code\": \"{{google_auth_code}}\",\n  \"state\": \"{{google_state}}\",\n  \"redirect_uri\": \"{{google_redirect_uri}}\"\n}"
+                },
+                "url": "{{base_url}}/auth/google/callback",
+                "description": "Exchange authorization code for AM tokens. `redirect_uri` must match the one used in step 1."
+              },
+              "response": []
+            },
+            {
+              "name": "Google Token Login (id_token)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"id_token\": \"{{google_id_token}}\"\n}"
+                },
+                "url": "{{base_url}}/auth/google/token",
+                "description": "Same endpoint as Flutter GSI: exchange Google id_token for Keycloak/AM tokens. Requires `google_id_token` env var (1h TTL)."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Web OTP",
+          "description": "Working web OTP (`/auth/web/otp/send` + `/verify`). Browser User-Agent required.",
+          "item": [
+            {
+              "name": "Web OTP Send (Email)",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  try {",
+                      "    const body = pm.response.json();",
+                      "    if (body.device_link_id) {",
+                      "      pm.environment.set('device_link_id', body.device_link_id);",
+                      "      pm.collectionVariables.set('device_link_id', body.device_link_id);",
+                      "    }",
+                      "    if (body.confirmation_code) {",
+                      "      pm.environment.set('confirmation_code', body.confirmation_code);",
+                      "      pm.collectionVariables.set('confirmation_code', body.confirmation_code);",
+                      "    }",
+                      "    if (body.otp_session_id) {",
+                      "      pm.environment.set('otp_session_id', body.otp_session_id);",
+                      "    }",
+                      "    if (body.step_up_token) {",
+                      "      pm.environment.set('step_up_token', body.step_up_token);",
+                      "    }",
+                      "    const cookie = pm.cookies.get('am_session');",
+                      "    if (cookie) pm.environment.set('am_session', cookie);",
+                      "    if (Array.isArray(body) && body.length) {",
+                      "      if (body[0].session_id) pm.environment.set('login_session_id', body[0].session_id);",
+                      "      if (body[0].event_id) pm.environment.set('security_event_id', body[0].event_id);",
+                      "    }",
+                      "  } catch (e) {}",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "User-Agent",
+                    "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"channel\": \"email\",\n  \"destination\": \"{{test_email}}\"\n}"
+                },
+                "url": "{{base_url}}/auth/web/otp/send"
+              },
+              "response": []
+            },
+            {
+              "name": "Web OTP Verify",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  try {",
+                      "    const body = pm.response.json();",
+                      "    if (body.device_link_id) {",
+                      "      pm.environment.set('device_link_id', body.device_link_id);",
+                      "      pm.collectionVariables.set('device_link_id', body.device_link_id);",
+                      "    }",
+                      "    if (body.confirmation_code) {",
+                      "      pm.environment.set('confirmation_code', body.confirmation_code);",
+                      "      pm.collectionVariables.set('confirmation_code', body.confirmation_code);",
+                      "    }",
+                      "    if (body.otp_session_id) {",
+                      "      pm.environment.set('otp_session_id', body.otp_session_id);",
+                      "    }",
+                      "    if (body.step_up_token) {",
+                      "      pm.environment.set('step_up_token', body.step_up_token);",
+                      "    }",
+                      "    const cookie = pm.cookies.get('am_session');",
+                      "    if (cookie) pm.environment.set('am_session', cookie);",
+                      "    if (Array.isArray(body) && body.length) {",
+                      "      if (body[0].session_id) pm.environment.set('login_session_id', body[0].session_id);",
+                      "      if (body[0].event_id) pm.environment.set('security_event_id', body[0].event_id);",
+                      "    }",
+                      "  } catch (e) {}",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "User-Agent",
+                    "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"otp_session_id\": \"{{otp_session_id}}\",\n  \"code\": \"{{web_otp_code}}\"\n}"
+                },
+                "url": "{{base_url}}/auth/web/otp/verify"
+              },
+              "response": []
+            },
+            {
+              "name": "Web OTP Send (Mobile UA — expect 403)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "User-Agent",
+                    "value": "okhttp/4.12.0"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"channel\": \"email\",\n  \"destination\": \"{{test_email}}\"\n}"
+                },
+                "url": "{{base_url}}/auth/web/otp/send"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Step-up",
+          "item": [
+            {
+              "name": "Issue Step-Up Token",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  try {",
+                      "    const body = pm.response.json();",
+                      "    if (body.device_link_id) {",
+                      "      pm.environment.set('device_link_id', body.device_link_id);",
+                      "      pm.collectionVariables.set('device_link_id', body.device_link_id);",
+                      "    }",
+                      "    if (body.confirmation_code) {",
+                      "      pm.environment.set('confirmation_code', body.confirmation_code);",
+                      "      pm.collectionVariables.set('confirmation_code', body.confirmation_code);",
+                      "    }",
+                      "    if (body.otp_session_id) {",
+                      "      pm.environment.set('otp_session_id', body.otp_session_id);",
+                      "    }",
+                      "    if (body.step_up_token) {",
+                      "      pm.environment.set('step_up_token', body.step_up_token);",
+                      "    }",
+                      "    const cookie = pm.cookies.get('am_session');",
+                      "    if (cookie) pm.environment.set('am_session', cookie);",
+                      "    if (Array.isArray(body) && body.length) {",
+                      "      if (body[0].session_id) pm.environment.set('login_session_id', body[0].session_id);",
+                      "      if (body[0].event_id) pm.environment.set('security_event_id', body[0].event_id);",
+                      "    }",
+                      "  } catch (e) {}",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "url": "{{base_url}}/auth/step-up"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Deprecated",
+          "description": "501 stub. Do not use. Real OTP is Auth → Web OTP.",
+          "item": [
+            {
+              "name": "Login OTP (501 stub)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/auth/login/otp",
+                "description": "Scaffolded Keycloak OTP. Always 501. Use **Auth → Web OTP** (`/auth/web/otp/send` + `/verify`) instead.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"{{test_email}}\",\n  \"otp\": \"123456\"\n}"
+                }
+              },
+              "response": []
+            }
+          ]
         }
       ]
     },
     {
-      "name": "02 Auth — Login & Session",
+      "name": "Flows (run in order)",
+      "description": "Collection Runner folders. Run top to bottom. QR TTL is ~120s; approve immediately after start.",
       "item": [
         {
-          "name": "Login (Password)",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"username\": \"{{test_email}}\",\n  \"password\": \"{{test_password}}\"\n}"
+          "name": "QR login (no phone)",
+          "description": "API-only QR: Start → Android login (fake phone Bearer) → Approve → Poll → BFF Me. If the browser QR tab is already open, skip Start and reuse that tab's device_link_id.",
+          "item": [
+            {
+              "name": "1 Device Link Start",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "User-Agent",
+                    "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/auth/device-link/start",
+                "description": "Creates the QR session (PKCE). Captures `device_link_id` and `confirmation_code`. Skip this step if you already started QR in the browser and pasted those values from Network.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"client\": \"web\",\n  \"redirect_hint\": \"http://localhost:9000/login\",\n  \"code_challenge\": \"{{code_challenge}}\",\n  \"browser\": \"Chrome\",\n  \"os\": \"Windows\"\n}"
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "prerequest",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "const verifier = pm.variables.replaceIn('{{$guid}}') + pm.variables.replaceIn('{{$guid}}');",
+                      "const hash = CryptoJS.SHA256(verifier).toString(CryptoJS.enc.Base64)",
+                      "  .replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '');",
+                      "pm.environment.set('code_verifier', verifier);",
+                      "pm.collectionVariables.set('code_verifier', verifier);",
+                      "pm.environment.set('code_challenge', hash);",
+                      "pm.collectionVariables.set('code_challenge', hash);"
+                    ]
+                  }
+                },
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  try {",
+                      "    const body = pm.response.json();",
+                      "    if (body.device_link_id) {",
+                      "      pm.environment.set('device_link_id', body.device_link_id);",
+                      "      pm.collectionVariables.set('device_link_id', body.device_link_id);",
+                      "    }",
+                      "    if (body.confirmation_code) {",
+                      "      pm.environment.set('confirmation_code', body.confirmation_code);",
+                      "      pm.collectionVariables.set('confirmation_code', body.confirmation_code);",
+                      "    }",
+                      "    if (body.otp_session_id) {",
+                      "      pm.environment.set('otp_session_id', body.otp_session_id);",
+                      "      pm.collectionVariables.set('otp_session_id', body.otp_session_id);",
+                      "    }",
+                      "    if (body.tokens && body.tokens.access_token) {",
+                      "      pm.environment.set('access_token', body.tokens.access_token);",
+                      "      pm.collectionVariables.set('access_token', body.tokens.access_token);",
+                      "    }",
+                      "    if (body.tokens && body.tokens.refresh_token) {",
+                      "      pm.environment.set('refresh_token', body.tokens.refresh_token);",
+                      "      pm.collectionVariables.set('refresh_token', body.tokens.refresh_token);",
+                      "    }",
+                      "    const cookie = pm.cookies.get('am_session');",
+                      "    if (cookie) pm.environment.set('am_session', cookie);",
+                      "  } catch (e) {}",
+                      "}"
+                    ]
+                  }
+                }
+              ]
             },
-            "url": "{{base_url}}/auth/login",
-            "description": "Password grant via am-identity-service client. Saves `access_token` and `refresh_token`."
-          },
-          "response": []
+            {
+              "name": "2 Login (Android — fake phone Bearer)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/auth/login",
+                "description": "Password login as the phone. Saves `access_token` for Approve. No mobile app needed.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"{{test_email}}\",\n  \"password\": \"{{test_password}}\",\n  \"platform\": \"android\"\n}"
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  pm.environment.set('login_platform', 'android');",
+                      "  pm.collectionVariables.set('login_platform', 'android');",
+                      "  pm.environment.set('oauth_client_id', 'am-android-client');",
+                      "  pm.collectionVariables.set('oauth_client_id', 'am-android-client');",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "3 Device Link Approve",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/auth/device-link/{{device_link_id}}/approve",
+                "description": "Mobile approve stand-in. Must run while the link is still pending (TTL ~120s).",
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"confirmation_code\": \"{{confirmation_code}}\",\n  \"device_name\": \"Postman fake phone\",\n  \"machine_label\": \"QR Flow Test\"\n}"
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "4 Device Link Poll Approved",
+              "request": {
+                "method": "GET",
+                "url": "{{base_url}}/auth/device-link/{{device_link_id}}/status?code_verifier={{code_verifier}}",
+                "description": "Same PKCE verifier as Start. Expect status approved and am_session cookie.",
+                "header": [
+                  {
+                    "key": "X-Machine-Trust-Key",
+                    "value": "{{machine_trust_key}}"
+                  }
+                ]
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  try {",
+                      "    const body = pm.response.json();",
+                      "    if (body.device_link_id) {",
+                      "      pm.environment.set('device_link_id', body.device_link_id);",
+                      "      pm.collectionVariables.set('device_link_id', body.device_link_id);",
+                      "    }",
+                      "    if (body.confirmation_code) {",
+                      "      pm.environment.set('confirmation_code', body.confirmation_code);",
+                      "      pm.collectionVariables.set('confirmation_code', body.confirmation_code);",
+                      "    }",
+                      "    if (body.otp_session_id) {",
+                      "      pm.environment.set('otp_session_id', body.otp_session_id);",
+                      "      pm.collectionVariables.set('otp_session_id', body.otp_session_id);",
+                      "    }",
+                      "    if (body.tokens && body.tokens.access_token) {",
+                      "      pm.environment.set('access_token', body.tokens.access_token);",
+                      "      pm.collectionVariables.set('access_token', body.tokens.access_token);",
+                      "    }",
+                      "    if (body.tokens && body.tokens.refresh_token) {",
+                      "      pm.environment.set('refresh_token', body.tokens.refresh_token);",
+                      "      pm.collectionVariables.set('refresh_token', body.tokens.refresh_token);",
+                      "    }",
+                      "    const cookie = pm.cookies.get('am_session');",
+                      "    if (cookie) pm.environment.set('am_session', cookie);",
+                      "  } catch (e) {}",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            },
+            {
+              "name": "5 BFF Me (Cookie Session)",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Cookie",
+                    "value": "am_session={{am_session}}"
+                  }
+                ],
+                "url": "{{base_url}}/bff/me",
+                "description": "Uses am_session from poll Set-Cookie."
+              },
+              "response": []
+            }
+          ]
         },
         {
-          "name": "Refresh Token",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+          "name": "Web OTP (email)",
+          "description": "Send captures `otp_session_id`. Paste the email code into `web_otp_code`, then Verify.",
+          "item": [
+            {
+              "name": "1 Web OTP Send (Email)",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "User-Agent",
+                    "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/auth/web/otp/send",
+                "description": "Captures `otp_session_id`. Copy the 6-digit code from email into `web_otp_code`.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"channel\": \"email\",\n  \"destination\": \"{{test_email}}\"\n}"
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  try {",
+                      "    const body = pm.response.json();",
+                      "    if (body.device_link_id) {",
+                      "      pm.environment.set('device_link_id', body.device_link_id);",
+                      "      pm.collectionVariables.set('device_link_id', body.device_link_id);",
+                      "    }",
+                      "    if (body.confirmation_code) {",
+                      "      pm.environment.set('confirmation_code', body.confirmation_code);",
+                      "      pm.collectionVariables.set('confirmation_code', body.confirmation_code);",
+                      "    }",
+                      "    if (body.otp_session_id) {",
+                      "      pm.environment.set('otp_session_id', body.otp_session_id);",
+                      "      pm.collectionVariables.set('otp_session_id', body.otp_session_id);",
+                      "    }",
+                      "    if (body.tokens && body.tokens.access_token) {",
+                      "      pm.environment.set('access_token', body.tokens.access_token);",
+                      "      pm.collectionVariables.set('access_token', body.tokens.access_token);",
+                      "    }",
+                      "    if (body.tokens && body.tokens.refresh_token) {",
+                      "      pm.environment.set('refresh_token', body.tokens.refresh_token);",
+                      "      pm.collectionVariables.set('refresh_token', body.tokens.refresh_token);",
+                      "    }",
+                      "    const cookie = pm.cookies.get('am_session');",
+                      "    if (cookie) pm.environment.set('am_session', cookie);",
+                      "  } catch (e) {}",
+                      "}"
+                    ]
+                  }
+                }
+              ]
             },
-            "url": "{{base_url}}/auth/refresh",
-            "description": "Exchange refresh token for new access token."
-          },
-          "response": []
-        },
-        {
-          "name": "Logout",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
-            },
-            "url": "{{base_url}}/auth/logout",
-            "description": "Revokes refresh token session. Returns 204."
-          },
-          "response": []
-        },
-        {
-          "name": "Login OTP (Not Implemented)",
-          "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"username\": \"{{test_email}}\",\n  \"otp\": \"123456\"\n}"
-            },
-            "url": "{{base_url}}/auth/login/otp",
-            "description": "Scaffolded — currently returns 501 until OTP flow is implemented."
-          },
-          "response": []
+            {
+              "name": "2 Web OTP Verify",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "User-Agent",
+                    "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "url": "{{base_url}}/auth/web/otp/verify",
+                "description": "Set `web_otp_code` from the email, then run. Saves tokens / am_session cookie.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"otp_session_id\": \"{{otp_session_id}}\",\n  \"code\": \"{{web_otp_code}}\"\n}"
+                }
+              },
+              "response": [],
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  try {",
+                      "    const body = pm.response.json();",
+                      "    if (body.device_link_id) {",
+                      "      pm.environment.set('device_link_id', body.device_link_id);",
+                      "      pm.collectionVariables.set('device_link_id', body.device_link_id);",
+                      "    }",
+                      "    if (body.confirmation_code) {",
+                      "      pm.environment.set('confirmation_code', body.confirmation_code);",
+                      "      pm.collectionVariables.set('confirmation_code', body.confirmation_code);",
+                      "    }",
+                      "    if (body.otp_session_id) {",
+                      "      pm.environment.set('otp_session_id', body.otp_session_id);",
+                      "      pm.collectionVariables.set('otp_session_id', body.otp_session_id);",
+                      "    }",
+                      "    if (body.tokens && body.tokens.access_token) {",
+                      "      pm.environment.set('access_token', body.tokens.access_token);",
+                      "      pm.collectionVariables.set('access_token', body.tokens.access_token);",
+                      "    }",
+                      "    if (body.tokens && body.tokens.refresh_token) {",
+                      "      pm.environment.set('refresh_token', body.tokens.refresh_token);",
+                      "      pm.collectionVariables.set('refresh_token', body.tokens.refresh_token);",
+                      "    }",
+                      "    const cookie = pm.cookies.get('am_session');",
+                      "    if (cookie) pm.environment.set('am_session', cookie);",
+                      "  } catch (e) {}",
+                      "}"
+                    ]
+                  }
+                }
+              ]
+            }
+          ]
         }
       ]
     },
     {
-      "name": "03 Auth — Google SSO",
-      "description": "**Browser broker flow:**\n1. **Get Google Auth URL** → open `auth_url` in browser\n2. After redirect, copy `code` + `state` → **Google Callback**\n\n**Flutter / mobile id_token flow:**\n1. Obtain a Google `id_token` (see `automation/scripts/google-id-token.html`)\n2. Set env `google_id_token`\n3. Run **Google Token Login**",
+      "name": "Device Link",
+      "description": "Individual QR APIs. Prefer Flows → QR login (no phone) for a full run.",
       "item": [
         {
-          "name": "Get Google Auth URL",
+          "name": "Device Link Start",
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const verifier = pm.variables.replaceIn('{{$guid}}') + pm.variables.replaceIn('{{$guid}}');",
+                  "const hash = CryptoJS.SHA256(verifier).toString(CryptoJS.enc.Base64)",
+                  "  .replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '');",
+                  "pm.environment.set('code_verifier', verifier);",
+                  "pm.collectionVariables.set('code_verifier', verifier);",
+                  "pm.environment.set('code_challenge', hash);",
+                  "pm.collectionVariables.set('code_challenge', hash);"
+                ]
+              }
+            },
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "if (pm.response.code === 200) {",
-                  "  const b = pm.response.json();",
-                  "  if (b.auth_url) console.log('Open in browser:\\n' + b.auth_url);",
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  try {",
+                  "    const body = pm.response.json();",
+                  "    if (body.device_link_id) {",
+                  "      pm.environment.set('device_link_id', body.device_link_id);",
+                  "      pm.collectionVariables.set('device_link_id', body.device_link_id);",
+                  "    }",
+                  "    if (body.confirmation_code) {",
+                  "      pm.environment.set('confirmation_code', body.confirmation_code);",
+                  "      pm.collectionVariables.set('confirmation_code', body.confirmation_code);",
+                  "    }",
+                  "    if (body.otp_session_id) {",
+                  "      pm.environment.set('otp_session_id', body.otp_session_id);",
+                  "    }",
+                  "    if (body.step_up_token) {",
+                  "      pm.environment.set('step_up_token', body.step_up_token);",
+                  "    }",
+                  "    const cookie = pm.cookies.get('am_session');",
+                  "    if (cookie) pm.environment.set('am_session', cookie);",
+                  "    if (Array.isArray(body) && body.length) {",
+                  "      if (body[0].session_id) pm.environment.set('login_session_id', body[0].session_id);",
+                  "      if (body[0].event_id) pm.environment.set('security_event_id', body[0].event_id);",
+                  "    }",
+                  "  } catch (e) {}",
                   "}"
                 ]
               }
@@ -179,55 +1237,178 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "User-Agent",
+                "value": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"redirect_uri\": \"{{google_redirect_uri}}\"\n}"
+              "raw": "{\n  \"client\": \"web\",\n  \"redirect_hint\": \"http://localhost:9000/login\",\n  \"code_challenge\": \"{{code_challenge}}\",\n  \"browser\": \"Chrome\",\n  \"os\": \"Windows\"\n}"
             },
-            "url": "{{base_url}}/auth/google/url",
-            "description": "Returns Keycloak auth URL with `kc_idp_hint=google` and anti-replay `state`."
+            "url": "{{base_url}}/auth/device-link/start",
+            "description": "Creates device link; saves device_link_id and confirmation_code."
           },
           "response": []
         },
         {
-          "name": "Google Callback",
+          "name": "Device Link Status (Poll)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                  "  try {",
+                  "    const body = pm.response.json();",
+                  "    if (body.device_link_id) {",
+                  "      pm.environment.set('device_link_id', body.device_link_id);",
+                  "      pm.collectionVariables.set('device_link_id', body.device_link_id);",
+                  "    }",
+                  "    if (body.confirmation_code) {",
+                  "      pm.environment.set('confirmation_code', body.confirmation_code);",
+                  "      pm.collectionVariables.set('confirmation_code', body.confirmation_code);",
+                  "    }",
+                  "    if (body.otp_session_id) {",
+                  "      pm.environment.set('otp_session_id', body.otp_session_id);",
+                  "    }",
+                  "    if (body.step_up_token) {",
+                  "      pm.environment.set('step_up_token', body.step_up_token);",
+                  "    }",
+                  "    const cookie = pm.cookies.get('am_session');",
+                  "    if (cookie) pm.environment.set('am_session', cookie);",
+                  "    if (Array.isArray(body) && body.length) {",
+                  "      if (body[0].session_id) pm.environment.set('login_session_id', body[0].session_id);",
+                  "      if (body[0].event_id) pm.environment.set('security_event_id', body[0].event_id);",
+                  "    }",
+                  "  } catch (e) {}",
+                  "}"
+                ]
+              }
+            }
+          ],
           "request": {
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"code\": \"{{google_auth_code}}\",\n  \"state\": \"{{google_state}}\",\n  \"redirect_uri\": \"{{google_redirect_uri}}\"\n}"
-            },
-            "url": "{{base_url}}/auth/google/callback",
-            "description": "Exchange authorization code for AM tokens. `redirect_uri` must match the one used in step 1."
+            "method": "GET",
+            "header": [
+              {
+                "key": "X-Machine-Trust-Key",
+                "value": "{{machine_trust_key}}"
+              }
+            ],
+            "url": "{{base_url}}/auth/device-link/{{device_link_id}}/status?code_verifier={{code_verifier}}",
+            "description": "Poll until approved; captures am_session cookie on success."
           },
           "response": []
         },
         {
-          "name": "Google Token Login (id_token)",
+          "name": "Device Link Preview",
           "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/auth/device-link/{{device_link_id}}/preview",
+            "description": "Mobile scanner preview (Bearer required)."
+          },
+          "response": []
+        },
+        {
+          "name": "Device Link Approve",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"id_token\": \"{{google_id_token}}\"\n}"
+              "raw": "{\n  \"confirmation_code\": \"{{confirmation_code}}\",\n  \"machine_label\": \"Postman Test Laptop\",\n  \"device_name\": \"Chrome on Windows\"\n}"
             },
-            "url": "{{base_url}}/auth/google/token",
-            "description": "Same endpoint as Flutter GSI: exchange Google id_token for Keycloak/AM tokens. Requires `google_id_token` env var (1h TTL)."
+            "url": "{{base_url}}/auth/device-link/{{device_link_id}}/approve",
+            "description": "Mobile approves QR login."
+          },
+          "response": []
+        },
+        {
+          "name": "Device Link Deny",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Not me\"\n}"
+            },
+            "url": "{{base_url}}/auth/device-link/{{device_link_id}}/deny"
+          },
+          "response": []
+        },
+        {
+          "name": "Device Link Cancel",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url}}/auth/device-link/{{device_link_id}}/cancel"
           },
           "response": []
         }
       ]
     },
     {
-      "name": "04 Users (Bearer Required)",
+      "name": "Users",
       "item": [
         {
           "name": "Get My Profile",
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "GET",
             "header": [],
@@ -241,10 +1422,21 @@
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"settings\": {\n    \"theme\": \"dark\",\n    \"notifications\": true,\n    \"language\": \"en\"\n  }\n}"
@@ -272,21 +1464,244 @@
           },
           "response": []
         }
+      ],
+      "description": "Bearer required. Login first."
+    },
+    {
+      "name": "BFF Session",
+      "item": [
+        {
+          "name": "BFF Me",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Cookie",
+                "value": "am_session={{am_session}}"
+              }
+            ],
+            "url": "{{base_url}}/bff/me"
+          },
+          "response": []
+        },
+        {
+          "name": "BFF Audit Log",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/bff/audit"
+          },
+          "response": []
+        }
+      ],
+      "description": "Cookie session after web/QR login."
+    },
+    {
+      "name": "Security and Sessions",
+      "item": [
+        {
+          "name": "Events",
+          "description": "Security banner events. Ack after list.",
+          "item": [
+            {
+              "name": "List Security Events",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  try {",
+                      "    const body = pm.response.json();",
+                      "    if (body.device_link_id) {",
+                      "      pm.environment.set('device_link_id', body.device_link_id);",
+                      "      pm.collectionVariables.set('device_link_id', body.device_link_id);",
+                      "    }",
+                      "    if (body.confirmation_code) {",
+                      "      pm.environment.set('confirmation_code', body.confirmation_code);",
+                      "      pm.collectionVariables.set('confirmation_code', body.confirmation_code);",
+                      "    }",
+                      "    if (body.otp_session_id) {",
+                      "      pm.environment.set('otp_session_id', body.otp_session_id);",
+                      "    }",
+                      "    if (body.step_up_token) {",
+                      "      pm.environment.set('step_up_token', body.step_up_token);",
+                      "    }",
+                      "    const cookie = pm.cookies.get('am_session');",
+                      "    if (cookie) pm.environment.set('am_session', cookie);",
+                      "    if (Array.isArray(body) && body.length) {",
+                      "      if (body[0].session_id) pm.environment.set('login_session_id', body[0].session_id);",
+                      "      if (body[0].event_id) pm.environment.set('security_event_id', body[0].event_id);",
+                      "    }",
+                      "  } catch (e) {}",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/users/me/security-events"
+              },
+              "response": []
+            },
+            {
+              "name": "Ack Security Event",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "POST",
+                "header": [],
+                "url": "{{base_url}}/users/me/security-events/{{security_event_id}}/ack"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Sessions",
+          "description": "Active sessions. Revoke one or all (logout everywhere).",
+          "item": [
+            {
+              "name": "List Login Sessions",
+              "event": [
+                {
+                  "listen": "test",
+                  "script": {
+                    "type": "text/javascript",
+                    "exec": [
+                      "if (pm.response.code >= 200 && pm.response.code < 300) {",
+                      "  try {",
+                      "    const body = pm.response.json();",
+                      "    if (body.device_link_id) {",
+                      "      pm.environment.set('device_link_id', body.device_link_id);",
+                      "      pm.collectionVariables.set('device_link_id', body.device_link_id);",
+                      "    }",
+                      "    if (body.confirmation_code) {",
+                      "      pm.environment.set('confirmation_code', body.confirmation_code);",
+                      "      pm.collectionVariables.set('confirmation_code', body.confirmation_code);",
+                      "    }",
+                      "    if (body.otp_session_id) {",
+                      "      pm.environment.set('otp_session_id', body.otp_session_id);",
+                      "    }",
+                      "    if (body.step_up_token) {",
+                      "      pm.environment.set('step_up_token', body.step_up_token);",
+                      "    }",
+                      "    const cookie = pm.cookies.get('am_session');",
+                      "    if (cookie) pm.environment.set('am_session', cookie);",
+                      "    if (Array.isArray(body) && body.length) {",
+                      "      if (body[0].session_id) pm.environment.set('login_session_id', body[0].session_id);",
+                      "      if (body[0].event_id) pm.environment.set('security_event_id', body[0].event_id);",
+                      "    }",
+                      "  } catch (e) {}",
+                      "}"
+                    ]
+                  }
+                }
+              ],
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "GET",
+                "header": [],
+                "url": "{{base_url}}/users/me/login-sessions"
+              },
+              "response": []
+            },
+            {
+              "name": "Revoke Login Session",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/users/me/login-sessions/{{login_session_id}}"
+              },
+              "response": []
+            },
+            {
+              "name": "Revoke All Login Sessions",
+              "request": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{access_token}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "header": [],
+                "url": "{{base_url}}/users/me/login-sessions"
+              },
+              "response": []
+            }
+          ]
+        }
       ]
     },
     {
-      "name": "05 Internal (Service Token Required)",
-      "description": "Requires a **service account** JWT (role: `service`).\nRun **99 Keycloak Helpers → Client Credentials (am-identity-service)** first and use that token as `access_token`, or set `service_access_token` in environment.",
+      "name": "Internal",
+      "description": "Service-account token required (Keycloak Helpers → Client Credentials).",
       "item": [
         {
           "name": "Issue Service Token",
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{service_access_token}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{service_access_token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"audience\": null\n}"
@@ -301,7 +1716,13 @@
           "request": {
             "auth": {
               "type": "bearer",
-              "bearer": [{ "key": "token", "value": "{{service_access_token}}", "type": "string" }]
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{service_access_token}}",
+                  "type": "string"
+                }
+              ]
             },
             "method": "GET",
             "header": [],
@@ -313,8 +1734,8 @@
       ]
     },
     {
-      "name": "99 Keycloak Helpers (Setup / Debug)",
-      "description": "Direct Keycloak calls — useful when testing tokens without am-identity.",
+      "name": "Keycloak Helpers",
+      "description": "Direct Keycloak calls for setup and debug. Not the app login path.",
       "item": [
         {
           "name": "OIDC Discovery",
@@ -347,13 +1768,27 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
             "body": {
               "mode": "urlencoded",
               "urlencoded": [
-                { "key": "grant_type", "value": "client_credentials" },
-                { "key": "client_id", "value": "{{identity_client_id}}" },
-                { "key": "client_secret", "value": "{{identity_client_secret}}" }
+                {
+                  "key": "grant_type",
+                  "value": "client_credentials"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{identity_client_id}}"
+                },
+                {
+                  "key": "client_secret",
+                  "value": "{{identity_client_secret}}"
+                }
               ]
             },
             "url": "{{keycloak_url}}/realms/{{keycloak_realm}}/protocol/openid-connect/token",
@@ -380,14 +1815,31 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
             "body": {
               "mode": "urlencoded",
               "urlencoded": [
-                { "key": "grant_type", "value": "password" },
-                { "key": "client_id", "value": "am-web-client" },
-                { "key": "username", "value": "{{test_email}}" },
-                { "key": "password", "value": "{{test_password}}" }
+                {
+                  "key": "grant_type",
+                  "value": "password"
+                },
+                {
+                  "key": "client_id",
+                  "value": "am-web-client"
+                },
+                {
+                  "key": "username",
+                  "value": "{{test_email}}"
+                },
+                {
+                  "key": "password",
+                  "value": "{{test_password}}"
+                }
               ]
             },
             "url": "{{keycloak_url}}/realms/{{keycloak_realm}}/protocol/openid-connect/token",
