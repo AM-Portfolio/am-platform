@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import ast
 import json
+import logging
 import secrets
 import time
 from typing import Any
@@ -26,6 +27,7 @@ from am_identity.schemas.auth import RegisterRequest
 
 # Required for /userinfo and OIDC profile claims (without openid, userinfo returns 403).
 _OIDC_USER_SCOPES = "openid profile email"
+logger = logging.getLogger(__name__)
 _GOOGLE_ISSUER = "https://accounts.google.com"
 _GOOGLE_JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs"
 _VERIFY_JTI_ATTR = "asraxVerifyJti"
@@ -99,11 +101,18 @@ class KeycloakIdentityProvider(IIdentityProvider):
             "Accept": "application/json",
         }
         self._google_states: dict[str, tuple[str, float]] = {}
+        self.client = httpx.AsyncClient(
+            timeout=self._session_timeout, verify=settings.verify_ssl
+        )
         self._allowed_redirect_uris = {
             uri.strip()
             for uri in settings.allowed_google_redirect_uris.split(",")
             if uri.strip()
         }
+        if not self._allowed_redirect_uris:
+            raise ValueError(
+                "ALLOWED_GOOGLE_REDIRECT_URIS is empty — set via Vault for this environment"
+            )
         self._settings_profile_ready = False
         self._auth_mail_profile_ready = False
         self._user_profile_url = (
@@ -145,7 +154,9 @@ class KeycloakIdentityProvider(IIdentityProvider):
             )
         return claims
 
-    async def _find_user_by_email(self, email: str, admin_token: str) -> dict[str, Any] | None:
+    async def _find_user_by_email(
+        self, email: str, admin_token: str
+    ) -> dict[str, Any] | None:
         async with httpx.AsyncClient(
             timeout=self._session_timeout, verify=self.settings.verify_ssl
         ) as client:
@@ -366,21 +377,39 @@ class KeycloakIdentityProvider(IIdentityProvider):
         if not user_id:
             found = await self._find_user_by_email(payload.email, admin_token)
             user_id = found.get("id") if found else None
+        email_sent = False
+        email_error: str | None = None
         if user_id:
             try:
                 await self.send_verify_email(user_id)
-            except HTTPException:
-                # User is created; mail failure should not undo registration.
-                pass
+                email_sent = True
+            except HTTPException as exc:
+                # User is created; mail failure should not undo registration —
+                # but surface it so UI/ops know SMTP/config failed.
+                email_error = str(exc.detail)
+                logger.warning(
+                    "verify_email_failed_after_create user_id=%s email=%s detail=%s",
+                    user_id,
+                    payload.email,
+                    email_error,
+                )
+        message = (
+            "Account created. Check your email to verify your Asrax account "
+            "before signing in."
+            if email_sent
+            else (
+                "Account created, but we could not send the verification email. "
+                "Use Resend on the next screen or contact support."
+            )
+        )
         return {
             "status": "created",
             "email": payload.email,
             "id": user_id,
             "pending": ["verify_email"],
-            "message": (
-                "Account created. Check your email to verify your Asrax account "
-                "before signing in."
-            ),
+            "email_sent": email_sent,
+            "email_error": email_error,
+            "message": message,
         }
 
     async def authenticate(
@@ -487,19 +516,28 @@ class KeycloakIdentityProvider(IIdentityProvider):
             )
         profile = response.json()
         names = {attr.get("name") for attr in profile.get("attributes", [])}
-        if "settings" not in names:
-            profile.setdefault("attributes", []).append(
-                {
-                    "name": "settings",
-                    "displayName": "User Settings",
-                    "multivalued": False,
-                    "group": "user-metadata",
-                    "permissions": {
-                        "view": ["admin", "user"],
-                        "edit": ["admin", "user"],
-                    },
-                }
-            )
+        updated = False
+        for attr_name, display in [
+            ("settings", "User Settings"),
+            ("account_status", "Account Status"),
+            ("deletion_requested_at", "Deletion Requested At"),
+            ("deletion_feedback", "Deletion Feedback"),
+        ]:
+            if attr_name not in names:
+                profile.setdefault("attributes", []).append(
+                    {
+                        "name": attr_name,
+                        "displayName": display,
+                        "multivalued": False,
+                        "group": "user-metadata",
+                        "permissions": {
+                            "view": ["admin", "user"],
+                            "edit": ["admin", "user"],
+                        },
+                    }
+                )
+                updated = True
+        if updated:
             async with httpx.AsyncClient(
                 timeout=self._session_timeout, verify=self.settings.verify_ssl
             ) as client:
@@ -511,7 +549,7 @@ class KeycloakIdentityProvider(IIdentityProvider):
             if put_response.status_code >= 400:
                 raise HTTPException(
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                    detail=f"Failed to register settings user profile attribute: {put_response.text}",
+                    detail=f"Failed to register user profile attributes: {put_response.text}",
                 )
         self._settings_profile_ready = True
 
@@ -654,7 +692,9 @@ class KeycloakIdentityProvider(IIdentityProvider):
     def _admin_headers(self, admin_token: str) -> dict[str, str]:
         return {**self._http_headers, "Authorization": f"Bearer {admin_token}"}
 
-    def _normalize_user(self, user: dict[str, Any], roles: list[str] | None = None) -> dict[str, Any]:
+    def _normalize_user(
+        self, user: dict[str, Any], roles: list[str] | None = None
+    ) -> dict[str, Any]:
         return {
             "id": user.get("id", ""),
             "email": user.get("email"),
@@ -778,17 +818,36 @@ class KeycloakIdentityProvider(IIdentityProvider):
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="User created but id could not be resolved",
             )
+        verify_sent = False
+        reset_sent = False
         if send_verify_email:
             try:
                 await self.send_verify_email(user_id)
-            except HTTPException:
-                pass
+                verify_sent = True
+            except HTTPException as exc:
+                logger.warning(
+                    "admin_create verify_email failed user_id=%s detail=%s",
+                    user_id,
+                    exc.detail,
+                )
         if temporary_password or not password:
             try:
                 await self.send_password_reset_email(email)
-            except HTTPException:
-                pass
-        return await self.get_user(user_id)
+                reset_sent = True
+            except HTTPException as exc:
+                logger.warning(
+                    "admin_create password_reset_email failed email=%s detail=%s",
+                    email,
+                    exc.detail,
+                )
+        user = await self.get_user(user_id)
+        user["email_sent"] = {
+            "verify_email": verify_sent if send_verify_email else None,
+            "password_reset": (
+                reset_sent if (temporary_password or not password) else None
+            ),
+        }
+        return user
 
     async def update_user(
         self,
@@ -889,10 +948,14 @@ class KeycloakIdentityProvider(IIdentityProvider):
             )
         return [r.get("name") for r in (response.json() or []) if r.get("name")]
 
-    async def set_user_realm_roles(self, user_id: str, role_names: list[str]) -> list[str]:
+    async def set_user_realm_roles(
+        self, user_id: str, role_names: list[str]
+    ) -> list[str]:
         current = await self.get_user_realm_roles(user_id)
         # Preserve non-human / system roles we do not manage via this API surface
-        preserve = [r for r in current if r == "service" or r.startswith("default-roles-")]
+        preserve = [
+            r for r in current if r == "service" or r.startswith("default-roles-")
+        ]
         desired = list(dict.fromkeys([*preserve, *role_names]))
         to_add = [r for r in desired if r not in current]
         to_remove = [r for r in current if r not in desired]
@@ -903,7 +966,9 @@ class KeycloakIdentityProvider(IIdentityProvider):
                 await self.remove_user_realm_role(user_id, name)
         return await self.get_user_realm_roles(user_id)
 
-    async def add_user_realm_roles(self, user_id: str, role_names: list[str]) -> list[str]:
+    async def add_user_realm_roles(
+        self, user_id: str, role_names: list[str]
+    ) -> list[str]:
         if not role_names:
             return await self.get_user_realm_roles(user_id)
         admin_token = await self._get_admin_access_token()
@@ -1127,7 +1192,9 @@ class KeycloakIdentityProvider(IIdentityProvider):
                 )
         self._auth_mail_profile_ready = True
 
-    async def _get_raw_user(self, user_id: str, admin_token: str | None = None) -> dict[str, Any]:
+    async def _get_raw_user(
+        self, user_id: str, admin_token: str | None = None
+    ) -> dict[str, Any]:
         token = admin_token or await self._get_admin_access_token()
         async with httpx.AsyncClient(
             timeout=self._session_timeout, verify=self.settings.verify_ssl
@@ -1370,14 +1437,24 @@ class KeycloakIdentityProvider(IIdentityProvider):
             },
         )
 
-        base = self.settings.auth_ui_base_url.rstrip("/")
+        base = (self.settings.auth_ui_base_url or "").strip().rstrip("/")
+        if not base:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="AUTH_UI_BASE_URL is not configured (set via Vault)",
+            )
         # Prefer short ?c= links; HTML never displays the raw URL (button-only).
+        # app_home / action hosts come only from Vault AUTH_UI_BASE_URL at runtime.
         if purpose == "verify_email":
             action_url = f"{base}/verify-email?c={short_code}"
-            subject, html, plain = build_welcome_verify_email(action_url=action_url)
+            subject, html, plain = build_welcome_verify_email(
+                action_url=action_url, app_home=base
+            )
         else:
             action_url = f"{base}/reset-password?c={short_code}"
-            subject, html, plain = build_reset_password(action_url=action_url)
+            subject, html, plain = build_reset_password(
+                action_url=action_url, app_home=base
+            )
 
         try:
             send_auth_email(

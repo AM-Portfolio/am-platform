@@ -6,7 +6,7 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from am_platform_common import ConflictError, NotFoundError
+from am_platform_common import NotFoundError
 
 from am_subscription.core.plan_catalog import PlanCatalog
 from am_subscription.core.state_machine import validate_transition
@@ -67,11 +67,18 @@ class SubscriptionService:
     ) -> SubscriptionDTO:
         logger.info(
             "get_or_create subscription",
-            extra={"user_id": user_id, "plan_code": payload.plan_code, "correlation_id": correlation_id},
+            extra={
+                "user_id": user_id,
+                "plan_code": payload.plan_code,
+                "correlation_id": correlation_id,
+            },
         )
         existing = await self.get_by_user(user_id)
         if existing:
-            logger.info("subscription exists", extra={"user_id": user_id, "subscription_id": str(existing.id)})
+            logger.info(
+                "subscription exists",
+                extra={"user_id": user_id, "subscription_id": str(existing.id)},
+            )
             return await self.to_dto(existing)
 
         plan_code = self._catalog.resolve_plan_code(
@@ -79,7 +86,9 @@ class SubscriptionService:
             payload.billing_interval,
         )
         plan = self._catalog.get_plan(plan_code)
-        logger.info("provisioning with Lago", extra={"user_id": user_id, "plan_code": plan.code})
+        logger.info(
+            "provisioning with Lago", extra={"user_id": user_id, "plan_code": plan.code}
+        )
 
         external_customer_id = f"am-user-{user_id}"
         customer = await self._provider.ensure_customer(external_customer_id)
@@ -94,7 +103,8 @@ class SubscriptionService:
             extra={
                 "user_id": user_id,
                 "external_customer_id": external_customer_id,
-                "provider_subscription_id": provider_sub.get("external_id") or sub_external_id,
+                "provider_subscription_id": provider_sub.get("external_id")
+                or sub_external_id,
             },
         )
 
@@ -155,7 +165,9 @@ class SubscriptionService:
             correlation_id=correlation_id,
         )
         if subscription.provider_subscription_id:
-            await self._provider.cancel_subscription(subscription.provider_subscription_id)
+            await self._provider.cancel_subscription(
+                subscription.provider_subscription_id
+            )
         await self._session.commit()
         await self._session.refresh(subscription)
         return await self.to_dto(subscription)
@@ -217,7 +229,9 @@ class SubscriptionService:
         plan = self._catalog.get_plan(new_plan_code)
 
         if subscription.provider_subscription_id:
-            await self._provider.change_plan(subscription.provider_subscription_id, plan.code)
+            await self._provider.change_plan(
+                subscription.provider_subscription_id, plan.code
+            )
 
         previous_plan = subscription.plan_code
         subscription.plan_code = plan.code
@@ -248,7 +262,9 @@ class SubscriptionService:
         )
         return await self.to_dto(subscription)
 
-    async def usage_history(self, user_id: str, *, limit: int = 50) -> UsageHistoryResponse:
+    async def usage_history(
+        self, user_id: str, *, limit: int = 50
+    ) -> UsageHistoryResponse:
         result = await self._session.execute(
             select(MeterBuffer)
             .where(MeterBuffer.user_id == user_id)
@@ -266,7 +282,9 @@ class SubscriptionService:
             for row in rows
         ]
         count_result = await self._session.execute(
-            select(func.count()).select_from(MeterBuffer).where(MeterBuffer.user_id == user_id)
+            select(func.count())
+            .select_from(MeterBuffer)
+            .where(MeterBuffer.user_id == user_id)
         )
         total = int(count_result.scalar_one())
         return UsageHistoryResponse(items=items, total=total)
@@ -291,9 +309,14 @@ class SubscriptionService:
             updated_at=subscription.updated_at,
         )
 
-    async def _usage_snapshots(self, user_id: str, plan: PlanDTO) -> list[UsageSnapshotDTO]:
+    async def _usage_snapshots(
+        self, user_id: str, plan: PlanDTO
+    ) -> list[UsageSnapshotDTO]:
         result = await self._session.execute(
-            select(MeterBuffer.metric_code, func.coalesce(func.sum(MeterBuffer.quantity), 0))
+            select(
+                MeterBuffer.metric_code,
+                func.coalesce(func.sum(MeterBuffer.quantity), 0),
+            )
             .where(MeterBuffer.user_id == user_id)
             .group_by(MeterBuffer.metric_code)
         )
@@ -361,7 +384,11 @@ class SubscriptionService:
                 user_id=subscription.user_id,
                 correlation_id=correlation_id,
                 idempotency_key=f"sub-change-{subscription.id}-{target.value}",
-                payload={"previous_state": previous, "state": target.value, "plan_code": subscription.plan_code},
+                payload={
+                    "previous_state": previous,
+                    "state": target.value,
+                    "plan_code": subscription.plan_code,
+                },
             )
 
     async def _append_audit(

@@ -11,7 +11,12 @@ from am_notification.core.config import get_settings
 from am_notification.core.database import close_db, init_db, ping_db
 from am_notification.core.log_utils import get_logger
 from am_notification.deps import get_kafka_consumer, get_provider
-from am_platform_common import APIException, InternalServerError, LoggingMiddleware, setup_logging
+from am_platform_common import (
+    APIException,
+    InternalServerError,
+    LoggingMiddleware,
+    setup_logging,
+)
 
 settings = get_settings()
 setup_logging(env=settings.app_env, level=settings.log_level)
@@ -53,16 +58,26 @@ def _request_context(request: Request) -> dict[str, str]:
 @app.exception_handler(APIException)
 async def api_exception_handler(request: Request, exc: APIException) -> JSONResponse:
     if exc.status_code >= 500:
-        logger.error(exc.message, extra={**_request_context(request), "error_code": exc.error_code})
+        logger.error(
+            exc.message,
+            extra={**_request_context(request), "error_code": exc.error_code},
+        )
     else:
-        logger.warning(exc.message, extra={**_request_context(request), "error_code": exc.error_code})
+        logger.warning(
+            exc.message,
+            extra={**_request_context(request), "error_code": exc.error_code},
+        )
     return JSONResponse(status_code=exc.status_code, content=exc.to_dict())
 
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     logger.exception("Unhandled exception", extra=_request_context(request))
-    message = str(exc) if settings.app_env.lower() in ("dev", "local") else "Internal server error"
+    message = (
+        str(exc)
+        if settings.app_env.lower() in ("dev", "local")
+        else "Internal server error"
+    )
     body = InternalServerError(message=message, error_code="INTERNAL_SERVER_ERROR")
     return JSONResponse(status_code=body.status_code, content=body.to_dict())
 

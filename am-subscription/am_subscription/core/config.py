@@ -23,7 +23,9 @@ class SubscriptionSettings(BaseSettings):
         default=None, alias="AM_SUBSCRIPTION_POSTGRES_PORT"
     )
     db_name: str = Field(default="subscription", alias="AM_SUBSCRIPTION_DB_NAME")
-    db_user: str = Field(default="am_subscription_user", alias="AM_SUBSCRIPTION_DB_USER")
+    db_user: str = Field(
+        default="am_subscription_user", alias="AM_SUBSCRIPTION_DB_USER"
+    )
     db_password: str = Field(default="", alias="AM_SUBSCRIPTION_DB_PASSWORD")
     # VPS TCP gateway (postgres.asrax.in:8891) is plain TCP; asyncpg otherwise tries SSL and fails.
     postgres_ssl: bool = Field(default=False, alias="AM_SUBSCRIPTION_POSTGRES_SSL")
@@ -39,7 +41,21 @@ class SubscriptionSettings(BaseSettings):
     )
 
     kafka_enabled: bool = Field(default=False, alias="KAFKA_ENABLED")
-    kafka_bootstrap_servers: str = Field(default="localhost:9092", alias="KAFKA_BOOTSTRAP_SERVERS")
+    kafka_bootstrap_servers: str = Field(
+        default="localhost:9092", alias="KAFKA_BOOTSTRAP_SERVERS"
+    )
+    kafka_security_protocol: str = Field(
+        default="SASL_PLAINTEXT", alias="KAFKA_SECURITY_PROTOCOL"
+    )
+    kafka_sasl_mechanism: str = Field(
+        default="SCRAM-SHA-256", alias="KAFKA_SASL_MECHANISM"
+    )
+    kafka_username: str = Field(default="", alias="KAFKA_USERNAME")
+    kafka_password: str = Field(default="", alias="KAFKA_PASSWORD")
+    kafka_topics: str = Field(
+        default="am.identity.events.v1",
+        alias="KAFKA_TOPICS",
+    )
 
     model_config = SettingsConfigDict(
         env_file=(str(PLATFORM_ROOT / ".env"), str(PLATFORM_ROOT / ".secrets.env")),

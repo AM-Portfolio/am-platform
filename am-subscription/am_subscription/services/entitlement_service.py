@@ -103,7 +103,11 @@ class EntitlementService:
                     )
                     raise QuotaExceededError(
                         message=f"Quota exceeded for {metric_code}",
-                        details={"limit": limit, "used": used, "remaining": max(remaining, 0)},
+                        details={
+                            "limit": limit,
+                            "used": used,
+                            "remaining": max(remaining, 0),
+                        },
                     )
                 return EntitlementCheckResponse(
                     allowed=True,
@@ -131,7 +135,10 @@ class EntitlementService:
 
     async def _usage_totals(self, user_id: str) -> dict[str, int]:
         result = await self._session.execute(
-            select(MeterBuffer.metric_code, func.coalesce(func.sum(MeterBuffer.quantity), 0))
+            select(
+                MeterBuffer.metric_code,
+                func.coalesce(func.sum(MeterBuffer.quantity), 0),
+            )
             .where(MeterBuffer.user_id == user_id)
             .group_by(MeterBuffer.metric_code)
         )
@@ -168,7 +175,9 @@ class MeteringService:
         assert_active_for_usage(sub.state.value)
 
         existing = await self._session.execute(
-            select(MeterBuffer).where(MeterBuffer.idempotency_key == payload.idempotency_key)
+            select(MeterBuffer).where(
+                MeterBuffer.idempotency_key == payload.idempotency_key
+            )
         )
         if existing.scalar_one_or_none():
             return MeterResponse(

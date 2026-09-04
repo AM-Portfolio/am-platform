@@ -1,5 +1,6 @@
 # AM Identity — build context: am-platform root (build_context: ..)
 # Public Python base (see docker/python-base.Dockerfile). Avoids GHCR 403 on am-python-base.
+# Trigger rebuild to pick up new automation scripts
 FROM python:3.12-slim
 
 ENV PYTHONUNBUFFERED=1 \
@@ -22,6 +23,7 @@ COPY libraries/am-platform-security/ libraries/am-platform-security/
 RUN pip install --no-cache-dir ./libraries/am-platform-common ./libraries/am-platform-security
 
 COPY am-identity/ am-identity/
+COPY automation/scripts/ /app/automation/scripts/
 
 ENV PYTHONPATH=/app/libraries/am-platform-common:/app/libraries/am-platform-security:/app/am-identity
 ENV APP_ENV=production

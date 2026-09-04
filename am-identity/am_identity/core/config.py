@@ -30,22 +30,16 @@ class IdentitySettings(BaseSettings):
     google_idp_alias: str = Field(default="google", alias="GOOGLE_IDP_ALIAS")
     google_client_id: str = Field(..., alias="GOOGLE_CLIENT_ID")
     google_state_ttl_seconds: int = Field(default=300, alias="GOOGLE_STATE_TTL_SECONDS")
-    allowed_google_redirect_uris: str = Field(
-        default="http://localhost:9000/callback,https://am.munish.org/callback,https://am.asrax.in/callback,https://am-dev.asrax.in/callback",
-        alias="ALLOWED_GOOGLE_REDIRECT_URIS",
-    )
+    # Host allowlist — set per env in Vault (ALLOWED_GOOGLE_REDIRECT_URIS). No code defaults.
+    allowed_google_redirect_uris: str = Field(..., alias="ALLOWED_GOOGLE_REDIRECT_URIS")
 
     service_token_ttl: int = Field(default=300, alias="SERVICE_TOKEN_TTL")
 
     verify_ssl: bool = Field(default=True, alias="IDENTITY_VERIFY_SSL")
 
-    # Branded auth mail (identity-owned; Keycloak is still the user store).
-    auth_ui_base_url: str = Field(
-        default="https://am.asrax.in", alias="AUTH_UI_BASE_URL"
-    )
-    auth_email_token_secret: str = Field(
-        default="", alias="AUTH_EMAIL_TOKEN_SECRET"
-    )
+    # Branded auth mail / UI links — set per env in Vault (AUTH_UI_BASE_URL). No code default.
+    auth_ui_base_url: str = Field(..., alias="AUTH_UI_BASE_URL")
+    auth_email_token_secret: str = Field(default="", alias="AUTH_EMAIL_TOKEN_SECRET")
     auth_email_token_ttl_seconds: int = Field(
         default=43200, alias="AUTH_EMAIL_TOKEN_TTL_SECONDS"
     )
@@ -60,6 +54,19 @@ class IdentitySettings(BaseSettings):
     )
     smtp_ssl: bool = Field(default=True, alias="SMTP_SSL")
     smtp_starttls: bool = Field(default=False, alias="SMTP_STARTTLS")
+
+    kafka_enabled: bool = Field(default=False, alias="KAFKA_ENABLED")
+    kafka_bootstrap_servers: str = Field(
+        default="kafka.infra.svc.cluster.local:9092", alias="KAFKA_BOOTSTRAP_SERVERS"
+    )
+    kafka_security_protocol: str = Field(
+        default="SASL_PLAINTEXT", alias="KAFKA_SECURITY_PROTOCOL"
+    )
+    kafka_sasl_mechanism: str = Field(
+        default="SCRAM-SHA-256", alias="KAFKA_SASL_MECHANISM"
+    )
+    kafka_username: str = Field(default="", alias="KAFKA_USERNAME")
+    kafka_password: str = Field(default="", alias="KAFKA_PASSWORD")
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -84,7 +91,9 @@ class IdentitySettings(BaseSettings):
             self.smtp_from_display_name,
         )
         port_raw = pick("SMTP_PORT", "KEYCLOAK_SMTP_PORT", str(self.smtp_port))
-        ssl_raw = pick("SMTP_SSL", "KEYCLOAK_SMTP_SSL", "true" if self.smtp_ssl else "false")
+        ssl_raw = pick(
+            "SMTP_SSL", "KEYCLOAK_SMTP_SSL", "true" if self.smtp_ssl else "false"
+        )
         starttls_raw = pick(
             "SMTP_STARTTLS",
             "KEYCLOAK_SMTP_STARTTLS",

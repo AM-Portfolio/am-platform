@@ -1,11 +1,12 @@
 """E2E preprod checks for ssd2658@gmail.com — branded auth mail + confirm + admin roles.
 
 Public verify/reset no longer rely on Keycloak execute-actions-email.
-Mail links use AUTH_UI_BASE_URL (am.asrax.in). Gmail body is not readable here;
+Mail links use AUTH_UI_BASE_URL from Vault/secrets (runtime). Gmail body is not readable here;
 confirm is exercised by minting a token with AUTH_EMAIL_TOKEN_SECRET and setting
 the matching Keycloak jti attribute (same contract as the mailer).
-Manual: check ssd2658@gmail.com for Asrax branded links on am.asrax.in.
+Manual: check ssd2658@gmail.com for Asrax branded links (AUTH_UI_BASE_URL from secrets).
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -21,7 +22,8 @@ from base64 import urlsafe_b64encode
 from pathlib import Path
 from urllib.parse import urlparse
 
-BASE = "https://am.asrax.in/identity"
+BASE = "https://am-preprod.asrax.in/identity"
+# Mail link host assertions use AUTH_UI_BASE_URL from secrets only (no hardcoded fallback).
 KC = "https://auth.munish.org/auth"
 REALM = "am-preprod-realm"
 EMAIL = "ssd2658@gmail.com"
@@ -102,7 +104,9 @@ def mint_auth_mail_token(
         "iat": now,
         "exp": now + int(ttl_seconds),
     }
-    body = _b64encode(json.dumps(payload, separators=(",", ":"), sort_keys=True).encode())
+    body = _b64encode(
+        json.dumps(payload, separators=(",", ":"), sort_keys=True).encode()
+    )
     sig = _b64encode(
         hmac.new(secret.encode("utf-8"), body.encode("ascii"), hashlib.sha256).digest()
     )
@@ -119,14 +123,16 @@ def set_user_attr(uid: str, ah: dict, attr: str, value: str | None) -> int:
     else:
         attrs[attr] = [value]
     full["attributes"] = attrs
-    code, _ = req("PUT", f"{KC}/admin/realms/{REALM}/users/{uid}", data=full, headers=ah)
+    code, _ = req(
+        "PUT", f"{KC}/admin/realms/{REALM}/users/{uid}", data=full, headers=ah
+    )
     return code
 
 
 def main() -> None:
     secrets_map = load_secrets()
     token_secret = secrets_map.get("AUTH_EMAIL_TOKEN_SECRET", "").strip()
-    ui_base = (secrets_map.get("AUTH_UI_BASE_URL") or "https://am.asrax.in").rstrip("/")
+    ui_base = (secrets_map.get("AUTH_UI_BASE_URL") or "").strip().rstrip("/")
     ttl = int(secrets_map.get("AUTH_EMAIL_TOKEN_TTL_SECONDS") or "43200")
 
     record(
@@ -136,9 +142,9 @@ def main() -> None:
     )
     host = urlparse(ui_base).hostname or ""
     record(
-        "AUTH_UI_BASE_URL host",
-        host in ("am.asrax.in", "am-dev.asrax.in"),
-        f"host={host} base={ui_base}",
+        "AUTH_UI_BASE_URL from Vault/secrets (required)",
+        bool(ui_base) and bool(host),
+        f"host={host or '(missing)'} base={ui_base or '(missing)'}",
     )
 
     # ── Keycloak admin ────────────────────────────────────────────────────
@@ -168,7 +174,11 @@ def main() -> None:
         _summary()
         return
     smtp = realm.get("smtpServer") or {}
-    record("realm.verifyEmail", bool(realm.get("verifyEmail")), str(realm.get("verifyEmail")))
+    record(
+        "realm.verifyEmail",
+        bool(realm.get("verifyEmail")),
+        str(realm.get("verifyEmail")),
+    )
     record(
         "realm.smtp.host (informational)",
         True,
@@ -243,7 +253,11 @@ def main() -> None:
         "/auth/password-reset",
         "/auth/verify-email/resend",
     ):
-        record(f"openapi has {p}", p in (paths or {}), "present" if p in (paths or {}) else "missing")
+        record(
+            f"openapi has {p}",
+            p in (paths or {}),
+            "present" if p in (paths or {}) else "missing",
+        )
 
     # Bad token → 400 (not 501 Not Implemented)
     code, body = req(
@@ -280,7 +294,11 @@ def main() -> None:
             "accepted — check Gmail for am.asrax.in/verify-email link"
             if resend_ok
             else f"{code} {body}"
-            + (" — vault/pod missing AUTH_EMAIL_TOKEN_SECRET" if pod_token_missing else "")
+            + (
+                " — vault/pod missing AUTH_EMAIL_TOKEN_SECRET"
+                if pod_token_missing
+                else ""
+            )
         ),
     )
 
@@ -293,7 +311,11 @@ def main() -> None:
     )
 
     if not token_secret:
-        record("API verify-email/confirm", False, "skipped — local AUTH_EMAIL_TOKEN_SECRET missing")
+        record(
+            "API verify-email/confirm",
+            False,
+            "skipped — local AUTH_EMAIL_TOKEN_SECRET missing",
+        )
     elif pod_token_missing:
         record(
             "API verify-email/confirm",
@@ -350,7 +372,11 @@ def main() -> None:
             "accepted — check Gmail for am.asrax.in/reset-password link"
             if reset_send_ok
             else f"{code} {body}"
-            + (" — vault/pod missing AUTH_EMAIL_TOKEN_SECRET" if pod_token_missing else "")
+            + (
+                " — vault/pod missing AUTH_EMAIL_TOKEN_SECRET"
+                if pod_token_missing
+                else ""
+            )
         ),
     )
 
@@ -362,7 +388,11 @@ def main() -> None:
     )
 
     if not token_secret:
-        record("API password-reset/confirm", False, "skipped — local AUTH_EMAIL_TOKEN_SECRET missing")
+        record(
+            "API password-reset/confirm",
+            False,
+            "skipped — local AUTH_EMAIL_TOKEN_SECRET missing",
+        )
     elif pod_token_missing:
         record(
             "API password-reset/confirm",
@@ -384,8 +414,16 @@ def main() -> None:
             f"{BASE}/auth/password-reset/confirm",
             data={"token": reset_token, "new_password": RESET_PASSWORD},
         )
-        ok = code == 200 and isinstance(body, dict) and body.get("status") == "password_updated"
-        record("API password-reset/confirm", ok, f"{code} {body if not ok else 'password_updated'}")
+        ok = (
+            code == 200
+            and isinstance(body, dict)
+            and body.get("status") == "password_updated"
+        )
+        record(
+            "API password-reset/confirm",
+            ok,
+            f"{code} {body if not ok else 'password_updated'}",
+        )
         # Restore known password for admin login section
         code, _ = req(
             "PUT",
@@ -393,7 +431,9 @@ def main() -> None:
             data={"type": "password", "value": TEMP_PASSWORD, "temporary": False},
             headers=ah,
         )
-        record("restore TEMP_PASSWORD after reset confirm", code in (204, 200), f"{code}")
+        record(
+            "restore TEMP_PASSWORD after reset confirm", code in (204, 200), f"{code}"
+        )
 
     # Clear required actions so login works for admin tests
     code, full = req("GET", f"{KC}/admin/realms/{REALM}/users/{uid}", headers=ah)
@@ -404,7 +444,9 @@ def main() -> None:
 
     # ── Roles: admin then super_admin ─────────────────────────────────────
     for role_name in ("admin", "super_admin"):
-        code, role = req("GET", f"{KC}/admin/realms/{REALM}/roles/{role_name}", headers=ah)
+        code, role = req(
+            "GET", f"{KC}/admin/realms/{REALM}/roles/{role_name}", headers=ah
+        )
         if code == 200:
             req(
                 "POST",
@@ -421,7 +463,11 @@ def main() -> None:
         f"{BASE}/auth/login",
         data={"username": EMAIL, "password": TEMP_PASSWORD},
     )
-    record("login after verify cleared", code == 200, f"{code}" if code == 200 else f"{code} {tokens}")
+    record(
+        "login after verify cleared",
+        code == 200,
+        f"{code}" if code == 200 else f"{code} {tokens}",
+    )
     if code != 200:
         _summary()
         return
@@ -445,7 +491,9 @@ def main() -> None:
     code, body = req("GET", f"{BASE}/admin/roles", headers=bh)
     record("GET /admin/roles as user", code == 200, f"{code}")
 
-    code, body = req("GET", f"{BASE}/admin/users?email={urllib.parse.quote(EMAIL)}", headers=bh)
+    code, body = req(
+        "GET", f"{BASE}/admin/users?email={urllib.parse.quote(EMAIL)}", headers=bh
+    )
     record("GET /admin/users?email=", code == 200 and isinstance(body, list), f"{code}")
 
     code, body = req(

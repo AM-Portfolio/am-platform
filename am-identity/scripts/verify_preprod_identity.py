@@ -6,7 +6,7 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
-BASE = "https://am.asrax.in/identity"
+BASE = "https://am-preprod.asrax.in/identity"
 KC = "https://auth.munish.org/auth"
 REALM = "am-preprod-realm"
 SECRETS = Path(r"A:\InfraCode\AM-Portfolio-grp\am-platform\.secrets.preprod.env")
@@ -73,7 +73,11 @@ def main():
     for path in ("/health", "/docs", "/openapi.json"):
         code, body, _ = req("GET", BASE + path)
         if path == "/health":
-            record("health", code == 200 and isinstance(body, dict) and body.get("status") == "ok", f"{code} {body}")
+            record(
+                "health",
+                code == 200 and isinstance(body, dict) and body.get("status") == "ok",
+                f"{code} {body}",
+            )
         else:
             record(f"probe {path}", code in (200, 401, 403) or code < 500, f"{code}")
 
@@ -89,7 +93,9 @@ def main():
             "/auth/verify-email/resend",
             "/auth/verify-email/confirm",
         ):
-            record(f"openapi has {p}", p in paths, "present" if p in paths else "missing")
+            record(
+                f"openapi has {p}", p in paths, "present" if p in paths else "missing"
+            )
     else:
         record("openapi.json", False, f"{code} {body}")
 
@@ -115,11 +121,11 @@ def main():
         f"{code} {body}",
     )
 
-    ui_base = (secrets.get("AUTH_UI_BASE_URL") or "https://am.asrax.in").rstrip("/")
+    ui_base = (secrets.get("AUTH_UI_BASE_URL") or "").strip().rstrip("/")
     record(
-        "AUTH_UI_BASE_URL for branded links",
-        "am.asrax.in" in ui_base or "am-dev.asrax.in" in ui_base,
-        ui_base,
+        "AUTH_UI_BASE_URL for branded links (from Vault/secrets)",
+        bool(ui_base),
+        ui_base or "(missing — set AUTH_UI_BASE_URL)",
     )
     record(
         "AUTH_EMAIL_TOKEN_SECRET present (local secrets)",
@@ -267,14 +273,23 @@ def main():
     record("GET /admin/roles", code == 200 and isinstance(body, list), f"{code} {body}")
 
     code, body, _ = req("GET", BASE + "/admin/users?max=5", headers=bh)
-    record("GET /admin/users", code == 200 and isinstance(body, list), f"{code} count={len(body) if isinstance(body, list) else '?'}")
+    record(
+        "GET /admin/users",
+        code == 200 and isinstance(body, list),
+        f"{code} count={len(body) if isinstance(body, list) else '?'}",
+    )
 
     # non-admin: create second user without admin role
     plain_email = f"verify.user.{stamp}@asrax.in"
     code, body, _ = req(
         "POST",
         BASE + "/auth/register",
-        data={"email": plain_email, "password": test_password, "first_name": "Plain", "last_name": "User"},
+        data={
+            "email": plain_email,
+            "password": test_password,
+            "first_name": "Plain",
+            "last_name": "User",
+        },
     )
     record("register plain user", code == 201, f"{code}")
     code, users, _ = req(

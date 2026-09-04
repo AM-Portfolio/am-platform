@@ -5,7 +5,6 @@ from typing import Literal
 from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 import re
 
-
 _PASSWORD_POLICY = re.compile(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$")
 _PHONE_POLICY = re.compile(r"^\+?[1-9]\d{9,14}$")
 
@@ -21,9 +20,7 @@ def _validate_password(value: str) -> str:
 def _validate_phone(value: str) -> str:
     cleaned = re.sub(r"[\s\-()]", "", value.strip())
     if not _PHONE_POLICY.match(cleaned):
-        raise ValueError(
-            "Phone must be 10–15 digits, optionally starting with +"
-        )
+        raise ValueError("Phone must be 10–15 digits, optionally starting with +")
     return cleaned
 
 
@@ -52,6 +49,7 @@ class RegisterRequest(BaseModel):
         if value is None or not value.strip():
             return None
         return _validate_phone(value)
+
 
 class LoginRequest(BaseModel):
     username: str

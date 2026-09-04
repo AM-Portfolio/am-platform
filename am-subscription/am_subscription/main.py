@@ -1,4 +1,4 @@
-from contextlib import asynccontextmanager
+﻿from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
@@ -11,7 +11,13 @@ from am_subscription.api.webhook_router import router as webhook_router
 from am_subscription.core.config import get_settings
 from am_subscription.core.database import init_db
 from am_subscription.core.log_utils import get_logger
-from am_platform_common import APIException, InternalServerError, LoggingMiddleware, setup_logging
+from am_platform_common import (
+    APIException,
+    InternalServerError,
+    LoggingMiddleware,
+    setup_logging,
+)
+from am_subscription.services.kafka_consumer import consumer_instance
 
 settings = get_settings()
 setup_logging(env=settings.app_env, level=settings.log_level)
@@ -25,7 +31,9 @@ async def lifespan(_: FastAPI):
         extra={"port": settings.app_port, "lago_api": settings.lago_api_url},
     )
     await init_db()
+    await consumer_instance.start()
     yield
+    await consumer_instance.stop()
     logger.info("Shutting down am-subscription")
 
 
@@ -50,18 +58,28 @@ async def api_exception_handler(request: Request, exc: APIException) -> JSONResp
     if exc.status_code >= 500:
         logger.error(
             exc.message,
-            extra={**_request_context(request), "error_code": exc.error_code, "details": exc.details},
+            extra={
+                **_request_context(request),
+                "error_code": exc.error_code,
+                "details": exc.details,
+            },
         )
     else:
         logger.warning(
             exc.message,
-            extra={**_request_context(request), "error_code": exc.error_code, "details": exc.details},
+            extra={
+                **_request_context(request),
+                "error_code": exc.error_code,
+                "details": exc.details,
+            },
         )
     return JSONResponse(status_code=exc.status_code, content=exc.to_dict())
 
 
 @app.exception_handler(SQLAlchemyError)
-async def sqlalchemy_exception_handler(request: Request, exc: SQLAlchemyError) -> JSONResponse:
+async def sqlalchemy_exception_handler(
+    request: Request, exc: SQLAlchemyError
+) -> JSONResponse:
     logger.exception(
         "Database error",
         extra=_request_context(request),
@@ -80,7 +98,11 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
         "Unhandled exception",
         extra={**_request_context(request), "exception_type": type(exc).__name__},
     )
-    message = str(exc) if settings.app_env.lower() in ("dev", "local") else "Internal server error"
+    message = (
+        str(exc)
+        if settings.app_env.lower() in ("dev", "local")
+        else "Internal server error"
+    )
     body = InternalServerError(message=message, error_code="INTERNAL_SERVER_ERROR")
     return JSONResponse(status_code=body.status_code, content=body.to_dict())
 
@@ -94,3 +116,4 @@ app.include_router(plans_router)
 app.include_router(subscription_router)
 app.include_router(internal_router)
 app.include_router(webhook_router)
+

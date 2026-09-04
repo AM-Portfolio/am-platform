@@ -33,6 +33,16 @@ EVENT_TO_WORKFLOW: dict[str, dict[str, Any]] = {
         "category": "usage",
         "critical": False,
     },
+    "am.identity.deletion_requested.v1": {
+        "workflow_key": "identity.deletion_requested",
+        "category": "security",
+        "critical": True,
+    },
+    "user.permanently_deleted.v1": {
+        "workflow_key": "identity.account_deleted",
+        "category": "security",
+        "critical": True,
+    },
 }
 
 

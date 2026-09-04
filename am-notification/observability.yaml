@@ -1,0 +1,17 @@
+apiVersion: am.obs/v1
+kind: ServiceObservability
+service: am-notification
+tier: B
+runtime: python
+k8s_app_label: am-notification
+metrics_application: am-notification
+namespace: am-apps-preprod
+owners: [notification-team]
+signals:
+  bundle: tier-b-python-core
+  domain: [notification_sent_total, email_delivery_success_total]
+  include: []
+dashboard:
+  technical:
+    rows:
+      collapse: [row_k8s]

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Run am-platform services locally (used by per-module package.json)."""
+
 from __future__ import annotations
 
 import subprocess
@@ -9,7 +10,9 @@ from platform_env import PLATFORM_ROOT, identity_env, notification_env, subscrip
 from uvicorn_runner import build_uvicorn_args
 
 
-def run_uvicorn(module: str, *, reload: bool, env: dict[str, str], cwd_name: str) -> int:
+def run_uvicorn(
+    module: str, *, reload: bool, env: dict[str, str], cwd_name: str
+) -> int:
     port = env.get("APP_PORT", "8113")
     args = build_uvicorn_args(module, port=port, reload=reload)
     print(f"\n>>> {' '.join(args)}\n", flush=True)
@@ -45,7 +48,9 @@ def run_notification(*, reload: bool) -> int:
 
 def main() -> None:
     if len(sys.argv) < 2:
-        print("Usage: run_service.py <identity|subscription|notification> <dev|dev:prod>")
+        print(
+            "Usage: run_service.py <identity|subscription|notification> <dev|dev:prod>"
+        )
         sys.exit(1)
 
     service = sys.argv[1]

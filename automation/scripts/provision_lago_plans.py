@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Provision AM fintech plans in Lago (aligned with am-asrax Subscription.tsx)."""
+
 from __future__ import annotations
 
 import json
-import os
 import sys
 import urllib.error
 import urllib.request
@@ -61,7 +61,9 @@ def api_request(
 
 def ensure_metric(base_url: str, api_key: str, metric: dict) -> None:
     code = metric["code"]
-    status, existing = api_request(base_url, api_key, "GET", f"/api/v1/billable_metrics/{code}")
+    status, existing = api_request(
+        base_url, api_key, "GET", f"/api/v1/billable_metrics/{code}"
+    )
     if status == 200:
         print(f"  metric {code}: exists")
         return
@@ -76,7 +78,9 @@ def ensure_metric(base_url: str, api_key: str, metric: dict) -> None:
     }
     if metric.get("field_name"):
         payload["billable_metric"]["field_name"] = metric["field_name"]
-    status, result = api_request(base_url, api_key, "POST", "/api/v1/billable_metrics", payload)
+    status, result = api_request(
+        base_url, api_key, "POST", "/api/v1/billable_metrics", payload
+    )
     if status not in (200, 201):
         raise RuntimeError(f"Failed to create metric {code}: {status} {result}")
     print(f"  metric {code}: created")
@@ -84,7 +88,9 @@ def ensure_metric(base_url: str, api_key: str, metric: dict) -> None:
 
 def list_metrics(base_url: str, api_key: str) -> dict[str, str]:
     """Return metric code -> lago_id."""
-    status, result = api_request(base_url, api_key, "GET", "/api/v1/billable_metrics?per_page=100")
+    status, result = api_request(
+        base_url, api_key, "GET", "/api/v1/billable_metrics?per_page=100"
+    )
     if status != 200:
         raise RuntimeError(f"Failed to list metrics: {status} {result}")
     mapping: dict[str, str] = {}
@@ -93,7 +99,9 @@ def list_metrics(base_url: str, api_key: str) -> dict[str, str]:
     return mapping
 
 
-def package_charge(metric_id: str, metric_code: str, free_units: int, overage_inr: str = "10") -> dict:
+def package_charge(
+    metric_id: str, metric_code: str, free_units: int, overage_inr: str = "10"
+) -> dict:
     """Package charge: included units free, then overage_inr per unit."""
     return {
         "billable_metric_id": metric_id,
@@ -149,7 +157,9 @@ def build_plan_payload(plan: dict, currency: str, metric_ids: dict[str, str]) ->
     }
 
 
-def ensure_plan(base_url: str, api_key: str, plan: dict, currency: str, metric_ids: dict[str, str]) -> None:
+def ensure_plan(
+    base_url: str, api_key: str, plan: dict, currency: str, metric_ids: dict[str, str]
+) -> None:
     code = plan["code"]
     status, _ = api_request(base_url, api_key, "GET", f"/api/v1/plans/{code}")
     if status == 200:

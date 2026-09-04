@@ -27,7 +27,11 @@ async def novu_webhook(request: Request) -> APIResponse[dict]:
         )
         logger.info(
             "Novu webhook processed",
-            extra={"message_id": message_id, "subscriber_id": subscriber_id, "status": status},
+            extra={
+                "message_id": message_id,
+                "subscriber_id": subscriber_id,
+                "status": status,
+            },
         )
 
     return APIResponse(data={"received": True})

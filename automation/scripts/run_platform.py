@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Run am-platform services together; one crash does not stop the others."""
+
 from __future__ import annotations
 
 import os
@@ -25,9 +26,23 @@ class ServiceSpec:
 
 
 SERVICES: tuple[ServiceSpec, ...] = (
-    ServiceSpec("identity", "am_identity.main:app", "am-identity", identity_env, "8113"),
-    ServiceSpec("subscription", "am_subscription.main:app", "am-subscription", subscription_env, "8110"),
-    ServiceSpec("notification", "am_notification.main:app", "am-notification", notification_env, "8111"),
+    ServiceSpec(
+        "identity", "am_identity.main:app", "am-identity", identity_env, "8113"
+    ),
+    ServiceSpec(
+        "subscription",
+        "am_subscription.main:app",
+        "am-subscription",
+        subscription_env,
+        "8110",
+    ),
+    ServiceSpec(
+        "notification",
+        "am_notification.main:app",
+        "am-notification",
+        notification_env,
+        "8111",
+    ),
 )
 
 

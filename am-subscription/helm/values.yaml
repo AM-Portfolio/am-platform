@@ -209,6 +209,43 @@ configMap:
 # Empty stub — universal-chart batchSearch/scheduler templates require config to exist
 config: {}
 
+# Vault key→env mappings live here so base+env values alone are enough for CI
+# (central-deploy used to omit vault-mappings.yaml). Env files only override paths.
+vault:
+  secretPaths:
+    postgres:
+      mappings:
+        POSTGRES_HOST: "host"
+        POSTGRES_USER: "username"
+        POSTGRES_PASSWORD: "password"
+        AM_SUBSCRIPTION_POSTGRES_HOST: "host"
+        AM_SUBSCRIPTION_POSTGRES_PORT: "port"
+        AM_SUBSCRIPTION_DB_NAME: "AM_SUBSCRIPTION_DB_NAME"
+        AM_SUBSCRIPTION_DB_USER: "AM_SUBSCRIPTION_DB_USER"
+        AM_SUBSCRIPTION_DB_PASSWORD: "AM_SUBSCRIPTION_DB_PASSWORD"
+    subscription:
+      mappings:
+        AM_SUBSCRIPTION_CLIENT_ID: "AM_SUBSCRIPTION_CLIENT_ID"
+        AM_SUBSCRIPTION_CLIENT_SECRET: "AM_SUBSCRIPTION_CLIENT_SECRET"
+        LAGO_API_URL: "LAGO_API_URL"
+        LAGO_ORG_API_KEY: "LAGO_ORG_API_KEY"
+        LAGO_WEBHOOK_SECRET: "LAGO_WEBHOOK_SECRET"
+        AM_LAGO_CLIENT_ID: "AM_LAGO_CLIENT_ID"
+        AM_LAGO_CLIENT_SECRET: "AM_LAGO_CLIENT_SECRET"
+        DEFAULT_PLAN_CODE: "DEFAULT_PLAN_CODE"
+    lago:
+      mappings:
+        LAGO_API_URL: "LAGO_API_URL"
+        LAGO_ORG_API_KEY: "LAGO_ORG_API_KEY"
+    identity-oidc:
+      mappings:
+        OIDC_JWKS_URL: "OIDC_JWKS_URL"
+        OIDC_ISSUER: "OIDC_ISSUER"
+    service-oauth:
+      mappings:
+        OAUTH2_CLIENT_ID: "AM_SUBSCRIPTION_CLIENT_ID"
+        OAUTH2_CLIENT_SECRET: "AM_SUBSCRIPTION_CLIENT_SECRET"
+
 env:
   APP_ENV: production
   APP_NAME: am-subscription
@@ -238,19 +275,11 @@ resources:
     cpu: 100m
     memory: 256Mi
 
+# Host list is environment-specific — see values.preprod.yaml / values.prod.yaml
 ingress:
   enabled: true
   className: "traefik"
   annotations:
     kubernetes.io/ingress.class: "traefik"
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-    traefik.ingress.kubernetes.io/router.middlewares: >-
-      am-apps-preprod-global-cors@kubernetescrd,
-      am-apps-preprod-strip-prefix-apps@kubernetescrd
-  hosts:
-    - host: am.asrax.in
-      paths:
-        - path: /subscriptions
-          pathType: Prefix
-        - path: /webhooks/provider
-          pathType: Prefix
+  hosts: []

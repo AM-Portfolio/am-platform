@@ -139,15 +139,17 @@ resource "keycloak_openid_client" "am_web_client" {
   # Driven by var.valid_redirect_uris from per-env tfvars
   valid_redirect_uris = length(var.valid_redirect_uris) > 0 ? var.valid_redirect_uris : [
     "http://localhost:9000/*",
-    "https://am.munish.org/*",
+    "https://am-preprod.asrax.in/*",
     "https://am.asrax.in/*",
+    "https://am-dev.asrax.in/*",
   ]
 
   # Driven by var.web_origins from per-env tfvars
   web_origins = length(var.web_origins) > 0 ? var.web_origins : [
     "http://localhost:9000",
-    "https://am.munish.org",
+    "https://am-preprod.asrax.in",
     "https://am.asrax.in",
+    "https://am-dev.asrax.in",
   ]
 
   login_theme = ""
@@ -552,8 +554,8 @@ resource "keycloak_openid_client" "am_ios_client" {
   valid_redirect_uris = [
     "com.am.portfolio://*",            # iOS custom URL scheme
     "com.asrax.portfolio://*",
-    "https://am.munish.org/app/callback", # Universal link fallback
     "https://am.asrax.in/app/callback",
+    "https://am-preprod.asrax.in/app/callback",
     "http://localhost:9000/*",          # Dev/simulator fallback
   ]
 

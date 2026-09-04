@@ -25,13 +25,18 @@ def _correlation_id() -> str:
     return EventPublisher.new_correlation_id()
 
 
-@router.post("", response_model=APIResponse[SubscriptionDTO], status_code=status.HTTP_201_CREATED)
+@router.post(
+    "", response_model=APIResponse[SubscriptionDTO], status_code=status.HTTP_201_CREATED
+)
 async def create_subscription(
     payload: CreateSubscriptionRequest,
     context: AuthContext = Depends(require_auth_context()),
     service: SubscriptionService = Depends(get_subscription_service),
 ):
-    logger.info("POST /subscriptions", extra={"user_id": context.subject, "plan_code": payload.plan_code})
+    logger.info(
+        "POST /subscriptions",
+        extra={"user_id": context.subject, "plan_code": payload.plan_code},
+    )
     data = await service.get_or_create(
         context.subject,
         payload,

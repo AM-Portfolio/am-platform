@@ -72,7 +72,9 @@ class NovuProvider(INotificationProvider):
         payload: dict[str, Any] = {"subscriberId": user_id, "locale": locale}
         if email:
             payload["email"] = email
-        await self._request("POST", "/v1/subscribers", json=payload, expected=(200, 201))
+        await self._request(
+            "POST", "/v1/subscribers", json=payload, expected=(200, 201)
+        )
 
     async def trigger(
         self,
@@ -107,7 +109,9 @@ class NovuProvider(INotificationProvider):
         return items if isinstance(items, list) else []
 
     async def unread_count(self, user_id: str) -> int:
-        result = await self._request("GET", f"/v1/subscribers/{user_id}/notifications/unseen")
+        result = await self._request(
+            "GET", f"/v1/subscribers/{user_id}/notifications/unseen"
+        )
         count = result.get("data", {}).get("count", 0)
         return int(count)
 

@@ -26,8 +26,7 @@ def _feature_grid_html(*, compact: bool = False) -> str:
     for i in range(0, len(_FEATURES), 2):
         cells: list[str] = []
         for title, desc in _FEATURES[i : i + 2]:
-            cells.append(
-                f"""
+            cells.append(f"""
                 <td width="50%" valign="top" style="padding:4px;">
                   <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
                     style="background:{_PROMO_BG};border-radius:10px;">
@@ -39,8 +38,7 @@ def _feature_grid_html(*, compact: bool = False) -> str:
                     </tr>
                   </table>
                 </td>
-                """
-            )
+                """)
         if len(cells) == 1:
             cells.append('<td width="50%"></td>')
         rows.append(f"<tr>{''.join(cells)}</tr>")
@@ -57,13 +55,18 @@ def _shell(
     body: str,
     cta_label: str,
     cta_url: str,
+    app_home: str,
     show_feature_grid: bool = True,
     feature_compact: bool = False,
     secondary_cta_label: str | None = None,
     secondary_cta_url: str | None = None,
     value_line: str | None = None,
 ) -> str:
+    """Render branded HTML. ``app_home`` must come from Vault AUTH_UI_BASE_URL at runtime."""
+    if not app_home.strip():
+        raise ValueError("app_home is required (set AUTH_UI_BASE_URL from Vault)")
     safe_url = cta_url.replace('"', "&quot;")
+    home = app_home.rstrip("/").replace('"', "&quot;")
     features = _feature_grid_html(compact=feature_compact) if show_feature_grid else ""
     value_html = ""
     if value_line:
@@ -133,7 +136,7 @@ def _shell(
               &nbsp;·&nbsp;
               <a href="https://asrax.in" style="color:rgba(255,255,255,0.75);text-decoration:none;">asrax.in</a>
               &nbsp;·&nbsp;
-              <a href="https://am.asrax.in" style="color:rgba(255,255,255,0.75);text-decoration:none;">Open app</a>
+              <a href="{home}" style="color:rgba(255,255,255,0.75);text-decoration:none;">Open app</a>
             </td>
           </tr>
           <tr>
@@ -178,8 +181,13 @@ def _plain(
     return "\n".join(parts)
 
 
-def build_welcome_verify_email(*, action_url: str) -> tuple[str, str, str]:
-    """Marketing-ready welcome mail that also verifies email (single send)."""
+def build_welcome_verify_email(
+    *, action_url: str, app_home: str
+) -> tuple[str, str, str]:
+    """Marketing-ready welcome mail that also verifies email (single send).
+
+    ``app_home`` must be the runtime AUTH_UI_BASE_URL from Vault (no hardcoded host).
+    """
     subject = "Welcome to Asrax — verify your email"
     body = (
         "Your Asrax account is ready. Confirm your email to unlock the AM Investment "
@@ -191,27 +199,32 @@ def build_welcome_verify_email(*, action_url: str) -> tuple[str, str, str]:
         body=body,
         cta_label="Verify email",
         cta_url=action_url,
+        app_home=app_home,
         show_feature_grid=True,
         feature_compact=False,
         secondary_cta_label="Explore Asrax",
-        secondary_cta_url="https://am.asrax.in",
+        secondary_cta_url=app_home.rstrip("/"),
         value_line=_VALUE,
     )
-    return subject, html, _plain(
-        headline=subject,
-        body=body,
-        action_url=action_url,
-        include_features=True,
-        value_line=_VALUE,
+    return (
+        subject,
+        html,
+        _plain(
+            headline=subject,
+            body=body,
+            action_url=action_url,
+            include_features=True,
+            value_line=_VALUE,
+        ),
     )
 
 
-def build_verify_email(*, action_url: str) -> tuple[str, str, str]:
+def build_verify_email(*, action_url: str, app_home: str) -> tuple[str, str, str]:
     """Resend / verify path — same marketing welcome+verify experience."""
-    return build_welcome_verify_email(action_url=action_url)
+    return build_welcome_verify_email(action_url=action_url, app_home=app_home)
 
 
-def build_reset_password(*, action_url: str) -> tuple[str, str, str]:
+def build_reset_password(*, action_url: str, app_home: str) -> tuple[str, str, str]:
     subject = "Reset your Asrax password"
     body = (
         "Choose a new password for your Asrax account. "
@@ -223,15 +236,20 @@ def build_reset_password(*, action_url: str) -> tuple[str, str, str]:
         body=body,
         cta_label="Reset password",
         cta_url=action_url,
+        app_home=app_home,
         show_feature_grid=True,
         feature_compact=True,
         value_line=None,
     )
-    return subject, html, _plain(
-        headline=subject,
-        body=body,
-        action_url=action_url,
-        include_features=True,
+    return (
+        subject,
+        html,
+        _plain(
+            headline=subject,
+            body=body,
+            action_url=action_url,
+            include_features=True,
+        ),
     )
 
 

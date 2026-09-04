@@ -7,7 +7,10 @@ from am_subscription.core.config import SubscriptionSettings, get_settings
 from am_subscription.core.database import get_db_session
 from am_subscription.core.plan_catalog import PlanCatalog, get_plan_catalog
 from am_subscription.providers.lago_provider import LagoProvider
-from am_subscription.services.entitlement_service import EntitlementService, MeteringService
+from am_subscription.services.entitlement_service import (
+    EntitlementService,
+    MeteringService,
+)
 from am_subscription.services.event_publisher import EventPublisher
 from am_subscription.services.subscription_service import SubscriptionService
 
@@ -29,7 +32,9 @@ def get_subscription_service(
     events: EventPublisher = Depends(get_event_publisher),
     settings: SubscriptionSettings = Depends(get_settings),
 ) -> SubscriptionService:
-    return SubscriptionService(session, catalog, provider, events, settings.default_plan_code)
+    return SubscriptionService(
+        session, catalog, provider, events, settings.default_plan_code
+    )
 
 
 def get_entitlement_service(

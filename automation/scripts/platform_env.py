@@ -1,4 +1,5 @@
 """Shared paths and env loading for am-platform dev scripts."""
+
 from __future__ import annotations
 
 import os
@@ -35,11 +36,15 @@ def notification_env() -> dict[str, str]:
     env["APP_NAME"] = "am-notification"
     env["APP_PORT"] = "8111"
     mongo_uri = env.get("AM_NOTIFICATION_MONGO_URI", "")
-    if (not mongo_uri or mongo_uri.startswith("<")) and not env.get("AM_NOTIFICATION_MONGO_HOST"):
+    if (not mongo_uri or mongo_uri.startswith("<")) and not env.get(
+        "AM_NOTIFICATION_MONGO_HOST"
+    ):
         env["AM_NOTIFICATION_MONGO_HOST"] = "mongodb.asrax.in"
         env.setdefault("AM_NOTIFICATION_MONGO_PORT", "8888")
     kafka_bootstrap = env.get("KAFKA_BOOTSTRAP_SERVERS", "")
-    if ".svc.cluster.local" in kafka_bootstrap and not env.get("AM_NOTIFICATION_KAFKA_BOOTSTRAP_SERVERS"):
+    if ".svc.cluster.local" in kafka_bootstrap and not env.get(
+        "AM_NOTIFICATION_KAFKA_BOOTSTRAP_SERVERS"
+    ):
         env["AM_NOTIFICATION_KAFKA_BOOTSTRAP_SERVERS"] = "kafka.asrax.in:8890"
     return env
 

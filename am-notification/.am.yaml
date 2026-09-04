@@ -1,0 +1,15 @@
+name: am-notification
+release: am-notification
+image: ghcr.io/am-portfolio/am-notification
+runtime: python
+language: python
+dockerfile: Dockerfile
+context: .
+github:
+  repo: AM-Portfolio/am-platform
+  deploy_workflow: central-build-publish.yml
+  service: am-notification
+  ref: main
+deploy:
+  via: helm
+  rebuild: on-change

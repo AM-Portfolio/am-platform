@@ -33,11 +33,16 @@ vault:
     service-oauth:
       path: "apps/data/dev/services/am-notification"
 
+# Dev app host only
 ingress:
+  enabled: true
+  className: "traefik"
   annotations:
+    kubernetes.io/ingress.class: "traefik"
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    # CORS only — service routes already include /notifications (do not strip).
     traefik.ingress.kubernetes.io/router.middlewares: >-
-      am-apps-dev-dev-global-cors@kubernetescrd,
-      am-apps-dev-dev-strip-prefix@kubernetescrd
+      am-apps-dev-dev-global-cors@kubernetescrd
   hosts:
     - host: am-dev.asrax.in
       paths:

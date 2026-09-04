@@ -1,3 +1,5 @@
+# DEPRECATED for CI completeness — mappings are also in values.yaml so base+env
+# files alone work. Kept for workflows that still pass -f vault-mappings.yaml.
 vault:
   secretPaths:
     postgres:
