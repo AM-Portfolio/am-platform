@@ -25,7 +25,8 @@ jobs:
   publish:
     name: Publish AM Identity
     permissions:
-      contents: read
+      # Nested deploy-preprod pushes helm/ci-image.yaml on feature branches.
+      contents: write
       packages: write
     uses: AM-Portfolio/am-pipelines/.github/workflows/central-build-publish.yml@main
     with:
