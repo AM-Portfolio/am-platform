@@ -10,7 +10,11 @@ from am_identity.deps import get_identity_provider
 from am_identity.api.auth_deps import require_user_context
 from am_identity.providers.interface import IIdentityProvider
 from am_identity.schemas.security import LoginSessionResponse, SecurityEventResponse
-from am_identity.schemas.user import UpdateUserSettingsRequest, UserProfileResponse
+from am_identity.schemas.user import (
+    AccountDeletionRequest,
+    UpdateUserSettingsRequest,
+    UserProfileResponse,
+)
 from am_identity.services.bff_session_service import bff_session_service
 from am_identity.services.cookie_utils import clear_session_cookie
 from am_identity.services.login_session_service import login_session_service

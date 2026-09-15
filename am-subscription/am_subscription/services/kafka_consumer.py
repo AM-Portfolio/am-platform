@@ -12,9 +12,14 @@ from am_subscription.core.plan_catalog import get_plan_catalog
 from am_subscription.models.db import SubscriptionState
 from am_subscription.providers.lago_provider import LagoProvider
 from am_subscription.services.event_publisher import EventPublisher
+from am_subscription.services.grant_service import GrantService
+from am_subscription.services.referral_service import ReferralService
 from am_subscription.services.subscription_service import SubscriptionService
 
 logger = logging.getLogger(__name__)
+
+EVENT_USER_REGISTERED = "am.identity.user_registered.v1"
+EVENT_EMAIL_VERIFIED = "am.identity.email_verified.v1"
 
 
 class SubscriptionKafkaConsumer:
@@ -22,7 +27,6 @@ class SubscriptionKafkaConsumer:
         self.settings = get_settings()
         self.consumer: AIOKafkaConsumer | None = None
         self._task: asyncio.Task | None = None
-        self._session_factory = get_session_factory()
         self._lago_provider = LagoProvider(self.settings)
         self._catalog = get_plan_catalog()
         self._events = EventPublisher(self.settings)
@@ -96,6 +100,14 @@ class SubscriptionKafkaConsumer:
         if not event_type:
             return
 
+        if event_type == EVENT_USER_REGISTERED:
+            await self._handle_user_registered(payload)
+            return
+
+        if event_type == EVENT_EMAIL_VERIFIED:
+            await self._handle_email_verified(payload)
+            return
+
         if event_type == "user.permanently_deleted.v1":
             data = payload.get("data") or payload.get("payload") or {}
             user_id = data.get("user_id") or payload.get("user_id")
@@ -104,7 +116,7 @@ class SubscriptionKafkaConsumer:
 
             logger.info(f"Handling permanent deletion for user: {user_id}")
             correlation_id = EventPublisher.new_correlation_id()
-            async with self._session_factory() as session:
+            async with get_session_factory()() as session:
                 sub_service = SubscriptionService(
                     session,
                     self._catalog,
@@ -149,6 +161,79 @@ class SubscriptionKafkaConsumer:
                             )
                             await asyncio.sleep(retry_delay)
                             retry_delay *= 2
+
+    async def _handle_user_registered(self, envelope: dict[str, Any]) -> None:
+        data = envelope.get("payload") or envelope.get("data") or {}
+        user_id = data.get("user_id") or envelope.get("user_id")
+        if not user_id:
+            logger.warning("user_registered missing user_id; skipping")
+            return
+        event_id = envelope.get("event_id")
+        if event_id is not None:
+            event_id = str(event_id)
+        idempotency_key = envelope.get("idempotency_key")
+        async with get_session_factory()() as session:
+            referral = ReferralService(session, self.settings)
+            row = await referral.attribute(
+                referee_user_id=str(user_id),
+                email=data.get("email"),
+                referral_code=data.get("referral_code"),
+                device_id=data.get("device_id"),
+                event_id=event_id,
+                idempotency_key=idempotency_key,
+            )
+            if row is None:
+                logger.info(
+                    "user_registered: no attribution (missing/invalid code or device) user_id=%s",
+                    user_id,
+                )
+            else:
+                logger.info(
+                    "user_registered: attribution status=%s reason=%s user_id=%s",
+                    row.status.value,
+                    row.reject_reason,
+                    user_id,
+                )
+
+    async def _handle_email_verified(self, envelope: dict[str, Any]) -> None:
+        data = envelope.get("payload") or envelope.get("data") or {}
+        user_id = data.get("user_id") or envelope.get("user_id")
+        if not user_id:
+            logger.warning("email_verified missing user_id; skipping")
+            return
+        event_id = envelope.get("event_id")
+        if event_id is not None:
+            event_id = str(event_id)
+        async with get_session_factory()() as session:
+            referral = ReferralService(session, self.settings)
+            subs = SubscriptionService(
+                session,
+                self._catalog,
+                self._lago_provider,
+                self._events,
+                self.settings.default_plan_code,
+            )
+            grants = GrantService(
+                session,
+                self.settings,
+                subs,
+                referral,
+                self._lago_provider,
+                self._events,
+            )
+            result = await grants.handle_email_verified(
+                user_id=str(user_id),
+                email=data.get("email"),
+                referral_code=data.get("referral_code"),
+                device_id=data.get("device_id"),
+                event_id=event_id,
+                idempotency_key=envelope.get("idempotency_key"),
+            )
+            logger.info(
+                "email_verified processed user_id=%s result=%s",
+                user_id,
+                result,
+            )
 
     async def stop(self) -> None:
         if self._task:

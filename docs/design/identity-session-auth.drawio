@@ -1,6 +1,6 @@
 <mxfile host="65bd71144e">
     <diagram id="git-branches" name="1 Git Branches">
-        <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+        <mxGraphModel dx="1066" dy="1099" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -44,7 +44,7 @@
         </mxGraphModel>
     </diagram>
     <diagram id="architecture" name="2 Architecture">
-        <mxGraphModel dx="570" dy="553" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+        <mxGraphModel dx="1243" dy="1282" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -82,7 +82,7 @@
         </mxGraphModel>
     </diagram>
     <diagram id="qr-flow" name="3 QR Web Login">
-        <mxGraphModel dx="570" dy="553" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
+        <mxGraphModel dx="995" dy="1025" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="900" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -131,7 +131,7 @@
         </mxGraphModel>
     </diagram>
     <diagram id="otp-flow" name="4 Web OTP Login">
-        <mxGraphModel dx="570" dy="553" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="700" math="0" shadow="0">
+        <mxGraphModel dx="933" dy="961" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="700" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -164,7 +164,7 @@
         </mxGraphModel>
     </diagram>
     <diagram id="refresh-flow" name="5 Session Refresh">
-        <mxGraphModel dx="570" dy="553" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="700" math="0" shadow="0">
+        <mxGraphModel dx="933" dy="961" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="700" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
@@ -208,97 +208,97 @@
         </mxGraphModel>
     </diagram>
     <diagram id="alerts-flow" name="6 Login Alerts">
-        <mxGraphModel dx="1200" dy="700" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="700" math="0" shadow="0">
+        <mxGraphModel dx="37720" dy="37780" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="700" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
-                <mxCell id="t" value="New Device Login Alerts (Phase 5)" style="text;html=1;fontSize=16;fontStyle=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+                <mxCell id="t" value="New Device Login Alerts (Phase 5)" style="text;html=1;fontSize=16;fontStyle=1;strokeColor=none;fillColor=none;" parent="1" vertex="1">
                     <mxGeometry x="380" y="20" width="400" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="login" value="New login (web or mobile)" style="rounded=1;fillColor=#dae8fc;" vertex="1" parent="1">
+                <mxCell id="login" value="New login (web or mobile)" style="rounded=1;fillColor=#dae8fc;" parent="1" vertex="1">
                     <mxGeometry x="80" y="100" width="180" height="50" as="geometry"/>
                 </mxCell>
-                <mxCell id="trust" value="Compute machine_trust_key&#10;(IP subnet + OS + user)" style="rhombus;fillColor=#fff2cc;" vertex="1" parent="1">
+                <mxCell id="trust" value="Compute machine_trust_key&#10;(IP subnet + OS + user)" style="rhombus;fillColor=#fff2cc;" parent="1" vertex="1">
                     <mxGeometry x="100" y="200" width="140" height="80" as="geometry"/>
                 </mxCell>
-                <mxCell id="yes" value="YES → security_event + push FCM/APNs&#10;+ web in-app banner if tab active" style="rounded=1;fillColor=#f8cecc;" vertex="1" parent="1">
+                <mxCell id="yes" value="YES → security_event + push FCM/APNs&#10;+ web in-app banner if tab active" style="rounded=1;fillColor=#f8cecc;" parent="1" vertex="1">
                     <mxGeometry x="320" y="280" width="280" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="no" value="NO → history row only&#10;(e.g. 2nd browser same laptop)" style="rounded=1;fillColor=#d5e8d4;" vertex="1" parent="1">
+                <mxCell id="no" value="NO → history row only&#10;(e.g. 2nd browser same laptop)" style="rounded=1;fillColor=#d5e8d4;" parent="1" vertex="1">
                     <mxGeometry x="320" y="380" width="280" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="hist" value="Always: login_sessions row&#10;browser + geo + time" style="rounded=1;fillColor=#f5f5f5;" vertex="1" parent="1">
+                <mxCell id="hist" value="Always: login_sessions row&#10;browser + geo + time" style="rounded=1;fillColor=#f5f5f5;" parent="1" vertex="1">
                     <mxGeometry x="80" y="400" width="200" height="60" as="geometry"/>
                 </mxCell>
-                <mxCell id="ae1" edge="1" parent="1" source="login" target="trust" style="endArrow=classic;html=1;"/>
-                <mxCell id="ae2" edge="1" parent="1" source="trust" target="yes" style="endArrow=classic;html=1;" value="first seen"/>
-                <mxCell id="ae3" edge="1" parent="1" source="trust" target="no" style="endArrow=classic;html=1;" value="known"/>
-                <mxCell id="ae4" edge="1" parent="1" source="login" target="hist" style="endArrow=classic;html=1;dashed=1;"/>
+                <mxCell id="ae1" style="endArrow=classic;html=1;" parent="1" source="login" target="trust" edge="1"/>
+                <mxCell id="ae2" value="first seen" style="endArrow=classic;html=1;" parent="1" source="trust" target="yes" edge="1"/>
+                <mxCell id="ae3" value="known" style="endArrow=classic;html=1;" parent="1" source="trust" target="no" edge="1"/>
+                <mxCell id="ae4" style="endArrow=classic;html=1;dashed=1;" parent="1" source="login" target="hist" edge="1"/>
             </root>
         </mxGraphModel>
     </diagram>
     <diagram id="phase-roadmap" name="7 Phase Roadmap">
-        <mxGraphModel dx="1400" dy="500" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="500" math="0" shadow="0">
+        <mxGraphModel dx="746" dy="769" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="500" math="0" shadow="0">
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
-                <mxCell id="t" value="Implementation Phase Order" style="text;html=1;fontSize=16;fontStyle=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+                <mxCell id="t" value="Implementation Phase Order" style="text;html=1;fontSize=16;fontStyle=1;strokeColor=none;fillColor=none;" parent="1" vertex="1">
                     <mxGeometry x="500" y="10" width="300" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="ph0" value="0 Baseline" style="rounded=1;fillColor=#f5f5f5;" vertex="1" parent="1">
+                <mxCell id="ph0" value="0 Baseline" style="rounded=1;fillColor=#f5f5f5;" parent="1" vertex="1">
                     <mxGeometry x="20" y="80" width="80" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="ph1" value="1 Refresh" style="rounded=1;fillColor=#dae8fc;" vertex="1" parent="1">
+                <mxCell id="ph1" value="1 Refresh" style="rounded=1;fillColor=#dae8fc;" parent="1" vertex="1">
                     <mxGeometry x="110" y="80" width="80" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="ph2" value="2 Keycloak" style="rounded=1;fillColor=#d5e8d4;" vertex="1" parent="1">
+                <mxCell id="ph2" value="2 Keycloak" style="rounded=1;fillColor=#d5e8d4;" parent="1" vertex="1">
                     <mxGeometry x="200" y="80" width="80" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="ph3" value="3 AppLock" style="rounded=1;fillColor=#dae8fc;" vertex="1" parent="1">
+                <mxCell id="ph3" value="3 AppLock" style="rounded=1;fillColor=#dae8fc;" parent="1" vertex="1">
                     <mxGeometry x="290" y="80" width="80" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="ph4a" value="4a Backend" style="rounded=1;fillColor=#d5e8d4;" vertex="1" parent="1">
+                <mxCell id="ph4a" value="4a Backend" style="rounded=1;fillColor=#d5e8d4;" parent="1" vertex="1">
                     <mxGeometry x="380" y="80" width="80" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="ph4bc" value="4b+4c UI" style="rounded=1;fillColor=#dae8fc;" vertex="1" parent="1">
+                <mxCell id="ph4bc" value="4b+4c UI" style="rounded=1;fillColor=#dae8fc;" parent="1" vertex="1">
                     <mxGeometry x="470" y="80" width="80" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="ph4e" value="4e Harden" style="rounded=1;fillColor=#fff2cc;" vertex="1" parent="1">
+                <mxCell id="ph4e" value="4e Harden" style="rounded=1;fillColor=#fff2cc;" parent="1" vertex="1">
                     <mxGeometry x="560" y="80" width="80" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="ph4f" value="4f OTP" style="rounded=1;fillColor=#dae8fc;" vertex="1" parent="1">
+                <mxCell id="ph4f" value="4f OTP" style="rounded=1;fillColor=#dae8fc;" parent="1" vertex="1">
                     <mxGeometry x="650" y="80" width="80" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="ph4d" value="4d Polish" style="rounded=1;fillColor=#f5f5f5;" vertex="1" parent="1">
+                <mxCell id="ph4d" value="4d Polish" style="rounded=1;fillColor=#f5f5f5;" parent="1" vertex="1">
                     <mxGeometry x="740" y="80" width="80" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="ph5" value="5 Alerts" style="rounded=1;fillColor=#e1d5e7;" vertex="1" parent="1">
+                <mxCell id="ph5" value="5 Alerts" style="rounded=1;fillColor=#e1d5e7;" parent="1" vertex="1">
                     <mxGeometry x="830" y="80" width="80" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="ph6" value="6 Sessions" style="rounded=1;fillColor=#e1d5e7;" vertex="1" parent="1">
+                <mxCell id="ph6" value="6 Sessions" style="rounded=1;fillColor=#e1d5e7;" parent="1" vertex="1">
                     <mxGeometry x="920" y="80" width="80" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="ph7" value="7 QA" style="rounded=1;fillColor=#f5f5f5;" vertex="1" parent="1">
+                <mxCell id="ph7" value="7 QA" style="rounded=1;fillColor=#f5f5f5;" parent="1" vertex="1">
                     <mxGeometry x="1010" y="80" width="80" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="ph8" value="8 Trading" style="rounded=1;fillColor=#f8cecc;" vertex="1" parent="1">
+                <mxCell id="ph8" value="8 Trading" style="rounded=1;fillColor=#f8cecc;" parent="1" vertex="1">
                     <mxGeometry x="1100" y="80" width="80" height="40" as="geometry"/>
                 </mxCell>
-                <mxCell id="leg" value="Blue = am-modern-ui · Green = am-platform · Purple = both · Yellow = security · Red = buy/sell" style="text;html=1;fontSize=11;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+                <mxCell id="leg" value="Blue = am-modern-ui · Green = am-platform · Purple = both · Yellow = security · Red = buy/sell" style="text;html=1;fontSize=11;strokeColor=none;fillColor=none;" parent="1" vertex="1">
                     <mxGeometry x="20" y="160" width="800" height="30" as="geometry"/>
                 </mxCell>
-                <mxCell id="pe1" edge="1" parent="1" source="ph0" target="ph1" style="endArrow=classic;html=1;"/>
-                <mxCell id="pe2" edge="1" parent="1" source="ph1" target="ph2" style="endArrow=classic;html=1;"/>
-                <mxCell id="pe3" edge="1" parent="1" source="ph2" target="ph3" style="endArrow=classic;html=1;"/>
-                <mxCell id="pe4" edge="1" parent="1" source="ph3" target="ph4a" style="endArrow=classic;html=1;"/>
-                <mxCell id="pe5" edge="1" parent="1" source="ph4a" target="ph4bc" style="endArrow=classic;html=1;"/>
-                <mxCell id="pe6" edge="1" parent="1" source="ph4bc" target="ph4e" style="endArrow=classic;html=1;"/>
-                <mxCell id="pe7" edge="1" parent="1" source="ph4e" target="ph4f" style="endArrow=classic;html=1;"/>
-                <mxCell id="pe8" edge="1" parent="1" source="ph4f" target="ph4d" style="endArrow=classic;html=1;"/>
-                <mxCell id="pe9" edge="1" parent="1" source="ph4d" target="ph5" style="endArrow=classic;html=1;"/>
-                <mxCell id="pe10" edge="1" parent="1" source="ph5" target="ph6" style="endArrow=classic;html=1;"/>
-                <mxCell id="pe11" edge="1" parent="1" source="ph6" target="ph7" style="endArrow=classic;html=1;"/>
-                <mxCell id="pe12" edge="1" parent="1" source="ph7" target="ph8" style="endArrow=classic;html=1;dashed=1;"/>
+                <mxCell id="pe1" style="endArrow=classic;html=1;" parent="1" source="ph0" target="ph1" edge="1"/>
+                <mxCell id="pe2" style="endArrow=classic;html=1;" parent="1" source="ph1" target="ph2" edge="1"/>
+                <mxCell id="pe3" style="endArrow=classic;html=1;" parent="1" source="ph2" target="ph3" edge="1"/>
+                <mxCell id="pe4" style="endArrow=classic;html=1;" parent="1" source="ph3" target="ph4a" edge="1"/>
+                <mxCell id="pe5" style="endArrow=classic;html=1;" parent="1" source="ph4a" target="ph4bc" edge="1"/>
+                <mxCell id="pe6" style="endArrow=classic;html=1;" parent="1" source="ph4bc" target="ph4e" edge="1"/>
+                <mxCell id="pe7" style="endArrow=classic;html=1;" parent="1" source="ph4e" target="ph4f" edge="1"/>
+                <mxCell id="pe8" style="endArrow=classic;html=1;" parent="1" source="ph4f" target="ph4d" edge="1"/>
+                <mxCell id="pe9" style="endArrow=classic;html=1;" parent="1" source="ph4d" target="ph5" edge="1"/>
+                <mxCell id="pe10" style="endArrow=classic;html=1;" parent="1" source="ph5" target="ph6" edge="1"/>
+                <mxCell id="pe11" style="endArrow=classic;html=1;" parent="1" source="ph6" target="ph7" edge="1"/>
+                <mxCell id="pe12" style="endArrow=classic;html=1;dashed=1;" parent="1" source="ph7" target="ph8" edge="1"/>
             </root>
         </mxGraphModel>
     </diagram>

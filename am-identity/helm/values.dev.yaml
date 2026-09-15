@@ -16,6 +16,8 @@ vault:
   secretPaths:
     identity:
       path: "apps/data/dev/services/am-identity"
+    kafka:
+      path: "apps/data/dev/infra/kafka"
 
 ingress:
   annotations:
@@ -31,3 +33,5 @@ ingress:
 env:
   APP_ENV: dev
   LOG_LEVEL: DEBUG
+  # Keep false until dev Kafka SCRAM is verified; enable when probing referral E2E on am-dev.
+  KAFKA_ENABLED: "false"

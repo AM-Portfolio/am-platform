@@ -13,6 +13,8 @@ def _provider() -> KeycloakIdentityProvider:
         OIDC_JWKS_URL="http://localhost/auth/realms/am-realm/protocol/openid-connect/certs",
         AM_IDENTITY_CLIENT_SECRET="svc-secret",
         GOOGLE_CLIENT_ID="test-google-client",
+        ALLOWED_GOOGLE_REDIRECT_URIS="http://localhost/callback",
+        AUTH_UI_BASE_URL="http://localhost:9000",
     )
     return KeycloakIdentityProvider(settings)
 

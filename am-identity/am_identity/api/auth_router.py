@@ -62,7 +62,11 @@ async def google_auth_url(
     payload: GoogleAuthURLRequest,
     provider: IIdentityProvider = Depends(get_identity_provider),
 ):
-    return await provider.build_google_auth_url(payload.redirect_uri)
+    return await provider.build_google_auth_url(
+        payload.redirect_uri,
+        referral_code=payload.referral_code,
+        device_id=payload.device_id,
+    )
 
 
 @router.post("/google/callback", response_model=TokenResponse)
@@ -71,7 +75,13 @@ async def google_callback(
     request: Request,
     provider: IIdentityProvider = Depends(get_identity_provider),
 ):
-    tokens = await provider.authenticate_google(payload.code, payload.state, payload.redirect_uri)
+    tokens = await provider.authenticate_google(
+        payload.code,
+        payload.state,
+        payload.redirect_uri,
+        referral_code=payload.referral_code,
+        device_id=payload.device_id,
+    )
     record_token_login(request, tokens, platform="web")
     return tokens
 
@@ -82,7 +92,11 @@ async def google_token(
     request: Request,
     provider: IIdentityProvider = Depends(get_identity_provider),
 ):
-    tokens = await provider.authenticate_google_token(payload.id_token)
+    tokens = await provider.authenticate_google_token(
+        payload.id_token,
+        referral_code=payload.referral_code,
+        device_id=payload.device_id,
+    )
     record_token_login(request, tokens, platform="web")
     return tokens
 

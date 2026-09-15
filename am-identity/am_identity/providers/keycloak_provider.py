@@ -14,6 +14,16 @@ from fastapi import HTTPException, status
 from jwt import InvalidTokenError, PyJWKClient, PyJWKClientConnectionError
 
 from am_identity.core.config import IdentitySettings
+from am_identity.core.kafka import (
+    ATTR_DEVICE_ID,
+    ATTR_EMAIL_VERIFIED_EVENT,
+    ATTR_REFERRAL_CODE,
+    ATTR_USER_REGISTERED_EVENT,
+    normalize_optional_str,
+    normalize_referral_code,
+    publish_email_verified,
+    publish_user_registered,
+)
 from am_identity.email.smtp_client import SmtpNotConfiguredError, send_auth_email
 from am_identity.email.templates import build_reset_password, build_welcome_verify_email
 from am_identity.email.tokens import (
@@ -43,6 +53,10 @@ _AUTH_MAIL_PROFILE_ATTRS = (
     _RESET_CODE_ATTR,
     _VERIFY_TOKEN_ATTR,
     _RESET_TOKEN_ATTR,
+    ATTR_REFERRAL_CODE,
+    ATTR_DEVICE_ID,
+    ATTR_USER_REGISTERED_EVENT,
+    ATTR_EMAIL_VERIFIED_EVENT,
 )
 _JWKS_REQUEST_HEADERS = {
     "User-Agent": "am-identity-service/1.0",
@@ -100,7 +114,7 @@ class KeycloakIdentityProvider(IIdentityProvider):
             "User-Agent": "am-identity-service/1.0",
             "Accept": "application/json",
         }
-        self._google_states: dict[str, tuple[str, float]] = {}
+        self._google_states: dict[str, dict[str, Any]] = {}
         self.client = httpx.AsyncClient(
             timeout=self._session_timeout, verify=settings.verify_ssl
         )
@@ -173,13 +187,23 @@ class KeycloakIdentityProvider(IIdentityProvider):
         users = response.json()
         return users[0] if users else None
 
-    async def _ensure_google_user(self, claims: dict[str, Any]) -> str:
+    async def _ensure_google_user(
+        self,
+        claims: dict[str, Any],
+        *,
+        referral_code: str | None = None,
+        device_id: str | None = None,
+    ) -> tuple[str, bool]:
+        """Provision/link Google user. Returns (user_id, created_new)."""
         email = str(claims["email"])
         google_sub = str(claims["sub"])
         admin_token = await self._get_admin_access_token()
         existing = await self._find_user_by_email(email, admin_token)
+        created_new = existing is None
+        code = normalize_referral_code(referral_code)
+        device = normalize_optional_str(device_id)
         if existing is None:
-            payload = {
+            payload: dict[str, Any] = {
                 "username": email,
                 "email": email,
                 "enabled": True,
@@ -187,6 +211,13 @@ class KeycloakIdentityProvider(IIdentityProvider):
                 "firstName": claims.get("given_name") or claims.get("name") or email,
                 "lastName": claims.get("family_name") or "",
             }
+            attrs: dict[str, list[str]] = {}
+            if code:
+                attrs[ATTR_REFERRAL_CODE] = [code]
+            if device:
+                attrs[ATTR_DEVICE_ID] = [device]
+            if attrs:
+                payload["attributes"] = attrs
             async with httpx.AsyncClient(
                 timeout=self._session_timeout, verify=self.settings.verify_ssl
             ) as client:
@@ -229,7 +260,154 @@ class KeycloakIdentityProvider(IIdentityProvider):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Failed to link Google identity: {link_response.text}",
             )
-        return user_id
+        return user_id, created_new
+
+    async def _store_signup_attribution(
+        self,
+        user_id: str,
+        *,
+        referral_code: str | None,
+        device_id: str | None,
+    ) -> tuple[str | None, str | None]:
+        code = normalize_referral_code(referral_code)
+        device = normalize_optional_str(device_id)
+        updates: dict[str, str | None] = {}
+        if code is not None:
+            updates[ATTR_REFERRAL_CODE] = code
+        if device is not None:
+            updates[ATTR_DEVICE_ID] = device
+        if updates:
+            await self._set_user_attrs(user_id, updates)
+        return code, device
+
+    async def _signup_attrs_for_user(
+        self, user_id: str
+    ) -> tuple[str | None, str | None, str | None]:
+        """Return (email, referral_code, device_id) from Keycloak user."""
+        admin_token = await self._get_admin_access_token()
+        user = await self._get_raw_user(user_id, admin_token)
+        email = user.get("email") or user.get("username") or ""
+        return (
+            str(email) if email else "",
+            self._attr_first(user, ATTR_REFERRAL_CODE),
+            self._attr_first(user, ATTR_DEVICE_ID),
+        )
+
+    async def _emit_user_registered(
+        self,
+        *,
+        user_id: str,
+        email: str,
+        referral_code: str | None,
+        device_id: str | None,
+    ) -> bool:
+        """Publish user_registered at most once per user. Returns True if published."""
+        admin_token = await self._get_admin_access_token()
+        user = await self._get_raw_user(user_id, admin_token)
+        if self._attr_first(user, ATTR_USER_REGISTERED_EVENT) == "1":
+            return False
+        try:
+            await publish_user_registered(
+                user_id=user_id,
+                email=email,
+                referral_code=referral_code,
+                device_id=device_id,
+            )
+        except Exception:
+            logger.exception(
+                "failed_to_publish_user_registered user_id=%s", user_id
+            )
+            return False
+        try:
+            await self._set_user_attrs(user_id, {ATTR_USER_REGISTERED_EVENT: "1"})
+        except Exception:
+            logger.exception(
+                "failed_to_persist_user_registered_event_flag user_id=%s", user_id
+            )
+        return True
+
+    async def _emit_email_verified_once(
+        self,
+        *,
+        user_id: str,
+        email: str | None = None,
+        referral_code: str | None = None,
+        device_id: str | None = None,
+    ) -> bool:
+        """Publish email_verified at most once per user. Returns True if published."""
+        admin_token = await self._get_admin_access_token()
+        user = await self._get_raw_user(user_id, admin_token)
+        if self._attr_first(user, ATTR_EMAIL_VERIFIED_EVENT) == "1":
+            return False
+        resolved_email = email or user.get("email") or user.get("username") or ""
+        code = (
+            referral_code
+            if referral_code is not None
+            else self._attr_first(user, ATTR_REFERRAL_CODE)
+        )
+        device = (
+            device_id
+            if device_id is not None
+            else self._attr_first(user, ATTR_DEVICE_ID)
+        )
+        try:
+            await publish_email_verified(
+                user_id=user_id,
+                email=str(resolved_email),
+                referral_code=code,
+                device_id=device,
+            )
+        except Exception:
+            logger.exception(
+                "failed_to_publish_email_verified user_id=%s", user_id
+            )
+            return False
+        try:
+            await self._set_user_attrs(user_id, {ATTR_EMAIL_VERIFIED_EVENT: "1"})
+        except Exception:
+            logger.exception(
+                "failed_to_persist_email_verified_event_flag user_id=%s", user_id
+            )
+        return True
+
+    async def _maybe_capture_broker_google_signup(
+        self,
+        tokens: dict[str, Any],
+        *,
+        referral_code: str | None,
+        device_id: str | None,
+    ) -> None:
+        """Best-effort lifecycle events for Keycloak Google broker first login."""
+        access_token = tokens.get("access_token")
+        if not access_token:
+            return
+        info = await self.get_current_user_info(access_token)
+        user_id = info.get("sub")
+        if not user_id:
+            return
+        email = str(info.get("email") or "")
+        code = normalize_referral_code(referral_code)
+        device = normalize_optional_str(device_id)
+        if code or device:
+            await self._store_signup_attribution(
+                user_id, referral_code=code, device_id=device
+            )
+        await self._emit_user_registered(
+            user_id=user_id,
+            email=email,
+            referral_code=code,
+            device_id=device,
+        )
+        email_verified = bool(
+            info.get("email_verified") or info.get("emailVerified")
+        )
+        if email_verified:
+            await self._emit_email_verified_once(
+                user_id=user_id,
+                email=email,
+                referral_code=code,
+                device_id=device,
+            )
 
     async def _issue_tokens_for_user(self, user_id: str) -> dict[str, Any]:
         return await self._request_token(
@@ -343,6 +521,8 @@ class KeycloakIdentityProvider(IIdentityProvider):
 
     async def create_user(self, payload: RegisterRequest) -> dict[str, Any]:
         admin_token = await self._get_admin_access_token()
+        code = normalize_referral_code(payload.referral_code)
+        device = normalize_optional_str(payload.device_id)
         req: dict[str, Any] = {
             "username": payload.email,
             "email": payload.email,
@@ -355,8 +535,15 @@ class KeycloakIdentityProvider(IIdentityProvider):
                 {"type": "password", "value": payload.password, "temporary": False}
             ],
         }
+        attrs: dict[str, list[str]] = {}
         if payload.phone:
-            req["attributes"] = {"phone": [payload.phone]}
+            attrs["phone"] = [payload.phone]
+        if code:
+            attrs[ATTR_REFERRAL_CODE] = [code]
+        if device:
+            attrs[ATTR_DEVICE_ID] = [device]
+        if attrs:
+            req["attributes"] = attrs
         async with httpx.AsyncClient(
             timeout=self._session_timeout, verify=self.settings.verify_ssl
         ) as client:
@@ -380,6 +567,22 @@ class KeycloakIdentityProvider(IIdentityProvider):
         email_sent = False
         email_error: str | None = None
         if user_id:
+            # Ensure profile attrs exist + re-apply if Keycloak dropped unknowns.
+            if code or device:
+                try:
+                    await self._store_signup_attribution(
+                        user_id, referral_code=code, device_id=device
+                    )
+                except Exception:
+                    logger.exception(
+                        "failed_to_persist_signup_attribution user_id=%s", user_id
+                    )
+            await self._emit_user_registered(
+                user_id=user_id,
+                email=str(payload.email),
+                referral_code=code,
+                device_id=device,
+            )
             try:
                 await self.send_verify_email(user_id)
                 email_sent = True
@@ -633,17 +836,30 @@ class KeycloakIdentityProvider(IIdentityProvider):
 
     def _cleanup_expired_states(self) -> None:
         now = time.time()
-        expired_keys = [k for k, (_, exp) in self._google_states.items() if exp <= now]
+        expired_keys = [
+            k for k, entry in self._google_states.items() if entry.get("expires_at", 0) <= now
+        ]
         for key in expired_keys:
             self._google_states.pop(key, None)
 
-    async def build_google_auth_url(self, redirect_uri: str) -> dict[str, Any]:
+    async def build_google_auth_url(
+        self,
+        redirect_uri: str,
+        *,
+        referral_code: str | None = None,
+        device_id: str | None = None,
+    ) -> dict[str, Any]:
         self._validate_redirect_uri(redirect_uri)
         self._cleanup_expired_states()
         state = secrets.token_urlsafe(32)
         nonce = secrets.token_urlsafe(32)
         expires_at = time.time() + self.settings.google_state_ttl_seconds
-        self._google_states[state] = (nonce, expires_at)
+        self._google_states[state] = {
+            "nonce": nonce,
+            "expires_at": expires_at,
+            "referral_code": normalize_referral_code(referral_code),
+            "device_id": normalize_optional_str(device_id),
+        }
         query = {
             "client_id": self.settings.web_client_id,
             "redirect_uri": redirect_uri,
@@ -660,7 +876,13 @@ class KeycloakIdentityProvider(IIdentityProvider):
         }
 
     async def authenticate_google(
-        self, code: str, state: str, redirect_uri: str
+        self,
+        code: str,
+        state: str,
+        redirect_uri: str,
+        *,
+        referral_code: str | None = None,
+        device_id: str | None = None,
     ) -> dict[str, Any]:
         self._validate_redirect_uri(redirect_uri)
         self._cleanup_expired_states()
@@ -670,23 +892,62 @@ class KeycloakIdentityProvider(IIdentityProvider):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Invalid or expired Google auth state",
             )
+        # Web OAuth via Keycloak broker — capture referral from state when present.
+        stored_code = state_entry.get("referral_code") or normalize_referral_code(
+            referral_code
+        )
+        stored_device = state_entry.get("device_id") or normalize_optional_str(
+            device_id
+        )
         token_data = {
             "grant_type": "authorization_code",
             "client_id": self.settings.web_client_id,
             "code": code,
             "redirect_uri": redirect_uri,
         }
-        return await self._request_token(token_data)
-
-    async def authenticate_google_token(self, id_token: str) -> dict[str, Any]:
+        tokens = await self._request_token(token_data)
+        try:
+            await self._maybe_capture_broker_google_signup(
+                tokens,
+                referral_code=stored_code,
+                device_id=stored_device,
+            )
+        except Exception:
+            logger.exception("failed_broker_google_signup_capture")
+        return tokens
+    async def authenticate_google_token(
+        self,
+        id_token: str,
+        *,
+        referral_code: str | None = None,
+        device_id: str | None = None,
+    ) -> dict[str, Any]:
         # Keycloak 26.3 cannot exchange Google id_tokens directly (Standard TE V2
         # rejects JWT; legacy external exchange fails for Google id_tokens). Validate
         # the Google token here, provision/link the user, then issue realm tokens via
         # direct impersonation (legacy token exchange without subject_token).
         claims = self._validate_google_id_token(id_token)
-        user_id = await self._ensure_google_user(claims)
+        code = normalize_referral_code(referral_code)
+        device = normalize_optional_str(device_id)
+        user_id, created_new = await self._ensure_google_user(
+            claims, referral_code=code, device_id=device
+        )
+        email = str(claims["email"])
+        if created_new:
+            await self._emit_user_registered(
+                user_id=user_id,
+                email=email,
+                referral_code=code,
+                device_id=device,
+            )
+            # Google id_token path requires verified email at mint time.
+            await self._emit_email_verified_once(
+                user_id=user_id,
+                email=email,
+                referral_code=code,
+                device_id=device,
+            )
         return await self._issue_tokens_for_user(user_id)
-
     # ── Admin / email helpers ───────────────────────────────────────────────
 
     def _admin_headers(self, admin_token: str) -> dict[str, str]:
@@ -1065,6 +1326,13 @@ class KeycloakIdentityProvider(IIdentityProvider):
             user_id, remove={"VERIFY_EMAIL", "UPDATE_PASSWORD"}
         )
         await self._clear_auth_mail_attrs(user_id, purpose="verify_email")
+        email, referral_code, device_id = await self._signup_attrs_for_user(user_id)
+        await self._emit_email_verified_once(
+            user_id=user_id,
+            email=email,
+            referral_code=referral_code,
+            device_id=device_id,
+        )
         # Issue session tokens so the branded verify link can auto-login the UI.
         tokens = await self._issue_tokens_for_user(user_id)
         return {

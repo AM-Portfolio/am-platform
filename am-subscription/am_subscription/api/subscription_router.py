@@ -42,6 +42,7 @@ async def create_subscription(
         payload,
         actor=context.subject,
         correlation_id=_correlation_id(),
+        email=(context.claims or {}).get("email"),
     )
     return APIResponse(data=data)
 
@@ -51,16 +52,16 @@ async def get_my_subscription(
     context: AuthContext = Depends(require_auth_context()),
     service: SubscriptionService = Depends(get_subscription_service),
 ):
-    existing = await service.get_by_user(context.subject)
-    if not existing:
-        data = await service.get_or_create(
-            context.subject,
-            CreateSubscriptionRequest(tenant_id=context.claims.get("tenant_id")),
-            actor=context.subject,
-            correlation_id=_correlation_id(),
-        )
-        return APIResponse(data=data)
-    return APIResponse(data=await service.to_dto(existing))
+    data = await service.get_or_create(
+        context.subject,
+        CreateSubscriptionRequest(
+            tenant_id=(context.claims or {}).get("tenant_id")
+        ),
+        actor=context.subject,
+        correlation_id=_correlation_id(),
+        email=(context.claims or {}).get("email"),
+    )
+    return APIResponse(data=data)
 
 
 @router.patch("/{subscription_id}/cancel", response_model=APIResponse[SubscriptionDTO])
