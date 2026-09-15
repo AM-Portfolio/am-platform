@@ -32,6 +32,12 @@ DEFAULT_INTEGRATIONS: list[dict[str, str]] = [
         "description": "Public QA agent health/catalog on am-*.asrax.in/qa",
     },
     {
+        "slug": "am-mkt-agent",
+        "display_name": "AM Marketing Agent",
+        "adapter_type": "mkt_agent",
+        "description": "YouTube channel search and per-user library on am-*.asrax.in/mkt",
+    },
+    {
         "slug": "am-tool-agent",
         "display_name": "AM Tool Agent",
         "adapter_type": "tool_agent",

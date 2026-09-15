@@ -23,6 +23,7 @@ _WRITE_KEY_ALIASES: dict[str, str] = {
     "gstr": "AM_GSTR_MCP_WRITE",
     "am-engage": "AM_ENGAGE_MCP_WRITE",
     "am-qa-agent": "AM_QA_AGENT_MCP_WRITE",
+    "am-mkt-agent": "AM_MKT_AGENT_MCP_WRITE",
     "am-tool-agent": "AM_TOOL_AGENT_MCP_WRITE",
     "am-support-agent": "AM_SUPPORT_AGENT_MCP_WRITE",
     "temporal": "AM_TEMPORAL_MCP_WRITE",
