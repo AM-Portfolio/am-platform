@@ -57,6 +57,24 @@ class SubscriptionSettings(BaseSettings):
         alias="KAFKA_TOPICS",
     )
 
+    referral_share_base_url: str = Field(
+        default="https://asrax.in/download",
+        alias="REFERRAL_SHARE_BASE_URL",
+    )
+    referral_lifetime_cap: int = Field(default=12, alias="REFERRAL_LIFETIME_CAP")
+    referral_daily_cap: int = Field(default=3, alias="REFERRAL_DAILY_CAP")
+
+    trial_grant_delay_hours: float = Field(
+        default=24.0, alias="TRIAL_GRANT_DELAY_HOURS"
+    )
+    referral_reward_delay_hours: float = Field(
+        default=24.0, alias="REFERRAL_REWARD_DELAY_HOURS"
+    )
+    grant_poller_enabled: bool = Field(default=True, alias="GRANT_POLLER_ENABLED")
+    grant_poller_interval_seconds: int = Field(
+        default=45, alias="GRANT_POLLER_INTERVAL_SECONDS"
+    )
+
     model_config = SettingsConfigDict(
         env_file=(str(PLATFORM_ROOT / ".env"), str(PLATFORM_ROOT / ".secrets.env")),
         case_sensitive=False,

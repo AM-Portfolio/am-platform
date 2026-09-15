@@ -70,6 +70,13 @@ class LagoProvider(ISubscriptionProvider, IMeteringProvider):
         external_customer_id: str,
         email: str | None = None,
     ) -> dict[str, Any]:
+        """Create or update Lago customer; set email when provided (ops monitoring).
+
+        Lago customer create/update is the same POST upsert endpoint.
+        """
+        cleaned = (email or "").strip() or None
+        display_name = cleaned or external_customer_id
+
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.get(
                 f"{self._base_url}/api/v1/customers/{external_customer_id}",
@@ -77,12 +84,40 @@ class LagoProvider(ISubscriptionProvider, IMeteringProvider):
             )
         if response.status_code == 200:
             payload = response.json()
-            return payload.get("customer", payload)
+            customer = payload.get("customer", payload)
+            if cleaned and self._customer_needs_email_update(customer, cleaned):
+                return await self._upsert_customer(
+                    external_customer_id,
+                    email=cleaned,
+                    name=display_name,
+                )
+            return customer
 
+        return await self._upsert_customer(
+            external_customer_id,
+            email=cleaned,
+            name=display_name,
+        )
+
+    @staticmethod
+    def _customer_needs_email_update(
+        customer: dict[str, Any], email: str
+    ) -> bool:
+        current = (customer.get("email") or "").strip()
+        return current.casefold() != email.casefold()
+
+    async def _upsert_customer(
+        self,
+        external_customer_id: str,
+        *,
+        email: str | None,
+        name: str,
+    ) -> dict[str, Any]:
+        # Lago: POST /customers upserts by external_id (there is no PUT update).
         body: dict[str, Any] = {
             "customer": {
                 "external_id": external_customer_id,
-                "name": external_customer_id,
+                "name": name,
             }
         }
         if email:

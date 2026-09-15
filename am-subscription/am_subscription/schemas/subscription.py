@@ -50,6 +50,11 @@ class SubscriptionDTO(BaseDTO):
     billing_interval: str
     current_period_start: datetime | None
     current_period_end: datetime | None
+    is_paid: bool = False
+    grant_source: str | None = None
+    trial_pro_expires_at: datetime | None = None
+    referral_pro_expires_at: datetime | None = None
+    trial_starts_at: datetime | None = None
     limits: PlanLimitsDTO
     entitlements: PlanEntitlementsDTO
     usage: list[UsageSnapshotDTO]

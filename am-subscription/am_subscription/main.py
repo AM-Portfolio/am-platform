@@ -6,6 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from am_subscription.api.internal_router import router as internal_router
 from am_subscription.api.plans_router import router as plans_router
+from am_subscription.api.referral_router import router as referral_router
 from am_subscription.api.subscription_router import router as subscription_router
 from am_subscription.api.webhook_router import router as webhook_router
 from am_subscription.core.config import get_settings
@@ -18,6 +19,7 @@ from am_platform_common import (
     setup_logging,
 )
 from am_subscription.services.kafka_consumer import consumer_instance
+from am_subscription.services.grant_poller import grant_poller_instance
 
 settings = get_settings()
 setup_logging(env=settings.app_env, level=settings.log_level)
@@ -32,7 +34,9 @@ async def lifespan(_: FastAPI):
     )
     await init_db()
     await consumer_instance.start()
+    await grant_poller_instance.start()
     yield
+    await grant_poller_instance.stop()
     await consumer_instance.stop()
     logger.info("Shutting down am-subscription")
 
@@ -114,6 +118,7 @@ async def health() -> dict[str, str]:
 
 app.include_router(plans_router)
 app.include_router(subscription_router)
+app.include_router(referral_router)
 app.include_router(internal_router)
 app.include_router(webhook_router)
 

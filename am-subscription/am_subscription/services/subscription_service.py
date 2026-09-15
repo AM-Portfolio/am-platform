@@ -57,6 +57,23 @@ class SubscriptionService:
         )
         return result.scalar_one_or_none()
 
+    async def sync_lago_customer_email(
+        self, user_id: str, email: str | None
+    ) -> None:
+        """Best-effort Lago customer email update for ops (non-fatal)."""
+        if not email or not str(email).strip():
+            return
+        try:
+            await self._provider.ensure_customer(
+                f"am-user-{user_id}", email=str(email).strip()
+            )
+        except Exception:
+            logger.warning(
+                "Lago customer email sync failed",
+                extra={"user_id": user_id},
+                exc_info=True,
+            )
+
     async def get_or_create(
         self,
         user_id: str,
@@ -64,6 +81,7 @@ class SubscriptionService:
         *,
         actor: str,
         correlation_id: str,
+        email: str | None = None,
     ) -> SubscriptionDTO:
         logger.info(
             "get_or_create subscription",
@@ -73,12 +91,14 @@ class SubscriptionService:
                 "correlation_id": correlation_id,
             },
         )
+        external_customer_id = f"am-user-{user_id}"
         existing = await self.get_by_user(user_id)
         if existing:
             logger.info(
                 "subscription exists",
                 extra={"user_id": user_id, "subscription_id": str(existing.id)},
             )
+            await self.sync_lago_customer_email(user_id, email)
             return await self.to_dto(existing)
 
         plan_code = self._catalog.resolve_plan_code(
@@ -90,8 +110,9 @@ class SubscriptionService:
             "provisioning with Lago", extra={"user_id": user_id, "plan_code": plan.code}
         )
 
-        external_customer_id = f"am-user-{user_id}"
-        customer = await self._provider.ensure_customer(external_customer_id)
+        customer = await self._provider.ensure_customer(
+            external_customer_id, email=email
+        )
         sub_external_id = f"am-sub-{user_id}"
         provider_sub = await self._provider.create_subscription(
             external_customer_id,
@@ -157,6 +178,37 @@ class SubscriptionService:
         correlation_id: str,
     ) -> SubscriptionDTO:
         subscription = await self._get_owned(subscription_id, user_id)
+        was_paid = bool(getattr(subscription, "is_paid", False))
+        if subscription.provider_subscription_id:
+            await self._provider.cancel_subscription(
+                subscription.provider_subscription_id
+            )
+
+        # L15: after paid cancel, keep timed Pro if banked referral/trial days remain.
+        from am_subscription.services.grant_service import GrantService
+
+        now_end = GrantService.effective_pro_end(subscription)
+        now = datetime.now(timezone.utc)
+        if was_paid:
+            subscription.is_paid = False
+            if now_end and now_end > now:
+                subscription.plan_code = "am_pro"
+                if subscription.grant_source == "paid":
+                    subscription.grant_source = "referral"
+                subscription.state = SubscriptionState.active
+                await self._append_audit(
+                    subscription.id,
+                    actor=actor,
+                    previous_state="active",
+                    next_state="active",
+                    reason=reason or "paid_cancel_banked_pro",
+                    correlation_id=correlation_id,
+                    metadata={"banked_until": now_end.isoformat()},
+                )
+                await self._session.commit()
+                await self._session.refresh(subscription)
+                return await self.to_dto(subscription)
+
         await self._transition(
             subscription,
             SubscriptionState.cancelled,
@@ -164,10 +216,6 @@ class SubscriptionService:
             reason=reason or "user_cancelled",
             correlation_id=correlation_id,
         )
-        if subscription.provider_subscription_id:
-            await self._provider.cancel_subscription(
-                subscription.provider_subscription_id
-            )
         await self._session.commit()
         await self._session.refresh(subscription)
         return await self.to_dto(subscription)
@@ -302,6 +350,13 @@ class SubscriptionService:
             billing_interval=subscription.billing_interval,
             current_period_start=subscription.current_period_start,
             current_period_end=subscription.current_period_end,
+            is_paid=bool(getattr(subscription, "is_paid", False)),
+            grant_source=getattr(subscription, "grant_source", None),
+            trial_pro_expires_at=getattr(subscription, "trial_pro_expires_at", None),
+            referral_pro_expires_at=getattr(
+                subscription, "referral_pro_expires_at", None
+            ),
+            trial_starts_at=getattr(subscription, "trial_starts_at", None),
             limits=plan.limits,
             entitlements=plan.entitlements,
             usage=usage,

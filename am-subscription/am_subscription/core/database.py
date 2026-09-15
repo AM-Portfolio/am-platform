@@ -52,7 +52,25 @@ async def init_db() -> None:
     )
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(_ensure_subscription_grant_columns)
     logger.info("Database schema ready")
+
+
+def _ensure_subscription_grant_columns(sync_conn) -> None:
+    """Best-effort ADD COLUMN for existing Postgres DBs (create_all won't alter)."""
+    dialect = sync_conn.dialect.name
+    if dialect != "postgresql":
+        return
+    statements = [
+        "ALTER TABLE am_subscriptions ADD COLUMN IF NOT EXISTS is_paid BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE am_subscriptions ADD COLUMN IF NOT EXISTS grant_source VARCHAR(32)",
+        "ALTER TABLE am_subscriptions ADD COLUMN IF NOT EXISTS trial_pro_expires_at TIMESTAMPTZ",
+        "ALTER TABLE am_subscriptions ADD COLUMN IF NOT EXISTS referral_pro_expires_at TIMESTAMPTZ",
+        "ALTER TABLE am_subscriptions ADD COLUMN IF NOT EXISTS trial_email_fingerprint VARCHAR(256)",
+        "ALTER TABLE am_subscriptions ADD COLUMN IF NOT EXISTS trial_starts_at TIMESTAMPTZ",
+    ]
+    for sql in statements:
+        sync_conn.exec_driver_sql(sql)
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:

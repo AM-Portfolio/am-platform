@@ -37,6 +37,9 @@ class RegisterRequest(BaseModel):
     first_name: str | None = None
     last_name: str | None = None
     phone: str | None = None
+    # Opaque at identity — subscription validates code / device rules.
+    referral_code: str | None = Field(default=None, max_length=64)
+    device_id: str | None = Field(default=None, max_length=128)
 
     @field_validator("password")
     @classmethod
@@ -49,6 +52,13 @@ class RegisterRequest(BaseModel):
         if value is None or not value.strip():
             return None
         return _validate_phone(value)
+
+    @field_validator("referral_code", "device_id")
+    @classmethod
+    def strip_optional(cls, value: str | None) -> str | None:
+        if value is None or not value.strip():
+            return None
+        return value.strip()
 
 
 class LoginRequest(BaseModel):
@@ -74,6 +84,15 @@ class OTPLoginRequest(BaseModel):
 
 class GoogleAuthURLRequest(BaseModel):
     redirect_uri: str
+    referral_code: str | None = Field(default=None, max_length=64)
+    device_id: str | None = Field(default=None, max_length=128)
+
+    @field_validator("referral_code", "device_id")
+    @classmethod
+    def strip_optional(cls, value: str | None) -> str | None:
+        if value is None or not value.strip():
+            return None
+        return value.strip()
 
 
 class GoogleAuthURLResponse(BaseModel):
@@ -86,10 +105,30 @@ class GoogleCallbackRequest(BaseModel):
     code: str
     state: str
     redirect_uri: str
+    # Prefer codes stashed at /google/url; body fields are a fallback for clients
+    # that cannot round-trip state storage.
+    referral_code: str | None = Field(default=None, max_length=64)
+    device_id: str | None = Field(default=None, max_length=128)
+
+    @field_validator("referral_code", "device_id")
+    @classmethod
+    def strip_optional(cls, value: str | None) -> str | None:
+        if value is None or not value.strip():
+            return None
+        return value.strip()
 
 
 class GoogleTokenRequest(BaseModel):
     id_token: str
+    referral_code: str | None = Field(default=None, max_length=64)
+    device_id: str | None = Field(default=None, max_length=128)
+
+    @field_validator("referral_code", "device_id")
+    @classmethod
+    def strip_optional(cls, value: str | None) -> str | None:
+        if value is None or not value.strip():
+            return None
+        return value.strip()
 
 
 class TokenResponse(BaseModel):

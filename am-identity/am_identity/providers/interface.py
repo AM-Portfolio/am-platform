@@ -52,17 +52,35 @@ class IIdentityProvider(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def build_google_auth_url(self, redirect_uri: str) -> dict[str, Any]:
-        raise NotImplementedError
-
-    @abstractmethod
-    async def authenticate_google(
-        self, code: str, state: str, redirect_uri: str
+    async def build_google_auth_url(
+        self,
+        redirect_uri: str,
+        *,
+        referral_code: str | None = None,
+        device_id: str | None = None,
     ) -> dict[str, Any]:
         raise NotImplementedError
 
     @abstractmethod
-    async def authenticate_google_token(self, id_token: str) -> dict[str, Any]:
+    async def authenticate_google(
+        self,
+        code: str,
+        state: str,
+        redirect_uri: str,
+        *,
+        referral_code: str | None = None,
+        device_id: str | None = None,
+    ) -> dict[str, Any]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def authenticate_google_token(
+        self,
+        id_token: str,
+        *,
+        referral_code: str | None = None,
+        device_id: str | None = None,
+    ) -> dict[str, Any]:
         raise NotImplementedError
 
     # ── Admin / email helpers ───────────────────────────────────────────────

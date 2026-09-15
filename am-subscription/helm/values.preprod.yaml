@@ -23,11 +23,14 @@ vault:
       path: "apps/data/preprod/services/am-identity"
     service-oauth:
       path: "apps/data/preprod/services/am-subscription"
+    kafka:
+      path: "apps/data/preprod/infra/kafka"
 
 
 env:
   APP_ENV: preprod
   LOG_LEVEL: INFO
+  KAFKA_ENABLED: "true"
 
 # Preprod app host only — am.asrax.in is owned by prod (no Host collision)
 ingress:

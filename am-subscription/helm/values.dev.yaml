@@ -30,6 +30,8 @@ vault:
       path: "apps/data/dev/services/am-identity"
     service-oauth:
       path: "apps/data/dev/services/am-subscription"
+    kafka:
+      path: "apps/data/dev/infra/kafka"
 
 # Dev app host only
 ingress:
@@ -52,3 +54,4 @@ ingress:
 env:
   APP_ENV: dev
   LOG_LEVEL: DEBUG
+  KAFKA_ENABLED: "false"

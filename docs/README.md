@@ -15,6 +15,9 @@
 - `plan_subscription.md` - subscription, entitlements, and usage plan.
 - `plan_notification.md` - notification routing and inbox plan.
 - `plan_payments.md` - future payment abstraction and billing plan, outside the main 10/10 platform score.
+- `plan_referral_implementation.md` - referral + trial v1.1 (rules §§1–19) **and coding TODO (§20)** — single file for implementation.
+- `plan_referral_todo_checks.md` - pointer to §20 in the plan (do not maintain a second checklist).
+- `design/referral-system.drawio` - referral architecture / sequence / ER / grant / journeys (open in [diagrams.net](https://app.diagrams.net/)).
 - `features/` - phase-wise feature specs with development and post-dev verification checklists (see [features/README.md](./features/README.md)).
 
 ## Current Status

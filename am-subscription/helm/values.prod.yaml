@@ -24,11 +24,15 @@ vault:
       path: "secret/data/prod/services/am-identity"
     service-oauth:
       path: "secret/data/prod/services/am-subscription"
+    kafka:
+      path: "apps/data/prod/infra/kafka"
 
 
 env:
   APP_ENV: production
   LOG_LEVEL: INFO
+  # Referral pipeline: consume identity user_registered / email_verified
+  KAFKA_ENABLED: "true"
 
 # Prod app host (prep). Do not remove munish from infra Traefik.
 ingress:
