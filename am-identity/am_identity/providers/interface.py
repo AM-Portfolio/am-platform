@@ -52,35 +52,17 @@ class IIdentityProvider(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    async def build_google_auth_url(
-        self,
-        redirect_uri: str,
-        *,
-        referral_code: str | None = None,
-        device_id: str | None = None,
-    ) -> dict[str, Any]:
+    async def build_google_auth_url(self, redirect_uri: str) -> dict[str, Any]:
         raise NotImplementedError
 
     @abstractmethod
     async def authenticate_google(
-        self,
-        code: str,
-        state: str,
-        redirect_uri: str,
-        *,
-        referral_code: str | None = None,
-        device_id: str | None = None,
+        self, code: str, state: str, redirect_uri: str
     ) -> dict[str, Any]:
         raise NotImplementedError
 
     @abstractmethod
-    async def authenticate_google_token(
-        self,
-        id_token: str,
-        *,
-        referral_code: str | None = None,
-        device_id: str | None = None,
-    ) -> dict[str, Any]:
+    async def authenticate_google_token(self, id_token: str) -> dict[str, Any]:
         raise NotImplementedError
 
     # ── Admin / email helpers ───────────────────────────────────────────────
@@ -201,4 +183,32 @@ class IIdentityProvider(ABC):
 
     @abstractmethod
     async def logout_keycloak_session(self, keycloak_session_id: str) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def list_groups(
+        self, *, search: str | None = None, first: int = 0, max_results: int = 100
+    ) -> list[dict[str, Any]]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def create_group(self, *, name: str) -> dict[str, Any]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def add_user_to_group(self, user_id: str, group_id: str) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def list_user_groups(self, user_id: str) -> list[dict[str, Any]]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def create_custom_realm_role(
+        self, *, name: str, description: str | None = None
+    ) -> dict[str, Any]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def list_custom_realm_roles(self) -> list[dict[str, Any]]:
         raise NotImplementedError

@@ -23,6 +23,7 @@ from am_platform_common.models import (
 )
 from am_platform_common.middleware import LoggingMiddleware
 from am_platform_common.http_client import create_async_client, create_sync_client
+from am_platform_common.plane_a import domain_counter, inc_domain, setup_plane_a
 
 __all__ = [
     # Logging
@@ -52,4 +53,8 @@ __all__ = [
     "LoggingMiddleware",
     "create_async_client",
     "create_sync_client",
+    # Plane A metrics (observability.yaml)
+    "setup_plane_a",
+    "inc_domain",
+    "domain_counter",
 ]

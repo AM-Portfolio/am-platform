@@ -4,7 +4,6 @@ image: ghcr.io/am-portfolio/am-identity
 runtime: python
 language: python
 dockerfile: Dockerfile
-# Dockerfile COPYs libraries/ + am-identity/ — build from am-platform root
 context: ..
 github:
   repo: AM-Portfolio/am-platform

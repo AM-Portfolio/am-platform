@@ -66,11 +66,14 @@
 
 | Role | Who Gets It | What It Means |
 |---|---|---|
-| `user` | **Every new user (default)** | Can log in to all AM apps, view own data |
-| `viewer` | Assigned manually | Read-only access across AM apps — no mutations |
-| `admin` | Assigned manually | Can manage users and roles via `am-identity` `/admin/*` |
+| `user` | **Every new user (default)** | Can log in to AM apps, view/mutate own data |
+| `viewer` | Assigned at invite or manually | Read-only across AM apps — no mutations |
+| `ops` | Platform operators (manual / Identity Admin) | Grafana/Argo/store UIs via Access + registered IP; not Identity Admin promote |
+| `admin` | Assigned manually | Manage users and roles via `am-identity` `/admin/*` (+ Access admin apps) |
 | `super_admin` | Bootstrap once, then assign only by `super_admin` | Break-glass enterprise owner; only role that may grant/revoke `super_admin` |
 | `service` | Service accounts only | Internal machine-to-machine — **never assign to humans** |
+
+> Fleet Kind historically also created `am-admin` / `am-ops` / `am-viewer` / `am-user` aliases. Prefer canonical names above; composites may map aliases during migrate. See [enterprise-identity-admin-rbac.md](./features/enterprise-identity-admin-rbac.md) and [ZERO_TRUST_ACCESS.md](../../am-infra-automation/docs/ZERO_TRUST_ACCESS.md).
 
 ### Default Role Assignment
 
