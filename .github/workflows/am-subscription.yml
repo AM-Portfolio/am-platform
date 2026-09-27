@@ -51,7 +51,7 @@ jobs:
     needs: publish
     if: |
       always() &&
-      github.event_name == 'push' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') &&
       needs.publish.result != 'cancelled' &&
       needs.publish.outputs.image_tag != ''
