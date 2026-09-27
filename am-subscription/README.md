@@ -43,3 +43,5 @@ Import `postman/AM-Subscription.postman_collection.json` and `postman/AM-Subscri
 <!-- dummy trigger commit -->
 
 # Test Deploy
+
+# Trigger CI
