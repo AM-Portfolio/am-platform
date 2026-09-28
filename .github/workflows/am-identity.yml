@@ -45,20 +45,39 @@ jobs:
       gitops_values_path: "am-identity"
       contabo_wait_preprod: false
     secrets: inherit
-  # All four Contabo envs parallel after build+pin; each needs Environment Approve
-  contabo-approve:
-    name: Contabo Argo -> ${{ matrix.env }} (approve)
+  setup-matrix:
+    name: Determine Environments
     needs: publish
+    runs-on: ubuntu-latest
     if: |
       always() &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') &&
+      needs.publish.result != 'cancelled' &&
+      needs.publish.outputs.image_tag != ''
+    outputs:
+      environments: ${{ steps.set-env.outputs.environments }}
+    steps:
+      - id: set-env
+        run: |
+          if [[ "${{ github.ref }}" == "refs/heads/main" || "${{ github.ref }}" == "refs/heads/master" ]]; then
+            echo 'environments=["dev", "preprod", "prod", "dr"]' >> $GITHUB_OUTPUT
+          else
+            echo 'environments=["dev", "preprod"]' >> $GITHUB_OUTPUT
+          fi
+
+  # All four Contabo envs parallel after build+pin; each needs Environment Approve
+  contabo-approve:
+    name: Contabo Argo -> ${{ matrix.env }} (approve)
+    needs: [publish, setup-matrix]
+    if: |
+      always() &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
       needs.publish.result != 'cancelled' &&
       needs.publish.outputs.image_tag != ''
     strategy:
       fail-fast: false
       matrix:
-        env: [dev, preprod, prod, dr]
+        env: ${{ fromJson(needs.setup-matrix.outputs.environments) }}
     runs-on: ubuntu-latest
     environment: ${{ matrix.env }}
     permissions:
@@ -130,3 +149,9 @@ jobs:
           chmod +x am-pipelines-repo/scripts/ci/argo-api-lib.sh
           chmod +x am-pipelines-repo/scripts/ci/argo-promote-and-wait.sh
           am-pipelines-repo/scripts/ci/argo-promote-and-wait.sh
+
+
+
+
+
+
