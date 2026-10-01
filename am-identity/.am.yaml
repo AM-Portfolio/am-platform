@@ -1,6 +1,6 @@
 name: am-identity
 release: am-identity
-image: ghcr.io/am-portfolio/am-identity
+image: ghcr.io/am-portfolio/am-platform/am-identity
 runtime: python
 language: python
 dockerfile: Dockerfile
