@@ -90,3 +90,11 @@ mongodb:
   enabled: true
   serviceBindings:
     enabled: true
+
+# Fleet / external stores (set enabled=true and disable mongodb/redis when using shared infra).
+externalDataStores:
+  enabled: false
+  mongoUrl: ""
+  redisHost: ""
+  redisPort: "6379"
+  redisPassword: ""

@@ -22,8 +22,11 @@ from am_identity.schemas.auth import (
     VerifyEmailConfirmRequest,
     VerifyEmailConfirmResponse,
 )
+from am_platform_common import inc_domain
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+_APP = "am-identity"
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
@@ -42,9 +45,14 @@ async def login(
     request: Request,
     provider: IIdentityProvider = Depends(get_identity_provider),
 ):
-    tokens = await provider.authenticate(
-        payload.username, payload.password, platform=payload.platform
-    )
+    try:
+        tokens = await provider.authenticate(
+            payload.username, payload.password, platform=payload.platform
+        )
+    except Exception:
+        inc_domain("login_failures_total", _APP)
+        raise
+    inc_domain("user_logins_total", _APP)
     record_token_login(request, tokens, platform=payload.platform)
     return tokens
 
@@ -54,7 +62,13 @@ async def login_otp(
     payload: OTPLoginRequest,
     provider: IIdentityProvider = Depends(get_identity_provider),
 ):
-    return await provider.authenticate_otp(payload.username, payload.otp)
+    try:
+        tokens = await provider.authenticate_otp(payload.username, payload.otp)
+    except Exception:
+        inc_domain("login_failures_total", _APP)
+        raise
+    inc_domain("user_logins_total", _APP)
+    return tokens
 
 
 @router.post("/google/url", response_model=GoogleAuthURLResponse)
@@ -71,7 +85,14 @@ async def google_callback(
     request: Request,
     provider: IIdentityProvider = Depends(get_identity_provider),
 ):
-    tokens = await provider.authenticate_google(payload.code, payload.state, payload.redirect_uri)
+    try:
+        tokens = await provider.authenticate_google(
+            payload.code, payload.state, payload.redirect_uri
+        )
+    except Exception:
+        inc_domain("login_failures_total", _APP)
+        raise
+    inc_domain("user_logins_total", _APP)
     record_token_login(request, tokens, platform="web")
     return tokens
 
@@ -82,7 +103,12 @@ async def google_token(
     request: Request,
     provider: IIdentityProvider = Depends(get_identity_provider),
 ):
-    tokens = await provider.authenticate_google_token(payload.id_token)
+    try:
+        tokens = await provider.authenticate_google_token(payload.id_token)
+    except Exception:
+        inc_domain("login_failures_total", _APP)
+        raise
+    inc_domain("user_logins_total", _APP)
     record_token_login(request, tokens, platform="web")
     return tokens
 
@@ -92,7 +118,9 @@ async def refresh(
     payload: RefreshRequest,
     provider: IIdentityProvider = Depends(get_identity_provider),
 ):
-    return await provider.refresh_token(payload.refresh_token, payload.client_id)
+    tokens = await provider.refresh_token(payload.refresh_token, payload.client_id)
+    inc_domain("token_refreshes_total", _APP)
+    return tokens
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

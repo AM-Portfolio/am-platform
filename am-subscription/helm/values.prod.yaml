@@ -13,17 +13,17 @@ resources:
 vault:
   enabled: true
   secretPaths:
-    # Infra is on apps KV (same as market/proxy). Service secrets still on secret/ mount.
+    # Kind-fleet prod: all paths under apps KV (vault-apps seed).
     postgres:
       path: "apps/data/prod/infra/postgres"
     subscription:
-      path: "secret/data/prod/services/am-subscription"
+      path: "apps/data/prod/services/am-subscription"
     lago:
-      path: "secret/data/prod/services/am-lago"
+      path: "apps/data/prod/services/am-lago"
     identity-oidc:
-      path: "secret/data/prod/services/am-identity"
+      path: "apps/data/prod/services/am-identity"
     service-oauth:
-      path: "secret/data/prod/services/am-subscription"
+      path: "apps/data/prod/services/am-subscription"
 
 
 env:

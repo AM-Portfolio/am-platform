@@ -91,6 +91,9 @@ class KeycloakIdentityProvider(IIdentityProvider):
         self._admin_roles_url = (
             f"{keycloak_base}/admin/realms/{settings.keycloak_realm}/roles"
         )
+        self._admin_groups_url = (
+            f"{keycloak_base}/admin/realms/{settings.keycloak_realm}/groups"
+        )
         self._admin_sessions_url = (
             f"{keycloak_base}/admin/realms/{settings.keycloak_realm}/sessions"
         )
@@ -569,7 +572,19 @@ class KeycloakIdentityProvider(IIdentityProvider):
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"User not found: {user_id}",
             )
-        return _parse_settings_attribute(response.json().get("attributes"))
+        payload = response.json()
+        # Keycloak list responses (search) must not be treated as a user document.
+        if isinstance(payload, list):
+            if len(payload) == 1 and isinstance(payload[0], dict):
+                payload = payload[0]
+            else:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"User not found: {user_id}",
+                )
+        if not isinstance(payload, dict):
+            return {}
+        return _parse_settings_attribute(payload.get("attributes"))
 
     async def update_user_settings(
         self, user_id: str, settings: dict[str, Any]
@@ -1504,6 +1519,156 @@ class KeycloakIdentityProvider(IIdentityProvider):
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Logout session failed: {response.text}",
             )
+
+    def _normalize_group(self, group: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "id": str(group.get("id", "")),
+            "name": group.get("name") or "",
+            "path": group.get("path"),
+        }
+
+    async def list_groups(
+        self, *, search: str | None = None, first: int = 0, max_results: int = 100
+    ) -> list[dict[str, Any]]:
+        admin_token = await self._get_admin_access_token()
+        params: dict[str, Any] = {"first": first, "max": max_results}
+        if search:
+            params["search"] = search
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            response = await client.get(
+                self._admin_groups_url,
+                params=params,
+                headers=self._admin_headers(admin_token),
+            )
+        if response.status_code >= 400:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"List groups failed: {response.text}",
+            )
+        groups = response.json() or []
+        return [self._normalize_group(g) for g in groups]
+
+    async def create_group(self, *, name: str) -> dict[str, Any]:
+        admin_token = await self._get_admin_access_token()
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            response = await client.post(
+                self._admin_groups_url,
+                json={"name": name},
+                headers=self._admin_headers(admin_token),
+            )
+        if response.status_code not in (201, 204):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Create group failed: {response.text}",
+            )
+        location = response.headers.get("Location") or response.headers.get("location")
+        group_id = location.rstrip("/").split("/")[-1] if location else None
+        if group_id:
+            async with httpx.AsyncClient(
+                timeout=self._session_timeout, verify=self.settings.verify_ssl
+            ) as client:
+                get_response = await client.get(
+                    f"{self._admin_groups_url}/{group_id}",
+                    headers=self._admin_headers(admin_token),
+                )
+            if get_response.status_code < 400:
+                return self._normalize_group(get_response.json())
+        found = await self.list_groups(search=name, first=0, max_results=20)
+        for group in found:
+            if group.get("name") == name:
+                return group
+        return {"id": group_id or "", "name": name, "path": None}
+
+    async def add_user_to_group(self, user_id: str, group_id: str) -> None:
+        admin_token = await self._get_admin_access_token()
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            response = await client.put(
+                f"{self._admin_users_url}/{user_id}/groups/{group_id}",
+                headers=self._admin_headers(admin_token),
+            )
+        if response.status_code >= 400:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Add user to group failed: {response.text}",
+            )
+
+    async def list_user_groups(self, user_id: str) -> list[dict[str, Any]]:
+        admin_token = await self._get_admin_access_token()
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            response = await client.get(
+                f"{self._admin_users_url}/{user_id}/groups",
+                headers=self._admin_headers(admin_token),
+            )
+        if response.status_code >= 400:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"List user groups failed: {response.text}",
+            )
+        groups = response.json() or []
+        return [self._normalize_group(g) for g in groups]
+
+    @staticmethod
+    def _role_is_custom(attributes: dict[str, Any] | None) -> bool:
+        if not attributes:
+            return False
+        raw = attributes.get("am.custom") or attributes.get("am.custom".lower())
+        if isinstance(raw, list):
+            return any(str(v).lower() == "true" for v in raw)
+        return str(raw).lower() == "true"
+
+    async def create_custom_realm_role(
+        self, *, name: str, description: str | None = None
+    ) -> dict[str, Any]:
+        admin_token = await self._get_admin_access_token()
+        body: dict[str, Any] = {
+            "name": name,
+            "attributes": {"am.custom": ["true"]},
+        }
+        if description:
+            body["description"] = description
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            response = await client.post(
+                self._admin_roles_url,
+                json=body,
+                headers=self._admin_headers(admin_token),
+            )
+        if response.status_code >= 400:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Create custom role failed: {response.text}",
+            )
+        return {
+            "name": name,
+            "description": description,
+            "custom": True,
+            "storage": "keycloak",
+        }
+
+    async def list_custom_realm_roles(self) -> list[dict[str, Any]]:
+        roles = await self.list_realm_roles()
+        custom: list[dict[str, Any]] = []
+        for role in roles:
+            if not self._role_is_custom(role.get("attributes")):
+                continue
+            custom.append(
+                {
+                    "name": role.get("name") or "",
+                    "description": role.get("description"),
+                    "custom": True,
+                    "storage": "keycloak",
+                }
+            )
+        return custom
 
 
 def hmac_compare(a: str, b: str) -> bool:

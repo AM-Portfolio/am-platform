@@ -17,9 +17,9 @@ local:
 gitnexus:
   skipAgentsMd: true
   skipSkills: true
-  group_path: services/am-platform
+  group_path: platform/am-platform
 capabilities:
-  domain: services
+  domain: platform
   surfaces:
   - http
   - config
@@ -31,4 +31,6 @@ capabilities:
     - am-identity
     - am-subscription
     - am-notification
+    - am-user-platform
+    - am-mcp-hub
     - libraries

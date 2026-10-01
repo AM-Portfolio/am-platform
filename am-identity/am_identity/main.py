@@ -17,7 +17,7 @@ from am_identity.api.step_up_router import router as step_up_router
 from am_identity.api.user_router import router as user_router
 from am_identity.api.web_otp_router import router as web_otp_router
 from am_identity.core.config import get_settings
-from am_platform_common import LoggingMiddleware, setup_logging
+from am_platform_common import LoggingMiddleware, setup_logging, setup_plane_a
 
 # Load local .env into os.environ for background tasks
 env_path = Path(__file__).resolve().parent.parent / ".env"
@@ -79,6 +79,13 @@ async def strip_identity_prefix(request: Request, call_next):
     return await call_next(request)
 
 app.add_middleware(LoggingMiddleware)
+
+# observability.yaml — metrics_application + signals.domain
+setup_plane_a(
+    app,
+    application="am-identity",
+    domain=["user_logins_total", "login_failures_total", "token_refreshes_total"],
+)
 
 
 @app.get("/health")

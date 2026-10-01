@@ -2,7 +2,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, status
 
-from am_platform_common import APIResponse
+from am_platform_common import APIResponse, inc_domain
 from am_platform_security import AuthContext, require_auth_context
 
 from am_subscription.core.log_utils import get_logger
@@ -43,6 +43,7 @@ async def create_subscription(
         actor=context.subject,
         correlation_id=_correlation_id(),
     )
+    inc_domain("subscription_created_total", "am-subscription")
     return APIResponse(data=data)
 
 

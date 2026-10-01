@@ -13,19 +13,19 @@ resources:
 vault:
   enabled: true
   secretPaths:
-    # Infra is on apps KV (same as market/proxy). Service secrets still on secret/ mount.
+    # Kind-fleet prod: all paths under apps KV (vault-apps seed).
     mongodb:
       path: "apps/data/prod/infra/mongodb"
     kafka:
       path: "apps/data/prod/infra/kafka"
     notification:
-      path: "secret/data/prod/services/am-notification"
+      path: "apps/data/prod/services/am-notification"
     novu:
-      path: "secret/data/prod/services/am-novu"
+      path: "apps/data/prod/services/am-novu"
     identity-oidc:
-      path: "secret/data/prod/services/am-identity"
+      path: "apps/data/prod/services/am-identity"
     service-oauth:
-      path: "secret/data/prod/services/am-notification"
+      path: "apps/data/prod/services/am-notification"
 
 
 env:

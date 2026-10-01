@@ -3,7 +3,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Header, Request
 
-from am_platform_common import APIResponse
+from am_platform_common import APIResponse, inc_domain
 
 from am_subscription.deps import get_event_publisher
 from am_subscription.services.event_publisher import EventPublisher
@@ -26,6 +26,7 @@ async def provider_webhook(
         "subscription", {}
     ).get("external_customer_id")
     correlation_id = body.get("webhook_id") or EventPublisher.new_correlation_id()
+    inc_domain("billing_webhook_received_total", "am-subscription")
 
     event_map = {
         "subscription.started": "am.subscription.created.v1",

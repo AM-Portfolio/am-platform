@@ -52,3 +52,7 @@ ingress:
 env:
   APP_ENV: dev
   LOG_LEVEL: DEBUG
+  # kafka-dev:9094 not reachable from apps fleet yet
+  KAFKA_ENABLED: "false"
+  TRIAL_GRANT_DELAY_HOURS: "24"
+  REFERRAL_REWARD_DELAY_HOURS: "24"

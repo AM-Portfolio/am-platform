@@ -26,6 +26,7 @@ data:
   S3_REGION: {{ .Values.global.env.s3.region | quote }}
   AWS_ACCESS_KEY_ID: {{ .Values.global.env.aws.accessKeyId | quote }}
   NEW_RELIC_APP_NAME: {{ .Values.global.env.newRelic.appName | quote }}
+  NEW_RELIC_ENABLED: "false"
   API_ROOT_URL: {{ .Values.global.env.apiRootUrl | quote }}
   API_PORT: {{ .Values.api.port | quote }}
   API_CONTEXT_PATH: {{ .Values.api.contextPath | quote }}

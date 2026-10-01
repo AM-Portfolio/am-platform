@@ -14,6 +14,7 @@ from am_platform_common import (
     InternalServerError,
     LoggingMiddleware,
     setup_logging,
+    setup_plane_a,
 )
 
 settings = get_settings()
@@ -45,6 +46,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.add_middleware(LoggingMiddleware)
+
+setup_plane_a(app, application="am-user-platform", domain=[])
 
 
 def _request_context(request: Request) -> dict[str, str]:

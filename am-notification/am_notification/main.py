@@ -16,6 +16,7 @@ from am_platform_common import (
     InternalServerError,
     LoggingMiddleware,
     setup_logging,
+    setup_plane_a,
 )
 
 settings = get_settings()
@@ -49,6 +50,12 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.add_middleware(LoggingMiddleware)
+
+setup_plane_a(
+    app,
+    application="am-notification",
+    domain=["notification_sent_total", "email_delivery_success_total"],
+)
 
 
 def _request_context(request: Request) -> dict[str, str]:

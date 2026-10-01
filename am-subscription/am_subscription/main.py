@@ -16,6 +16,7 @@ from am_platform_common import (
     InternalServerError,
     LoggingMiddleware,
     setup_logging,
+    setup_plane_a,
 )
 from am_subscription.services.kafka_consumer import consumer_instance
 
@@ -44,6 +45,12 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.add_middleware(LoggingMiddleware)
+
+setup_plane_a(
+    app,
+    application="am-subscription",
+    domain=["subscription_created_total", "billing_webhook_received_total"],
+)
 
 
 def _request_context(request: Request) -> dict[str, str]:

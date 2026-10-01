@@ -10,7 +10,11 @@ from am_identity.deps import get_identity_provider
 from am_identity.api.auth_deps import require_user_context
 from am_identity.providers.interface import IIdentityProvider
 from am_identity.schemas.security import LoginSessionResponse, SecurityEventResponse
-from am_identity.schemas.user import UpdateUserSettingsRequest, UserProfileResponse
+from am_identity.schemas.user import (
+    AccountDeletionRequest,
+    UpdateUserSettingsRequest,
+    UserProfileResponse,
+)
 from am_identity.services.bff_session_service import bff_session_service
 from am_identity.services.cookie_utils import clear_session_cookie
 from am_identity.services.login_session_service import login_session_service
@@ -45,9 +49,15 @@ async def get_me(
             user_info = _profile_from_claims(context.claims)
         else:
             raise
-    settings = await provider.get_user_settings(context.subject)
+    try:
+        settings = await provider.get_user_settings(context.subject)
+    except Exception:
+        settings = {}
 
-    deletion_pending = await provider.is_user_deletion_pending(context.subject)
+    try:
+        deletion_pending = await provider.is_user_deletion_pending(context.subject)
+    except Exception:
+        deletion_pending = False
     account_restored = False
 
     return UserProfileResponse(

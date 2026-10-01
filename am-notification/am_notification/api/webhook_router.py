@@ -2,7 +2,7 @@ from typing import Any
 
 from fastapi import APIRouter, Request
 
-from am_platform_common import APIResponse
+from am_platform_common import APIResponse, inc_domain
 
 from am_notification.core.log_utils import get_logger
 from am_notification.core.database import get_database
@@ -33,5 +33,7 @@ async def novu_webhook(request: Request) -> APIResponse[dict]:
                 "status": status,
             },
         )
+        if status and str(status).lower() in ("delivered", "sent", "success"):
+            inc_domain("email_delivery_success_total", "am-notification")
 
     return APIResponse(data={"received": True})

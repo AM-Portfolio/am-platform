@@ -138,6 +138,13 @@ class NotificationService:
             )
             delivered.append(channel)
 
+        from am_platform_common import inc_domain
+
+        if delivered:
+            inc_domain("notification_sent_total", "am-notification")
+            if "email" in delivered:
+                inc_domain("email_delivery_success_total", "am-notification")
+
         return {"event_id": event_id, "delivered_channels": delivered}
 
     async def send_command(self, command: dict[str, Any]) -> dict[str, Any]:
