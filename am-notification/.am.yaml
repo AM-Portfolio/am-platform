@@ -1,6 +1,6 @@
 name: am-notification
 release: am-notification
-image: ghcr.io/am-portfolio/am-notification
+image: ghcr.io/am-portfolio/am-platform/am-notification
 runtime: python
 language: python
 dockerfile: Dockerfile

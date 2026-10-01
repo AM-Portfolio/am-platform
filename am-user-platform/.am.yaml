@@ -1,6 +1,6 @@
 name: am-user-platform
 release: am-user-platform
-image: ghcr.io/am-portfolio/am-user-platform
+image: ghcr.io/am-portfolio/am-platform/am-user-platform
 runtime: python
 language: python
 dockerfile: Dockerfile
