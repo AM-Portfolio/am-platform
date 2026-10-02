@@ -3,7 +3,7 @@ name = "am-platform-common"
 version = "0.1.0"
 description = "Shared Python DTOs, utilities, and JSON logging for AM Platform"
 authors = [{ name = "Antigravity Agent", email = "agent@google.com" }]
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
     "pydantic>=2.0.0",
     "fastapi>=0.100.0",

@@ -23,6 +23,7 @@ from am_platform_common.models import (
 )
 from am_platform_common.middleware import LoggingMiddleware
 from am_platform_common.http_client import create_async_client, create_sync_client
+from am_platform_common.service_logger import slog
 
 __all__ = [
     # Logging
@@ -30,26 +31,30 @@ __all__ = [
     "set_correlation_id",
     "clear_correlation_id",
     "get_correlation_context",
-    
+
     # Exceptions
     "APIException",
     "BadRequestError",
     "UnauthorizedError",
     "ForbiddenError",
     "NotFoundError",
+    "NotFoundError",
     "ConflictError",
     "QuotaExceededError",
     "InternalServerError",
-    
+
     # Models / DTOs
     "BaseDTO",
     "APIResponse",
     "PaginatedResponse",
     "APIErrorResponse",
     "EventEnvelope",
-    
+
     # Middleware & HTTP Clients
     "LoggingMiddleware",
     "create_async_client",
     "create_sync_client",
+
+    # Service call logger
+    "slog",
 ]

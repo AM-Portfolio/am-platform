@@ -1,6 +1,7 @@
+import asyncio
+import logging
 import os
 import sys
-import asyncio
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -17,6 +18,7 @@ from am_identity.api.step_up_router import router as step_up_router
 from am_identity.api.user_router import router as user_router
 from am_identity.api.web_otp_router import router as web_otp_router
 from am_identity.core.config import get_settings
+from am_identity.core.observability import setup_observability
 from am_platform_common import LoggingMiddleware, setup_logging
 
 # Load local .env into os.environ for background tasks
@@ -27,32 +29,37 @@ if env_path.exists():
 settings = get_settings()
 setup_logging(env=settings.app_env)
 
-async def run_purge_scheduler():
+log = logging.getLogger("am-identity.main")
+
+
+async def run_purge_scheduler() -> None:
     # Dynamically locate project root and add to sys.path
     root_dir = Path(__file__).resolve().parent.parent.parent
     sys.path.append(str(root_dir))
-    
+
     try:
         from automation.scripts.purge_deleted_accounts import main as run_purge
     except ImportError as e:
-        print(f"[BACKGROUND SCHEDULER] Could not import purge script: {e}")
+        log.error("[BACKGROUND SCHEDULER] Could not import purge script: %s", e)
         return
-    
+
     while True:
         try:
-            print("[BACKGROUND SCHEDULER] Running account purge task...")
+            log.info("[BACKGROUND SCHEDULER] Running account purge task...")
             await run_purge()
         except Exception as e:
-            print(f"[BACKGROUND SCHEDULER] Error in purge execution: {e}")
-            
-        await asyncio.sleep(300) # Sleep for 5 minutes
+            log.exception("[BACKGROUND SCHEDULER] Error in purge execution: %s", e)
+
+        await asyncio.sleep(300)  # Sleep for 5 minutes
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     if settings.app_env.lower() in ("dev", "local"):
-        print("[BACKGROUND SCHEDULER] Starting dev/local background purge scheduler...")
+        log.info("[BACKGROUND SCHEDULER] Starting dev/local background purge scheduler...")
         asyncio.create_task(run_purge_scheduler())
     yield
+
 
 app = FastAPI(
     title="AM Identity Service",
@@ -80,6 +87,10 @@ async def strip_identity_prefix(request: Request, call_next):
 
 app.add_middleware(LoggingMiddleware)
 
+# Plane A: Prometheus /metrics + optional OTLP tracing — registered last so the
+# metrics middleware wraps all other middlewares and measures true end-to-end latency.
+setup_observability(app, application=settings.app_name)
+
 
 @app.get("/health")
 async def health() -> dict[str, str]:
@@ -94,4 +105,3 @@ app.include_router(bff_router)
 app.include_router(user_router)
 app.include_router(admin_router)
 app.include_router(internal_router)
-

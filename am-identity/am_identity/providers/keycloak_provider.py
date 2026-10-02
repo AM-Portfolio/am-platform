@@ -12,6 +12,7 @@ import httpx
 import jwt
 from fastapi import HTTPException, status
 from jwt import InvalidTokenError, PyJWKClient, PyJWKClientConnectionError
+from am_platform_common.service_logger import slog
 
 from am_identity.core.config import IdentitySettings
 from am_identity.core.kafka import (
@@ -424,17 +425,50 @@ class KeycloakIdentityProvider(IIdentityProvider):
         return await self._issue_tokens_for_user(user_id)
 
     async def _request_token(self, data: dict[str, str]) -> dict[str, Any]:
+        url = self.settings.oidc_token_url
+        grant_type = data.get("grant_type", "unknown")
+        client_id = data.get("client_id", "unknown")
+
+        slog.step(
+            "keycloak", "_request_token",
+            "preparing OIDC token request",
+            grant_type=grant_type,
+            client_id=client_id,
+            url=url,
+        )
+
+        import time as _time
+        _t0 = _time.perf_counter()
         async with httpx.AsyncClient(
             timeout=self._session_timeout, verify=self.settings.verify_ssl
         ) as client:
-            response = await client.post(self.settings.oidc_token_url, data=data)
+            response = await client.post(url, data=data)
+        elapsed_ms = (_time.perf_counter() - _t0) * 1000
+
+        try:
+            res_body = response.json()
+        except Exception:
+            res_body = response.text
+
+        slog.http(
+            "keycloak", "_request_token",
+            method="POST",
+            url=url,
+            status_code=response.status_code,
+            elapsed_ms=elapsed_ms,
+            grant_type=grant_type,
+            client_id=client_id,
+            req_payload=data,
+            res_payload=res_body,
+        )
+
         if response.status_code >= 400:
             body = response.text
             if "unauthorized_client" in body and "direct access" in body.lower():
                 raise HTTPException(
                     status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                     detail=(
-                        f"Client '{data.get('client_id')}' cannot use password login. "
+                        f"Client '{client_id}' cannot use password login. "
                         "Enable direct access grants on am-identity-service in Keycloak "
                         "(npm run infra:tf:apply). Keycloak response: "
                         f"{body}"
@@ -444,6 +478,15 @@ class KeycloakIdentityProvider(IIdentityProvider):
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail=f"Token request failed: {body}",
             )
+
+        slog.step(
+            "keycloak", "_request_token",
+            "token issued successfully",
+            grant_type=grant_type,
+            client_id=client_id,
+            token_type=response.json().get("token_type"),
+            expires_in=response.json().get("expires_in"),
+        )
         return response.json()
 
     def _resolve_oauth_client(
@@ -495,28 +538,60 @@ class KeycloakIdentityProvider(IIdentityProvider):
         return form
 
     async def _get_admin_access_token(self) -> str:
+        url = self._admin_token_url
+        slog.step(
+            "keycloak", "_get_admin_access_token",
+            "requesting admin-cli access token from master realm",
+            url=url,
+            admin_user=self.settings.keycloak_admin_user,
+            # password intentionally omitted — masked by slog automatically
+        )
+
+        import time as _time
+        _t0 = _time.perf_counter()
+        req_data = {
+            "grant_type": "password",
+            "client_id": "admin-cli",
+            "username": self.settings.keycloak_admin_user,
+            "password": self.settings.keycloak_admin_password,
+        }
         async with httpx.AsyncClient(
             timeout=self._session_timeout, verify=self.settings.verify_ssl
         ) as client:
-            response = await client.post(
-                self._admin_token_url,
-                data={
-                    "grant_type": "password",
-                    "client_id": "admin-cli",
-                    "username": self.settings.keycloak_admin_user,
-                    "password": self.settings.keycloak_admin_password,
-                },
-            )
+            response = await client.post(url, data=req_data)
+        elapsed_ms = (_time.perf_counter() - _t0) * 1000
+
+        try:
+            res_body = response.json()
+        except Exception:
+            res_body = response.text
+
+        slog.http(
+            "keycloak", "_get_admin_access_token",
+            method="POST",
+            url=url,
+            status_code=response.status_code,
+            elapsed_ms=elapsed_ms,
+            req_payload=req_data,
+            res_payload=res_body,
+        )
+
         if response.status_code >= 400:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail=(
                     "Keycloak master admin login failed. "
                     "Check KEYCLOAK_ADMIN_USER and KEYCLOAK_ADMIN_PASSWORD "
-                    f"(token URL: {self._admin_token_url}). "
+                    f"(token URL: {url}). "
                     f"Keycloak response: {response.text}"
                 ),
             )
+
+        slog.step(
+            "keycloak", "_get_admin_access_token",
+            "admin access token obtained",
+            expires_in=response.json().get("expires_in"),
+        )
         return response.json()["access_token"]
 
     async def create_user(self, payload: RegisterRequest) -> dict[str, Any]:
@@ -618,31 +693,58 @@ class KeycloakIdentityProvider(IIdentityProvider):
     async def authenticate(
         self, username: str, password: str, platform: str | None = None
     ) -> dict[str, Any]:
-        try:
-            return await self._request_token(
-                self._token_form(
-                    grant_type="password",
-                    platform=platform,
-                    username=username,
-                    password=password,
-                )
+        async with slog.call(
+            "keycloak",
+            "authenticate",
+            # username logged for traceability; password is NEVER passed here
+            user=username,
+            platform=platform or "default",
+        ):
+            slog.step(
+                "keycloak", "authenticate",
+                "building OIDC token form",
+                grant_type="password",
+                platform=platform or "default",
             )
-        except HTTPException as exc:
-            detail = str(exc.detail).lower()
-            if (
-                "not fully set up" in detail
-                or "account is not fully" in detail
-                or ("verify" in detail and "email" in detail)
-            ):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=(
-                        "Please verify your email before signing in. "
-                        "Check your inbox for the Asrax welcome message, "
-                        "or use resend verification."
-                    ),
-                ) from exc
-            raise
+            try:
+                result = await self._request_token(
+                    self._token_form(
+                        grant_type="password",
+                        platform=platform,
+                        username=username,
+                        password=password,
+                    )
+                )
+                slog.step(
+                    "keycloak", "authenticate",
+                    "authentication completed — tokens issued to caller",
+                    user=username,
+                    token_type=result.get("token_type"),
+                    expires_in=result.get("expires_in"),
+                )
+                return result
+            except HTTPException as exc:
+                detail = str(exc.detail).lower()
+                if (
+                    "not fully set up" in detail
+                    or "account is not fully" in detail
+                    or ("verify" in detail and "email" in detail)
+                ):
+                    slog.step(
+                        "keycloak", "authenticate",
+                        "blocked: email not verified",
+                        level=logging.WARNING,
+                        user=username,
+                    )
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail=(
+                            "Please verify your email before signing in. "
+                            "Check your inbox for the Asrax welcome message, "
+                            "or use resend verification."
+                        ),
+                    ) from exc
+                raise
 
     async def authenticate_otp(self, username: str, otp: str) -> dict[str, Any]:
         raise HTTPException(

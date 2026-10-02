@@ -20,7 +20,19 @@ def set_correlation_id(trace_id: str, span_id: Optional[str] = None) -> None:
         span_id_var.set(span_id)
 
 def get_correlation_context() -> Dict[str, Optional[str]]:
-    """Retrieve the current trace_id and span_id context."""
+    """Retrieve the current trace_id and span_id context, favoring OpenTelemetry if active."""
+    try:
+        from opentelemetry import trace
+        span = trace.get_current_span()
+        if span and span.is_recording():
+            ctx = span.get_span_context()
+            return {
+                "trace_id": format(ctx.trace_id, "032x"),
+                "span_id": format(ctx.span_id, "016x"),
+            }
+    except ImportError:
+        pass
+
     return {
         "trace_id": trace_id_var.get(),
         "span_id": span_id_var.get(),

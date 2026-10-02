@@ -3,7 +3,7 @@ name = "am-platform-security"
 version = "0.1.0"
 description = "Shared FastAPI authentication and authorization dependencies for AM Platform"
 authors = [{ name = "Antigravity Agent", email = "agent@google.com" }]
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
     "fastapi>=0.100.0",
     "httpx>=0.24.0",
