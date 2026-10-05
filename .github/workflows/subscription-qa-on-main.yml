@@ -64,8 +64,14 @@ jobs:
           TARGET="${INPUT_TARGET:-${DEFAULT_TARGET}}"
           TARGET="${TARGET%/}"
 
-          # Prefer explicit input → org/repo var → prod Temporal gateway (dig Temporal often down).
-          GATEWAY_BASE="${INPUT_GATEWAY:-${VAR_GATEWAY:-https://am.asrax.in/qa}}"
+          # Contabo Temporal only; dig QA starts workflows on dig task queue there.
+          # env=dev → dig gateway (dig workers). Override via input or org var.
+          case "${ENV}" in
+            prod) DEFAULT_GATEWAY="https://am.asrax.in/qa" ;;
+            preprod) DEFAULT_GATEWAY="https://am-preprod.asrax.in/qa" ;;
+            *) DEFAULT_GATEWAY="https://am-dev.asrax.in/qa" ;;
+          esac
+          GATEWAY_BASE="${INPUT_GATEWAY:-${VAR_GATEWAY:-${DEFAULT_GATEWAY}}}"
           GATEWAY_BASE="${GATEWAY_BASE%/}"
 
           {
