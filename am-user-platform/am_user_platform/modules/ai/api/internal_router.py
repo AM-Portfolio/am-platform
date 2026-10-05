@@ -7,7 +7,8 @@ import uuid
 from fastapi import APIRouter, Depends, Query, status
 
 from am_platform_common import APIResponse
-from am_platform_security import AuthContext, require_service_account
+from am_platform_security import AuthContext, require_auth_context
+from fastapi import HTTPException
 
 from am_user_platform.deps import get_message_service, get_session_service
 from am_user_platform.modules.ai.schemas.message import (
@@ -28,7 +29,12 @@ INTERNAL_CLIENTS = {
     "am-support-agent",
 }
 
-ServiceAuth = require_service_account(allowed_client_ids=INTERNAL_CLIENTS)
+def get_service_auth(context: AuthContext = Depends(require_auth_context(require_service_token=False))):
+    if context.client_id not in INTERNAL_CLIENTS:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=f"Client is not allowed: {context.client_id}")
+    return context
+
+ServiceAuth = get_service_auth
 
 router = APIRouter(prefix="/internal/ai", tags=["internal-ai"])
 
