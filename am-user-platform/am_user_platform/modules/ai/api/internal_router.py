@@ -22,6 +22,7 @@ INTERNAL_CLIENTS = {
     "am-gateway-client",
     "am-fin-agent",
     "am-fin-agent-service",
+    "am-mcp-server",
     "am-tool-agent",
     "am-qa-agent",
     "am-support-agent",
