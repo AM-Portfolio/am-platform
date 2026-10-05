@@ -15,7 +15,8 @@ global:
       enabled: false
 
 image:
-  repository: am-user-platform
+  # Contabo publish: <git-repo>/<image_name>
+  repository: am-platform/am-user-platform
 
 replicaCount: 1
 language: python
