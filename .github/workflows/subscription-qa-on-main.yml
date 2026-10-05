@@ -1,0 +1,174 @@
+# Subscription-only QA on main merge (path-filtered).
+# Calls QA Agent ops/start with suite=subscription_module + api_pack=subscription.
+# Catalog: am-qa-agents qa-agent/ui_evidence/docs/SUBSCRIPTION_MODULE_CATALOG.md
+# Fail closed when secrets missing. No in-GHA Playwright — Temporal owns the suite.
+
+name: Subscription QA on main
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "am-subscription/**"
+      - ".github/workflows/am-subscription.yml"
+      - ".github/workflows/subscription-qa-on-main.yml"
+  workflow_dispatch:
+    inputs:
+      env:
+        description: "Target env for subscription pack"
+        required: false
+        type: choice
+        options:
+          - preprod
+          - prod
+        default: preprod
+      target_url:
+        description: "App under test (optional)"
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+  checks: write
+  statuses: write
+
+jobs:
+  subscription-module-qa:
+    name: Start subscription_module ops + watch
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Resolve endpoints
+        id: ep
+        shell: bash
+        run: |
+          set -euo pipefail
+          ENV="${{ github.event.inputs.env }}"
+          ENV="${ENV:-preprod}"
+          if [[ "${ENV}" == "prod" ]]; then
+            DEFAULT_TARGET="https://am.asrax.in"
+          else
+            DEFAULT_TARGET="https://am-preprod.asrax.in"
+          fi
+          TARGET="${{ github.event.inputs.target_url }}"
+          TARGET="${TARGET:-${DEFAULT_TARGET}}"
+          TARGET="${TARGET%/}"
+          GATEWAY_BASE="${{ vars.QA_AGENT_GATEWAY_BASE }}"
+          GATEWAY_BASE="${GATEWAY_BASE:-${TARGET}/qa}"
+          GATEWAY_BASE="${GATEWAY_BASE%/}"
+          {
+            echo "env=${ENV}"
+            echo "target_url=${TARGET}"
+            echo "gateway_base=${GATEWAY_BASE}"
+          } >> "$GITHUB_OUTPUT"
+          echo "env=${ENV} target=${TARGET} gateway=${GATEWAY_BASE}"
+
+      - name: Start subscription_module release ops
+        id: start
+        shell: bash
+        env:
+          GATEWAY_TOKEN: ${{ secrets.QA_AGENT_GATEWAY_TOKEN }}
+          GATEWAY_BASE: ${{ steps.ep.outputs.gateway_base }}
+          TARGET_URL: ${{ steps.ep.outputs.target_url }}
+          ENV_NAME: ${{ steps.ep.outputs.env }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${GATEWAY_TOKEN}" ]]; then
+            echo "::error::QA_AGENT_GATEWAY_TOKEN secret missing"
+            exit 1
+          fi
+          BODY=$(jq -n \
+            --arg suite "subscription_module" \
+            --arg api_pack "subscription" \
+            --arg env "${ENV_NAME}" \
+            --arg url "${TARGET_URL}" \
+            --arg sha "${SHA}" \
+            '{
+              release_name: ("subscription-qa-" + $sha[0:12]),
+              env: $env,
+              suite: $suite,
+              api_pack: $api_pack,
+              target_url: $url,
+              login_mode: "credentials",
+              soak_min: 0,
+              skip_ui: false,
+              skip_cliq: true,
+              skip_sheet: false,
+              skip_drive: false,
+              use_temporal: true,
+              requested_by: "github-merge"
+            }')
+          RESP=$(curl -sS --connect-timeout 15 --max-time 60 \
+            -X POST "${GATEWAY_BASE}/v2/releases/ops/start" \
+            -H "Authorization: Bearer ${GATEWAY_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "${BODY}")
+          echo "$RESP" | jq .
+          RID=$(echo "$RESP" | jq -r '.request_id // empty')
+          TID=$(echo "$RESP" | jq -r '.tracking_id // empty')
+          WID=$(echo "$RESP" | jq -r '.workflow_id // empty')
+          if [[ -z "$RID" || -z "$TID" ]]; then
+            echo "::error::ops/start did not return request_id/tracking_id"
+            exit 1
+          fi
+          echo "request_id=${RID}" >> "$GITHUB_OUTPUT"
+          echo "tracking_id=${TID}" >> "$GITHUB_OUTPUT"
+          echo "workflow_id=${WID}" >> "$GITHUB_OUTPUT"
+          {
+            echo "## Subscription module QA"
+            echo ""
+            echo "- suite: \`subscription_module\`"
+            echo "- api_pack: \`subscription\`"
+            echo "- env: \`${ENV_NAME}\`"
+            echo "- request_id: \`${RID}\`"
+            echo "- tracking_id: \`${TID}\`"
+            echo "- workflow_id: \`${WID}\`"
+            echo "- Specs portal Runs use this tracking_id"
+          } > "$GITHUB_STEP_SUMMARY"
+
+      - name: Watch progress
+        shell: bash
+        env:
+          GATEWAY_TOKEN: ${{ secrets.QA_AGENT_GATEWAY_TOKEN }}
+          GATEWAY_BASE: ${{ steps.ep.outputs.gateway_base }}
+          REQUEST_ID: ${{ steps.start.outputs.request_id }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 160); do
+            RESP=$(curl -sS --connect-timeout 10 --max-time 30 \
+              -H "Authorization: Bearer ${GATEWAY_TOKEN}" \
+              "${GATEWAY_BASE}/v2/releases/${REQUEST_ID}" || echo '{}')
+            PHASE=$(echo "$RESP" | jq -r '.phase // "unknown"')
+            STATUS=$(echo "$RESP" | jq -r '.progress_status // .status // "unknown"')
+            UI_PCT=$(echo "$RESP" | jq -r '.ui_pct // 0')
+            UI_DEC=$(echo "$RESP" | jq -r '.ui_decision // empty')
+            echo "[$i] phase=${PHASE} status=${STATUS} ui_pct=${UI_PCT} decision=${UI_DEC}"
+            {
+              echo "## Subscription module QA"
+              echo ""
+              echo "- request_id: \`${REQUEST_ID}\`"
+              echo "- phase: \`${PHASE}\`"
+              echo "- status: \`${STATUS}\`"
+              echo "- ui_pct: ${UI_PCT}"
+              echo "- ui_decision: \`${UI_DEC}\`"
+            } > "$GITHUB_STEP_SUMMARY"
+
+            if echo "$RESP" | jq -e '.steps_done | index("release_ops_complete")' >/dev/null 2>&1; then
+              if [[ "${STATUS}" == *"fail"* || "${STATUS}" == *"FAIL"* || "${UI_DEC}" == "NO_GO" ]]; then
+                echo "::error::Release ops completed with failure status=${STATUS} ui=${UI_DEC}"
+                exit 1
+              fi
+              echo "Complete OK"
+              exit 0
+            fi
+            REQ_STATUS=$(echo "$RESP" | jq -r '.status // empty')
+            if [[ "$REQ_STATUS" == "failed" || "$REQ_STATUS" == "rejected" ]]; then
+              echo "::error::request status=${REQ_STATUS}"
+              exit 1
+            fi
+            sleep 30
+          done
+          echo "::error::Timed out waiting for release_ops_complete"
+          exit 1
