@@ -15,15 +15,21 @@ on:
   workflow_dispatch:
     inputs:
       env:
-        description: "Target env for subscription pack"
+        description: "App env under test (target_url)"
         required: false
         type: choice
         options:
+          - dev
           - preprod
           - prod
-        default: preprod
+        default: dev
       target_url:
-        description: "App under test (optional)"
+        description: "App under test (optional override)"
+        required: false
+        type: string
+        default: ""
+      gateway_base:
+        description: "QA Agent gateway (optional; default org var or prod Temporal)"
         required: false
         type: string
         default: ""
@@ -42,27 +48,48 @@ jobs:
       - name: Resolve endpoints
         id: ep
         shell: bash
+        env:
+          INPUT_ENV: ${{ github.event.inputs.env }}
+          INPUT_TARGET: ${{ github.event.inputs.target_url }}
+          INPUT_GATEWAY: ${{ github.event.inputs.gateway_base }}
+          VAR_GATEWAY: ${{ vars.QA_AGENT_GATEWAY_BASE }}
         run: |
           set -euo pipefail
-          ENV="${{ github.event.inputs.env }}"
-          ENV="${ENV:-preprod}"
-          if [[ "${ENV}" == "prod" ]]; then
-            DEFAULT_TARGET="https://am.asrax.in"
-          else
-            DEFAULT_TARGET="https://am-preprod.asrax.in"
-          fi
-          TARGET="${{ github.event.inputs.target_url }}"
-          TARGET="${TARGET:-${DEFAULT_TARGET}}"
+          ENV="${INPUT_ENV:-dev}"
+          case "${ENV}" in
+            prod) DEFAULT_TARGET="https://am.asrax.in" ;;
+            preprod) DEFAULT_TARGET="https://am-preprod.asrax.in" ;;
+            *) DEFAULT_TARGET="https://am-dev.asrax.in" ;;
+          esac
+          TARGET="${INPUT_TARGET:-${DEFAULT_TARGET}}"
           TARGET="${TARGET%/}"
-          GATEWAY_BASE="${{ vars.QA_AGENT_GATEWAY_BASE }}"
-          GATEWAY_BASE="${GATEWAY_BASE:-${TARGET}/qa}"
+
+          # Prefer explicit input → org/repo var → prod Temporal gateway (dig Temporal often down).
+          GATEWAY_BASE="${INPUT_GATEWAY:-${VAR_GATEWAY:-https://am.asrax.in/qa}}"
           GATEWAY_BASE="${GATEWAY_BASE%/}"
+
           {
             echo "env=${ENV}"
             echo "target_url=${TARGET}"
             echo "gateway_base=${GATEWAY_BASE}"
           } >> "$GITHUB_OUTPUT"
           echo "env=${ENV} target=${TARGET} gateway=${GATEWAY_BASE}"
+
+      - name: Probe QA gateway
+        shell: bash
+        env:
+          GATEWAY_BASE: ${{ steps.ep.outputs.gateway_base }}
+        run: |
+          set -euo pipefail
+          code=$(curl -sS -o /tmp/qa-ready.json -w "%{http_code}" --connect-timeout 10 --max-time 20 \
+            "${GATEWAY_BASE}/ready" || echo 000)
+          echo "ready HTTP ${code}"
+          head -c 400 /tmp/qa-ready.json || true
+          echo
+          if [[ "${code}" != "200" ]]; then
+            echo "::error::QA gateway not ready at ${GATEWAY_BASE}/ready (HTTP ${code})"
+            exit 1
+          fi
 
       - name: Start subscription_module release ops
         id: start
@@ -76,7 +103,7 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -z "${GATEWAY_TOKEN}" ]]; then
-            echo "::error::QA_AGENT_GATEWAY_TOKEN secret missing"
+            echo "::error::QA_AGENT_GATEWAY_TOKEN secret missing (set org Actions secret)"
             exit 1
           fi
           BODY=$(jq -n \
@@ -100,12 +127,19 @@ jobs:
               use_temporal: true,
               requested_by: "github-merge"
             }')
-          RESP=$(curl -sS --connect-timeout 15 --max-time 60 \
+          HTTP_CODE=$(curl -sS -o /tmp/ops-start.json -w "%{http_code}" \
+            --connect-timeout 15 --max-time 120 \
             -X POST "${GATEWAY_BASE}/v2/releases/ops/start" \
             -H "Authorization: Bearer ${GATEWAY_TOKEN}" \
             -H "Content-Type: application/json" \
-            -d "${BODY}")
-          echo "$RESP" | jq .
+            -d "${BODY}" || echo 000)
+          echo "ops/start HTTP ${HTTP_CODE}"
+          cat /tmp/ops-start.json | jq . || cat /tmp/ops-start.json
+          if [[ "${HTTP_CODE}" != "200" ]]; then
+            echo "::error::ops/start failed HTTP ${HTTP_CODE} gateway=${GATEWAY_BASE}"
+            exit 1
+          fi
+          RESP=$(cat /tmp/ops-start.json)
           RID=$(echo "$RESP" | jq -r '.request_id // empty')
           TID=$(echo "$RESP" | jq -r '.tracking_id // empty')
           WID=$(echo "$RESP" | jq -r '.workflow_id // empty')
@@ -122,6 +156,8 @@ jobs:
             echo "- suite: \`subscription_module\`"
             echo "- api_pack: \`subscription\`"
             echo "- env: \`${ENV_NAME}\`"
+            echo "- gateway: \`${GATEWAY_BASE}\`"
+            echo "- target: \`${TARGET_URL}\`"
             echo "- request_id: \`${RID}\`"
             echo "- tracking_id: \`${TID}\`"
             echo "- workflow_id: \`${WID}\`"
