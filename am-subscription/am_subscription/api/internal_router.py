@@ -39,7 +39,8 @@ from am_subscription.services.referral_service import ReferralService
 from am_subscription.services.subscription_service import SubscriptionService
 
 INTERNAL_CLIENTS = {
-    "am-gateway-client",
+    "am-gateway",          # AI gateway (Keycloak client_credentials)
+    "am-gateway-client",   # legacy name kept for rollback safety
     "am-identity-service",
     "am-fin-agent-service",
     "am-portfolio-service",
