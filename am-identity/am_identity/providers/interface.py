@@ -83,6 +83,16 @@ class IIdentityProvider(ABC):
     ) -> dict[str, Any]:
         raise NotImplementedError
 
+    @abstractmethod
+    async def authenticate_apple_token(
+        self,
+        id_token: str,
+        *,
+        given_name: str | None = None,
+        family_name: str | None = None,
+    ) -> dict[str, Any]:
+        raise NotImplementedError
+
     # ── Admin / email helpers ───────────────────────────────────────────────
 
     @abstractmethod
