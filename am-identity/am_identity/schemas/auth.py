@@ -131,6 +131,12 @@ class GoogleTokenRequest(BaseModel):
         return value.strip()
 
 
+class AppleTokenRequest(BaseModel):
+    id_token: str
+    given_name: str | None = Field(default=None, max_length=100)
+    family_name: str | None = Field(default=None, max_length=100)
+
+
 class TokenResponse(BaseModel):
     access_token: str
     expires_in: int

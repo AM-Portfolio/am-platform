@@ -29,6 +29,9 @@ class IdentitySettings(BaseSettings):
     ios_client_id: str = Field(default="am-ios-client", alias="AM_IOS_CLIENT_ID")
     google_idp_alias: str = Field(default="google", alias="GOOGLE_IDP_ALIAS")
     google_client_id: str = Field(..., alias="GOOGLE_CLIENT_ID")
+    apple_client_id: str = Field(
+        default="com.asrax.aminvestment", alias="APPLE_CLIENT_ID"
+    )
     google_state_ttl_seconds: int = Field(default=300, alias="GOOGLE_STATE_TTL_SECONDS")
     # Host allowlist — set per env in Vault (ALLOWED_GOOGLE_REDIRECT_URIS). No code defaults.
     allowed_google_redirect_uris: str = Field(..., alias="ALLOWED_GOOGLE_REDIRECT_URIS")

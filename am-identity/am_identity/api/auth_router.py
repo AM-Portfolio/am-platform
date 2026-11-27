@@ -5,6 +5,7 @@ from am_identity.email.rate_limit import enforce_rate_limit
 from am_identity.providers.interface import IIdentityProvider
 from am_identity.services.login_recording import record_token_login
 from am_identity.schemas.auth import (
+    AppleTokenRequest,
     ChangePasswordRequest,
     GoogleAuthURLRequest,
     GoogleAuthURLResponse,
@@ -98,6 +99,22 @@ async def google_token(
         device_id=payload.device_id,
     )
     record_token_login(request, tokens, platform="web")
+    return tokens
+
+
+@router.post("/apple/token", response_model=TokenResponse)
+async def apple_token(
+    payload: AppleTokenRequest,
+    request: Request,
+    provider: IIdentityProvider = Depends(get_identity_provider),
+):
+    enforce_rate_limit(request, name="apple_token", limit=20)
+    tokens = await provider.authenticate_apple_token(
+        payload.id_token,
+        given_name=payload.given_name,
+        family_name=payload.family_name,
+    )
+    record_token_login(request, tokens, platform="ios")
     return tokens
 
 

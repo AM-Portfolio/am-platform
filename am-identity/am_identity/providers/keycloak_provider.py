@@ -40,6 +40,8 @@ _OIDC_USER_SCOPES = "openid profile email"
 logger = logging.getLogger(__name__)
 _GOOGLE_ISSUER = "https://accounts.google.com"
 _GOOGLE_JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs"
+_APPLE_ISSUER = "https://appleid.apple.com"
+_APPLE_JWKS_URL = "https://appleid.apple.com/auth/keys"
 _VERIFY_JTI_ATTR = "asraxVerifyJti"
 _RESET_JTI_ATTR = "asraxResetJti"
 _VERIFY_CODE_ATTR = "asraxVerifyCode"
@@ -134,6 +136,12 @@ class KeycloakIdentityProvider(IIdentityProvider):
         )
         self._google_jwk_client = PyJWKClient(
             _GOOGLE_JWKS_URL,
+            headers=_JWKS_REQUEST_HEADERS,
+            cache_jwk_set=True,
+            lifespan=300,
+        )
+        self._apple_jwk_client = PyJWKClient(
+            _APPLE_JWKS_URL,
             headers=_JWKS_REQUEST_HEADERS,
             cache_jwk_set=True,
             lifespan=300,
@@ -948,6 +956,112 @@ class KeycloakIdentityProvider(IIdentityProvider):
                 device_id=device,
             )
         return await self._issue_tokens_for_user(user_id)
+
+    async def authenticate_apple_token(
+        self,
+        id_token: str,
+        *,
+        given_name: str | None = None,
+        family_name: str | None = None,
+    ) -> dict[str, Any]:
+        """Validate a native iOS Apple credential and issue Keycloak tokens."""
+        try:
+            key = self._apple_jwk_client.get_signing_key_from_jwt(id_token).key
+            claims = jwt.decode(
+                id_token,
+                key,
+                algorithms=["RS256"],
+                audience=self.settings.apple_client_id,
+                issuer=_APPLE_ISSUER,
+                options={"require": ["exp", "iat", "sub", "iss", "aud"]},
+            )
+        except PyJWKClientConnectionError as exc:
+            logger.warning("apple_jwks_unavailable: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Apple signing keys are unavailable",
+            ) from exc
+        except InvalidTokenError as exc:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid Apple identity token",
+            ) from exc
+
+        subject = str(claims["sub"])
+        email = claims.get("email")
+        if (
+            not subject
+            or not isinstance(email, str)
+            or not email
+            or claims.get("email_verified") not in (True, "true")
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Apple account email is missing or not verified",
+            )
+
+        username = f"apple_{subject}"
+        admin_token = await self._get_admin_access_token()
+        headers = self._admin_headers(admin_token)
+        async with httpx.AsyncClient(
+            timeout=self._session_timeout, verify=self.settings.verify_ssl
+        ) as client:
+            response = await client.get(
+                self._admin_users_url,
+                params={"username": username, "exact": "true"},
+                headers=headers,
+            )
+            if response.status_code >= 400:
+                raise HTTPException(
+                    status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                    detail="Unable to look up Apple account",
+                )
+            users = response.json()
+            user = next((u for u in users if u.get("username") == username), None)
+            if user is None:
+                # A matching email alone cannot prove ownership of an existing AM account.
+                existing = await self._find_user_by_email(email, admin_token)
+                if existing is not None:
+                    raise HTTPException(
+                        status_code=status.HTTP_409_CONFLICT,
+                        detail="An account with this email already exists. Use its existing sign-in method.",
+                    )
+                created = await client.post(
+                    self._admin_users_url,
+                    json={
+                        "username": username,
+                        "email": email,
+                        "firstName": (given_name or "").strip() or email,
+                        "lastName": (family_name or "").strip(),
+                        "emailVerified": True,
+                        "enabled": True,
+                    },
+                    headers=headers,
+                )
+                if created.status_code != 201:
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail="Unable to create Apple account",
+                    )
+                response = await client.get(
+                    self._admin_users_url,
+                    params={"username": username, "exact": "true"},
+                    headers=headers,
+                )
+                if response.status_code >= 400:
+                    raise HTTPException(status_code=503, detail="Unable to load Apple account")
+                user = next((u for u in response.json() if u.get("username") == username), None)
+                if user is None:
+                    raise HTTPException(status_code=503, detail="Unable to load Apple account")
+                await self._emit_user_registered(
+                    user_id=user["id"],
+                    email=email,
+                    referral_code=None,
+                    device_id=None,
+                )
+                await self._emit_email_verified_once(user_id=user["id"], email=email)
+
+        return await self._issue_tokens_for_user(user["id"])
     # ── Admin / email helpers ───────────────────────────────────────────────
 
     def _admin_headers(self, admin_token: str) -> dict[str, str]:
